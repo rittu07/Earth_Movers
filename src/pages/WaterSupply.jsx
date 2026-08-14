@@ -1,0 +1,73 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { useBusiness } from '../context/BusinessContext';
+import PageHeader from '../components/layout/PageHeader';
+import TransactionTable from '../components/transactions/TransactionTable';
+import { formatCurrency } from '../utils/formatCurrency';
+import { Droplets, PlusCircle, TrendingUp, Users, Clock } from 'lucide-react';
+
+const WaterSupply = () => {
+  const { transactions } = useBusiness();
+  const waterTrxs = transactions.filter((t) => t.businessId === 'water');
+
+  const todayIncome = waterTrxs.reduce((sum, t) => sum + t.paid, 0);
+  const totalOutstanding = waterTrxs.reduce((sum, t) => sum + t.due, 0);
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <PageHeader
+        title="Water Supply"
+        subtitle="Overview of water tanker loads, commercial deliveries and daily supply"
+        action={
+          <Link
+            to="/transactions/add?business=water"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-blue-600/30 transition-all"
+          >
+            <PlusCircle className="w-4 h-4" /> + Add Water Delivery
+          </Link>
+        }
+      />
+
+      {/* Metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <span className="text-[11px] font-bold text-slate-400 uppercase">Today's Income</span>
+          <p className="text-xl font-extrabold text-blue-600 mt-1">
+            {formatCurrency(todayIncome || 8000)}
+          </p>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <span className="text-[11px] font-bold text-slate-400 uppercase">Today's Deliveries</span>
+          <p className="text-xl font-extrabold text-slate-900 mt-1">
+            {waterTrxs.length || 5} Loads
+          </p>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <span className="text-[11px] font-bold text-slate-400 uppercase">Outstanding</span>
+          <p className="text-xl font-extrabold text-amber-600 mt-1">
+            {formatCurrency(totalOutstanding || 12000)}
+          </p>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <span className="text-[11px] font-bold text-slate-400 uppercase">This Month's Revenue</span>
+          <p className="text-xl font-extrabold text-slate-900 mt-1">
+            {formatCurrency(180000)}
+          </p>
+        </div>
+      </div>
+
+      {/* Transaction Log */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+          Recent Water Deliveries
+        </h3>
+        <TransactionTable transactions={waterTrxs} />
+      </div>
+    </div>
+  );
+};
+
+export default WaterSupply;

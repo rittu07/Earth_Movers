@@ -1,0 +1,608 @@
+export const initialBusinesses = [
+  { id: 'bricks', name: 'Bricks Supply', icon: 'Boxes', color: 'orange', active: true },
+  { id: 'jcb', name: 'JCB Rental', icon: 'Truck', color: 'yellow', active: true },
+  { id: 'water', name: 'Water Supply', icon: 'Droplets', color: 'blue', active: true },
+  { id: 'jalli', name: 'Jalli Service', icon: 'Layers', color: 'slate', active: true },
+];
+
+export const initialCustomers = [
+  {
+    id: 'cust-1',
+    name: 'Person A',
+    phone: '9876543210',
+    altPhone: '9123456700',
+    address: 'No. 25, VIT Road, Katpadi, Vellore',
+    email: 'personA@example.com',
+    gst: '33ABCDE1234F1Z5',
+    status: 'Active',
+    totalBusiness: 73500,
+    paid: 60000,
+    outstanding: 13500,
+    totalTransactions: 18,
+    lastTransaction: '11 Aug 2026',
+    lastPayment: '10 Aug 2026',
+    notes: 'Regular buyer for site construction work'
+  },
+  {
+    id: 'cust-2',
+    name: 'Person B',
+    phone: '9988776655',
+    altPhone: '9888776611',
+    address: 'Plot 42, Green Avenue, Tambaram, Chennai',
+    email: 'personB@gmail.com',
+    gst: '33XYZPA5678K1Z2',
+    status: 'Active',
+    totalBusiness: 32000,
+    paid: 22500,
+    outstanding: 9500,
+    totalTransactions: 7,
+    lastTransaction: '11 Aug 2026',
+    lastPayment: '08 Aug 2026',
+    notes: 'JCB rental for land levelling'
+  },
+  {
+    id: 'cust-3',
+    name: 'Person C',
+    phone: '9123456780',
+    altPhone: '',
+    address: '12th Main Road, Velachery, Chennai',
+    email: 'personC@yahoo.com',
+    gst: '',
+    status: 'Active',
+    totalBusiness: 41000,
+    paid: 41000,
+    outstanding: 0,
+    totalTransactions: 9,
+    lastTransaction: '11 Aug 2026',
+    lastPayment: '11 Aug 2026',
+    notes: 'Daily water tanker supply'
+  },
+  {
+    id: 'cust-4',
+    name: 'Person D',
+    phone: '9898989898',
+    altPhone: '9777665544',
+    address: 'Sector 5, Anna Nagar, Chennai',
+    email: 'personD@outlook.com',
+    gst: '33LMNOP9012R1Z9',
+    status: 'Active',
+    totalBusiness: 28500,
+    paid: 28500,
+    outstanding: 0,
+    totalTransactions: 5,
+    lastTransaction: '11 Aug 2026',
+    lastPayment: '11 Aug 2026',
+    notes: 'Jalli supply for foundation'
+  },
+  {
+    id: 'cust-5',
+    name: 'Person F',
+    phone: '9123456780',
+    altPhone: '9111222333',
+    address: 'Subramaniam Nagar, Porur, Chennai',
+    email: 'personF@gmail.com',
+    gst: '',
+    status: 'Active',
+    totalBusiness: 55000,
+    paid: 43000,
+    outstanding: 12000,
+    totalTransactions: 12,
+    lastTransaction: '10 Aug 2026',
+    lastPayment: '07 Aug 2026',
+    notes: 'Bricks & JCB combination hire'
+  }
+];
+
+export const initialTransactions = [
+  {
+    id: 'TRX-101',
+    customerId: 'cust-1',
+    customerName: 'Person A',
+    phone: '9876543210',
+    businessId: 'bricks',
+    businessName: 'Bricks Supply',
+    itemService: 'Red Bricks',
+    quantity: 2,
+    unit: 'Lorry',
+    rate: 8000,
+    amount: 16000,
+    paid: 10000,
+    due: 6000,
+    status: 'Partial',
+    paymentMethod: 'Cash',
+    date: '2026-08-11',
+    displayDate: '11 Aug 2026, 04:30 PM',
+    isOutsourced: true,
+    outsourcedSupplier: 'Sri Lakshmi Brick Chamber',
+    outsourcedCost: 12000,
+    notes: 'Delivery at VIT construction site'
+  },
+  {
+    id: 'TRX-102',
+    customerId: 'cust-2',
+    customerName: 'Person B',
+    phone: '9988776655',
+    businessId: 'jcb',
+    businessName: 'JCB Rental',
+    itemService: 'JCB Earthmoving (3 Hours)',
+    quantity: 3,
+    unit: 'Hours',
+    rate: 1000,
+    amount: 3000,
+    paid: 3000,
+    due: 0,
+    status: 'Paid',
+    paymentMethod: 'UPI',
+    date: '2026-08-11',
+    displayDate: '11 Aug 2026, 03:15 PM',
+    driverName: 'Murugan (Driver)',
+    driverPhone: '9845012345',
+    driverAmount: 500,
+    jcbVehicle: 'JCB-01 (TN-23-AX-1234)',
+    notes: 'Site cleaning Tambaram'
+  },
+  {
+    id: 'TRX-103',
+    customerId: 'cust-3',
+    customerName: 'Person C',
+    phone: '9123456780',
+    businessId: 'water',
+    businessName: 'Water Supply',
+    itemService: '5 Water Loads (12,000L Tanker)',
+    quantity: 5,
+    unit: 'Loads',
+    rate: 1000,
+    amount: 5000,
+    paid: 4000,
+    due: 1000,
+    status: 'Partial',
+    paymentMethod: 'Cash',
+    date: '2026-08-11',
+    displayDate: '11 Aug 2026, 01:20 PM',
+    waterSource: 'Deep Potable Borewell (Katpadi Plant)',
+    deliveryPlace: 'Velachery Commercial Site',
+    notes: 'Velachery commercial building construction'
+  },
+  {
+    id: 'TRX-104',
+    customerId: 'cust-4',
+    customerName: 'Person D',
+    phone: '9898989898',
+    businessId: 'jalli',
+    businessName: 'Jalli Service',
+    itemService: '20mm Blue Metal Jalli',
+    quantity: 1,
+    unit: 'Lorry',
+    rate: 5500,
+    amount: 5500,
+    paid: 5500,
+    due: 0,
+    status: 'Paid',
+    paymentMethod: 'UPI',
+    date: '2026-08-11',
+    displayDate: '11 Aug 2026, 11:45 AM',
+    deliveryPlace: 'Anna Nagar Site',
+    notes: 'Anna Nagar residential project'
+  },
+  {
+    id: 'TRX-105',
+    customerId: 'cust-1',
+    customerName: 'Person A',
+    phone: '9876543210',
+    businessId: 'jcb',
+    businessName: 'JCB Rental',
+    itemService: 'JCB Excavation (4 Hours)',
+    quantity: 4,
+    unit: 'Hours',
+    rate: 1000,
+    amount: 4000,
+    paid: 4000,
+    due: 0,
+    status: 'Paid',
+    paymentMethod: 'Cash',
+    date: '2026-08-09',
+    displayDate: '09 Aug 2026, 02:00 PM',
+    driverName: 'Kannan (Driver)',
+    driverPhone: '9789012345',
+    driverAmount: 600,
+    jcbVehicle: 'JCB-02 (TN-23-BY-5678)',
+    notes: 'Foundation digging work'
+  },
+  {
+    id: 'TRX-107',
+    customerId: 'cust-5',
+    customerName: 'Person F',
+    phone: '9123456780',
+    businessId: 'bricks',
+    businessName: 'Bricks Supply',
+    itemService: 'Chamber Bricks',
+    quantity: 3,
+    unit: 'Lorry',
+    rate: 9000,
+    amount: 27000,
+    paid: 15000,
+    due: 12000,
+    status: 'Partial',
+    paymentMethod: 'Bank Transfer',
+    date: '2026-08-05',
+    displayDate: '05 Aug 2026, 11:00 AM',
+    isOutsourced: false,
+    outsourcedSupplier: '',
+    outsourcedCost: 0,
+    notes: 'Porur apartment site'
+  }
+];
+
+export const initialPayments = [
+  {
+    id: 'PAY-201',
+    customerId: 'cust-1',
+    customerName: 'Person A',
+    phone: '9876543210',
+    amount: 5000,
+    method: 'Cash',
+    reference: 'CASH-8821',
+    date: '2026-08-10',
+    displayDate: '10 Aug 2026',
+    relatedTransaction: 'TRX-101',
+    notes: 'Partial payment for bricks'
+  },
+  {
+    id: 'PAY-202',
+    customerId: 'cust-2',
+    customerName: 'Person B',
+    phone: '9988776655',
+    amount: 3000,
+    method: 'UPI',
+    reference: '4123129845',
+    date: '2026-08-08',
+    displayDate: '08 Aug 2026',
+    relatedTransaction: 'TRX-102',
+    notes: 'UPI payment via GooglePay'
+  }
+];
+
+export const initialExpenses = [
+  {
+    id: 'EXP-301',
+    date: '2026-08-11',
+    displayDate: '11 Aug 2026',
+    category: 'Diesel',
+    businessId: 'jcb',
+    businessName: 'JCB Rental',
+    description: 'Diesel for JCB 3CX (50 Litres)',
+    amount: 3500,
+    method: 'Cash',
+    notes: 'IOCL bunk Katpadi'
+  },
+  {
+    id: 'EXP-302',
+    date: '2026-08-11',
+    displayDate: '11 Aug 2026',
+    category: 'Labour',
+    businessId: 'bricks',
+    businessName: 'Bricks Supply',
+    description: 'Labour loading & unloading charge',
+    amount: 2500,
+    method: 'Cash',
+    notes: '5 labourers daily wages'
+  }
+];
+
+export const initialJcbVehicles = [
+  'JCB-01 (TN-23-AX-1234)',
+  'JCB-02 (TN-23-BY-5678)',
+  'JCB-03 (TN-23-CZ-9012)',
+  'JCB-04 (TN-23-DW-3456)',
+  'JCB-05 (TN-23-EV-7890)',
+  'JCB-06 (TN-23-FU-2468)'
+];
+
+export const initialJcbJobs = [
+  {
+    id: 'JCB-JOB-1',
+    jcbVehicle: 'JCB-01 (TN-23-AX-1234)',
+    customerId: 'cust-1',
+    customerName: 'Person A',
+    phone: '9876543210',
+    driverName: 'Murugan (Driver)',
+    driverAmount: 500,
+    startTime: '08:00',
+    endTime: '11:00',
+    displayTime: '8 AM - 11 AM',
+    duration: 3,
+    ratePerHour: 1000,
+    amount: 3000,
+    paid: 3000,
+    due: 0,
+    status: 'Paid',
+    location: 'VIT Site, Katpadi'
+  },
+  {
+    id: 'JCB-JOB-2',
+    jcbVehicle: 'JCB-02 (TN-23-BY-5678)',
+    customerId: 'cust-2',
+    customerName: 'Person B',
+    phone: '9988776655',
+    driverName: 'Kannan (Driver)',
+    driverAmount: 600,
+    startTime: '13:00',
+    endTime: '17:00',
+    displayTime: '1 PM - 5 PM',
+    duration: 4,
+    ratePerHour: 1000,
+    amount: 4000,
+    paid: 2000,
+    due: 2000,
+    status: 'Partial',
+    location: 'Green Avenue, Tambaram'
+  },
+  {
+    id: 'JCB-JOB-3',
+    jcbVehicle: 'JCB-03 (TN-23-CZ-9012)',
+    customerId: 'cust-3',
+    customerName: 'Person C',
+    phone: '9123456780',
+    driverName: 'Ramesh (Driver)',
+    driverAmount: 550,
+    startTime: '09:00',
+    endTime: '13:00',
+    displayTime: '9 AM - 1 PM',
+    duration: 4,
+    ratePerHour: 1000,
+    amount: 4000,
+    paid: 4000,
+    due: 0,
+    status: 'Paid',
+    location: 'Velachery Commercial Site'
+  },
+  {
+    id: 'JCB-JOB-4',
+    jcbVehicle: 'JCB-04 (TN-23-DW-3456)',
+    customerId: 'cust-4',
+    customerName: 'Person D',
+    phone: '9898989898',
+    driverName: 'Velu (Driver)',
+    driverAmount: 500,
+    startTime: '10:00',
+    endTime: '14:00',
+    displayTime: '10 AM - 2 PM',
+    duration: 4,
+    ratePerHour: 1000,
+    amount: 4000,
+    paid: 4000,
+    due: 0,
+    status: 'Paid',
+    location: 'Anna Nagar Site'
+  },
+  {
+    id: 'JCB-JOB-5',
+    jcbVehicle: 'JCB-05 (TN-23-EV-7890)',
+    customerId: 'cust-5',
+    customerName: 'Person F',
+    phone: '9123456780',
+    driverName: 'Selvam (Driver)',
+    driverAmount: 600,
+    startTime: '14:00',
+    endTime: '18:00',
+    displayTime: '2 PM - 6 PM',
+    duration: 4,
+    ratePerHour: 1000,
+    amount: 4000,
+    paid: 2000,
+    due: 2000,
+    status: 'Partial',
+    location: 'Porur Apartment Site'
+  },
+  {
+    id: 'JCB-JOB-6',
+    jcbVehicle: 'JCB-06 (TN-23-FU-2468)',
+    customerId: 'cust-1',
+    customerName: 'Person A',
+    phone: '9876543210',
+    driverName: 'Saravanan (Driver)',
+    driverAmount: 500,
+    startTime: '11:00',
+    endTime: '15:00',
+    displayTime: '11 AM - 3 PM',
+    duration: 4,
+    ratePerHour: 1000,
+    amount: 4000,
+    paid: 4000,
+    due: 0,
+    status: 'Paid',
+    location: 'Katpadi Bypass Road'
+  }
+];
+
+export const initialDieselLogs = [
+  {
+    id: 'DSL-101',
+    jcbVehicle: 'JCB-01 (TN-23-AX-1234)',
+    date: '2026-08-14',
+    displayDate: '14 Aug 2026',
+    quantity: 40,
+    pricePerLitre: 95,
+    totalCost: 3800,
+    hourMeterReading: 1257,
+    bunkName: 'IOCL Katpadi Bunk',
+    paymentMethod: 'Cash',
+    notes: 'Tank filled before site work'
+  },
+  {
+    id: 'DSL-102',
+    jcbVehicle: 'JCB-02 (TN-23-BY-5678)',
+    date: '2026-08-13',
+    displayDate: '13 Aug 2026',
+    quantity: 45,
+    pricePerLitre: 95,
+    totalCost: 4275,
+    hourMeterReading: 1410,
+    bunkName: 'BPCL Tambaram',
+    paymentMethod: 'UPI',
+    notes: 'Regular diesel refill'
+  },
+  {
+    id: 'DSL-103',
+    jcbVehicle: 'JCB-01 (TN-23-AX-1234)',
+    date: '2026-08-10',
+    displayDate: '10 Aug 2026',
+    quantity: 50,
+    pricePerLitre: 95,
+    totalCost: 4750,
+    hourMeterReading: 1218,
+    bunkName: 'HPCL Katpadi Bunk',
+    paymentMethod: 'Cash',
+    notes: 'Full tank fill'
+  },
+  {
+    id: 'DSL-104',
+    jcbVehicle: 'JCB-03 (TN-23-CZ-9012)',
+    date: '2026-08-12',
+    displayDate: '12 Aug 2026',
+    quantity: 55,
+    pricePerLitre: 95,
+    totalCost: 5225,
+    hourMeterReading: 1650,
+    bunkName: 'IOCL Velachery',
+    paymentMethod: 'UPI',
+    notes: 'Commercial site fuel'
+  },
+  {
+    id: 'DSL-105',
+    jcbVehicle: 'JCB-04 (TN-23-DW-3456)',
+    date: '2026-08-11',
+    displayDate: '11 Aug 2026',
+    quantity: 42,
+    pricePerLitre: 95,
+    totalCost: 3990,
+    hourMeterReading: 1120,
+    bunkName: 'BPCL Anna Nagar',
+    paymentMethod: 'Cash',
+    notes: 'Evening refill'
+  }
+];
+
+export const initialJcbMonthlyHours = [
+  { vehicle: 'JCB-01 (TN-23-AX-1234)', shortName: 'JCB-01', january: 145, february: 132, march: 168, april: 151, may: 142, june: 160, july: 155, august: 142 },
+  { vehicle: 'JCB-02 (TN-23-BY-5678)', shortName: 'JCB-02', january: 150, february: 140, march: 175, april: 160, may: 156, june: 168, july: 162, august: 156 },
+  { vehicle: 'JCB-03 (TN-23-CZ-9012)', shortName: 'JCB-03', january: 138, february: 128, march: 160, april: 148, may: 150, june: 154, july: 149, august: 140 },
+  { vehicle: 'JCB-04 (TN-23-DW-3456)', shortName: 'JCB-04', january: 142, february: 135, march: 162, april: 155, may: 148, june: 158, july: 152, august: 145 },
+  { vehicle: 'JCB-05 (TN-23-EV-7890)', shortName: 'JCB-05', january: 130, february: 122, march: 150, april: 140, may: 138, june: 145, july: 140, august: 135 },
+  { vehicle: 'JCB-06 (TN-23-FU-2468)', shortName: 'JCB-06', january: 125, february: 118, march: 145, april: 138, may: 132, june: 140, july: 136, august: 130 }
+];
+
+export const initialDriverMonthlyReports = [
+  { driverName: 'Kumar', jcbVehicle: 'JCB-01 (TN-23-AX-1234)', monthlyHours: 142, workingDays: 24, month: 'August 2026' },
+  { driverName: 'Ravi', jcbVehicle: 'JCB-02 (TN-23-BY-5678)', monthlyHours: 156, workingDays: 26, month: 'August 2026' },
+  { driverName: 'Murugan', jcbVehicle: 'JCB-01 (TN-23-AX-1234)', monthlyHours: 138, workingDays: 23, month: 'August 2026' },
+  { driverName: 'Kannan', jcbVehicle: 'JCB-02 (TN-23-BY-5678)', monthlyHours: 145, workingDays: 25, month: 'August 2026' },
+  { driverName: 'Ramesh', jcbVehicle: 'JCB-03 (TN-23-CZ-9012)', monthlyHours: 160, workingDays: 27, month: 'August 2026' },
+  { driverName: 'Velu', jcbVehicle: 'JCB-04 (TN-23-DW-3456)', monthlyHours: 150, workingDays: 25, month: 'August 2026' },
+  { driverName: 'Selvam', jcbVehicle: 'JCB-05 (TN-23-EV-7890)', monthlyHours: 138, workingDays: 23, month: 'August 2026' },
+  { driverName: 'Saravanan', jcbVehicle: 'JCB-06 (TN-23-FU-2468)', monthlyHours: 130, workingDays: 22, month: 'August 2026' }
+];
+
+export const weeklyPerformanceData = [
+  { day: 'Mon', income: 41000, expense: 27000 },
+  { day: 'Tue', income: 36000, expense: 19500 },
+  { day: 'Wed', income: 40000, expense: 26800 },
+  { day: 'Thu', income: 43500, expense: 23800 },
+  { day: 'Fri', income: 53000, expense: 31000 },
+  { day: 'Sat', income: 46000, expense: 27000 },
+  { day: 'Sun', income: 41200, expense: 21000 }
+];
+
+export const businessPerformanceDonut = [
+  { name: 'Bricks Supply', value: 18500, color: '#f97316' },
+  { name: 'JCB Rental', value: 12000, color: '#eab308' },
+  { name: 'Water Supply', value: 8000, color: '#3b82f6' },
+  { name: 'Jalli Service', value: 4000, color: '#10b981' }
+];
+
+export const expenseMetricsSummary = {
+  todayExpense: 12300,
+  thisWeek: 78400,
+  thisMonth: 245000,
+  totalExpense: 1285600
+};
+
+export const reportsSummaryData = {
+  totalIncome: 842500,
+  totalExpense: 321400,
+  totalProfit: 521100,
+  outstanding: 184500,
+  businessBreakdown: [
+    { business: 'Water Supply', revenue: 180000, expense: 70000, profit: 110000, transactions: 45 },
+    { business: 'Bricks Supply', revenue: 320000, expense: 140000, profit: 180000, transactions: 120 },
+    { business: 'JCB Rental', revenue: 210000, expense: 80000, profit: 130000, transactions: 87 },
+    { business: 'Jalli Service', revenue: 132500, expense: 50000, profit: 82500, transactions: 50 }
+  ]
+};
+
+export const initialFinanceLoans = [
+  {
+    id: 'FIN-101',
+    borrowerName: 'Person A',
+    phone: '9876543210',
+    principal: 100000,
+    interestRate: 2,
+    startDate: '2026-07-11',
+    months: 1,
+    monthlyInterest: 2000,
+    totalInterest: 2000,
+    totalAmount: 102000,
+    returnedAmount: 2000,
+    dueAmount: 100000,
+    status: 'Active',
+    notes: 'Capital loan @ 2% monthly interest'
+  },
+  {
+    id: 'FIN-102',
+    borrowerName: 'Person B',
+    phone: '9988776655',
+    principal: 250000,
+    interestRate: 1.5,
+    startDate: '2026-05-15',
+    months: 3,
+    monthlyInterest: 3750,
+    totalInterest: 11250,
+    totalAmount: 261250,
+    returnedAmount: 11250,
+    dueAmount: 250000,
+    status: 'Active',
+    notes: 'Short term project finance'
+  },
+  {
+    id: 'FIN-103',
+    borrowerName: 'Person C',
+    phone: '9123456780',
+    principal: 500000,
+    interestRate: 2,
+    startDate: '2026-02-01',
+    months: 6,
+    monthlyInterest: 10000,
+    totalInterest: 60000,
+    totalAmount: 560000,
+    returnedAmount: 560000,
+    dueAmount: 0,
+    status: 'Settled',
+    notes: 'Heavy machinery funding @ 2% monthly interest'
+  },
+  {
+    id: 'FIN-104',
+    borrowerName: 'Person D',
+    phone: '9898989898',
+    principal: 150000,
+    interestRate: 2,
+    startDate: '2026-06-10',
+    months: 2,
+    monthlyInterest: 3000,
+    totalInterest: 6000,
+    totalAmount: 156000,
+    returnedAmount: 6000,
+    dueAmount: 150000,
+    status: 'Active',
+    notes: 'Site excavation & levelling finance'
+  }
+];
