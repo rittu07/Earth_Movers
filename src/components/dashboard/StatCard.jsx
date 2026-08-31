@@ -35,36 +35,36 @@ const StatCard = ({ title, value, change, isIncrease, subtitle, icon: Icon, colo
   const theme = getThemeStyles();
 
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-all">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+    <div className="bg-white rounded-2xl p-2.5 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden min-w-0">
+      <div className="flex items-center justify-between gap-1 mb-1.5 sm:mb-3">
+        <span className="text-[9px] xs:text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-wider truncate">
           {title}
         </span>
-        <div className={`w-10 h-10 rounded-xl ${theme.bg} text-white flex items-center justify-center shadow-xs`}>
-          <Icon className="w-5 h-5" />
+        <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl ${theme.bg} text-white flex items-center justify-center shadow-2xs shrink-0`}>
+          <Icon className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
         </div>
       </div>
 
-      <div className="flex items-baseline justify-between">
-        <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">{value}</h3>
+      <div className="flex items-baseline justify-between min-w-0">
+        <h3 className="text-xs xs:text-sm sm:text-2xl font-black text-slate-900 tracking-tight truncate">{value}</h3>
       </div>
 
-      <div className="mt-2 flex items-center text-xs font-semibold gap-1">
+      <div className="mt-1 sm:mt-2 flex items-center text-[9px] sm:text-xs font-semibold gap-0.5 sm:gap-1 truncate">
         {change && (
           <span
-            className={`inline-flex items-center gap-0.5 ${
-              isIncrease ? 'text-emerald-600' : 'text-rose-600'
+            className={`inline-flex items-center gap-0.5 shrink-0 ${
+              isIncrease ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold'
             }`}
           >
             {isIncrease ? (
-              <ArrowUpRight className="w-3.5 h-3.5" />
+              <ArrowUpRight className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
             ) : (
-              <ArrowDownRight className="w-3.5 h-3.5" />
+              <ArrowDownRight className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
             )}
             {change}
           </span>
         )}
-        <span className="text-slate-400 font-medium">
+        <span className="text-slate-400 font-medium truncate">
           {subtitle || 'from yesterday'}
         </span>
       </div>

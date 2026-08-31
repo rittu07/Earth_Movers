@@ -1,29 +1,102 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBusiness } from '../../context/BusinessContext';
-import { Search, X, User, Phone, ArrowRight, Wallet, CheckCircle, AlertCircle } from 'lucide-react';
+import { Search, X, User, Phone, ArrowRight, Building, Clock, PlusCircle } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatCurrency';
 
 const CustomerQuickSearchModal = () => {
-  const { isSearchOpen, closeSearchModal, customers, transactions } = useBusiness();
+  const { isSearchOpen, closeSearchModal, customers = [], suppliers = [], transactions = [] } = useBusiness();
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('all'); // 'all', 'customers', 'suppliers'
   const [selectedCust, setSelectedCust] = useState(null);
+  const [selectedSupplier, setSelectedSupplier] = useState(null);
   const navigate = useNavigate();
 
+  // Combine saved suppliers + suppliers from past transactions
+  const allSuppliers = useMemo(() => {
+    const map = new Map();
+    // Saved suppliers
+    (suppliers || []).forEach((s) => {
+      if (s.name) {
+        map.set(s.name.toLowerCase().trim(), {
+          id: s.id,
+          name: s.name,
+          phone: s.phone || '',
+          location: s.location || ''
+        });
+      }
+    });
+    // Suppliers from transactions
+    (transactions || []).forEach((t) => {
+      if (t.isOutsourced && t.outsourcedSupplier) {
+        const key = t.outsourcedSupplier.toLowerCase().trim();
+        if (!map.has(key)) {
+          map.set(key, {
+            id: `sup-trx-${t.id}`,
+            name: t.outsourcedSupplier,
+            phone: t.outsourcedPhone || '',
+            location: 'Outsourced Supplier'
+          });
+        } else if (t.outsourcedPhone && !map.get(key).phone) {
+          map.get(key).phone = t.outsourcedPhone;
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [suppliers, transactions]);
+
+  // Early return MUST be after all hooks are declared
   if (!isSearchOpen) return null;
 
-  const filteredCustomers = customers.filter(
+  const query = searchTerm.toLowerCase().trim();
+
+  // Filter customers matching query
+  const filteredCustomers = (customers || []).filter(
     (c) =>
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.phone.includes(searchTerm)
+      c.name.toLowerCase().includes(query) ||
+      (c.phone && c.phone.includes(query))
   );
 
+  // Filter suppliers matching query
+  const filteredSuppliers = allSuppliers.filter(
+    (s) =>
+      s.name.toLowerCase().includes(query) ||
+      (s.phone && s.phone.includes(query))
+  );
+
+  // Get transactions for a given customer
   const getCustTransactions = (custId) => {
-    return transactions.filter((t) => t.customerId === custId).slice(0, 4);
+    return transactions.filter((t) => t.customerId === custId).slice(0, 5);
+  };
+
+  // Get transactions & total due for a given supplier
+  const getSupplierData = (supName) => {
+    if (!supName) return { history: [], totalDue: 0, totalPaid: 0, totalCost: 0 };
+    const q = supName.toLowerCase().trim();
+    const history = transactions.filter(
+      (t) => t.isOutsourced && t.outsourcedSupplier && t.outsourcedSupplier.toLowerCase().trim() === q
+    );
+    const totalCost = history.reduce((sum, t) => sum + (Number(t.outsourcedCost) || Number(t.amount) || 0), 0);
+    const totalPaid = history.reduce((sum, t) => sum + (Number(t.outsourcedPaid) || 0), 0);
+    const totalDue = history.reduce((sum, t) => {
+      const c = Number(t.outsourcedCost) || Number(t.amount) || 0;
+      const p = Number(t.outsourcedPaid) || 0;
+      const d = (t.outsourcedDue !== undefined && t.outsourcedDue !== null && !isNaN(Number(t.outsourcedDue)))
+        ? Number(t.outsourcedDue)
+        : Math.max(0, c - p);
+      return sum + d;
+    }, 0);
+    return { history, totalDue, totalPaid, totalCost };
   };
 
   const handleSelectCustomer = (cust) => {
     setSelectedCust(cust);
+    setSelectedSupplier(null);
+  };
+
+  const handleSelectSupplier = (sup) => {
+    setSelectedSupplier(sup);
+    setSelectedCust(null);
   };
 
   const handleViewLedger = (custId) => {
@@ -31,93 +104,219 @@ const CustomerQuickSearchModal = () => {
     navigate(`/customers/${custId}`);
   };
 
+  const handleAddTransactionForSupplier = (sup) => {
+    closeSearchModal();
+    navigate(`/transactions/add?business=bricks&supplier=${encodeURIComponent(sup.name)}`);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]">
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-0 sm:p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-white w-full h-full sm:h-auto sm:max-h-[88vh] sm:max-w-2xl rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-100 overflow-hidden flex flex-col">
+        
         {/* Search Header */}
-        <div className="p-4 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">
-          <Search className="w-5 h-5 text-slate-400 shrink-0" />
-          <input
-            type="text"
-            placeholder="Search by customer name or mobile number..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-transparent text-slate-900 text-sm focus:outline-hidden placeholder:text-slate-400 font-medium"
-            autoFocus
-          />
-          <button
-            onClick={closeSearchModal}
-            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/50 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+        <div className="p-3 sm:p-4 border-b border-slate-100 bg-slate-50/70 space-y-2 sm:space-y-3">
+          <div className="flex items-center gap-2.5">
+            <Search className="w-5 h-5 text-slate-400 shrink-0" />
+            <input
+              type="text"
+              placeholder="Search customer or supplier name or phone..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setSelectedCust(null);
+                setSelectedSupplier(null);
+              }}
+              className="w-full bg-transparent text-slate-900 text-sm focus:outline-hidden placeholder:text-slate-400 font-medium"
+              autoFocus
+            />
+            <button
+              onClick={closeSearchModal}
+              className="p-2 sm:p-1.5 text-slate-600 sm:text-slate-400 hover:text-slate-900 rounded-full sm:rounded-lg bg-slate-200/80 sm:bg-transparent hover:bg-slate-200 transition-colors shrink-0 cursor-pointer"
+              title="Close search"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Filter Tabs */}
+          <div className="flex items-center gap-2 pt-1 border-t border-slate-200/60 overflow-x-auto no-scrollbar pb-0.5">
+            <button
+              onClick={() => setActiveTab('all')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                activeTab === 'all' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              All ({filteredCustomers.length + filteredSuppliers.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('customers')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                activeTab === 'customers' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              Customers ({filteredCustomers.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('suppliers')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                activeTab === 'suppliers' ? 'bg-orange-600 text-white shadow-2xs' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              Suppliers / Chambers ({filteredSuppliers.length})
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
         <div className="p-4 overflow-y-auto flex-1 divide-y divide-slate-100">
-          {!selectedCust ? (
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 px-1">
-                Matching Customers ({filteredCustomers.length})
-              </div>
-              {filteredCustomers.length === 0 ? (
-                <div className="py-12 text-center">
-                  <User className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-slate-600">No customer found</p>
-                  <p className="text-xs text-slate-400">Try searching with name or 10-digit mobile number</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {filteredCustomers.map((cust) => (
-                    <div
-                      key={cust.id}
-                      onClick={() => handleSelectCustomer(cust)}
-                      className="p-3 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/40 cursor-pointer transition-all flex items-center justify-between group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-sm shrink-0">
-                          {cust.name.charAt(0)}
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
-                            {cust.name}
-                          </h4>
-                          <div className="flex items-center text-xs text-slate-500 gap-2 mt-0.5">
-                            <span className="flex items-center gap-1">
-                              <Phone className="w-3 h-3 text-slate-400" />
-                              {cust.phone}
-                            </span>
-                            <span>•</span>
-                            <span>{cust.address.split(',')[0]}</span>
+          
+          {/* Default List View (No selection) */}
+          {!selectedCust && !selectedSupplier && (
+            <div className="space-y-6">
+              
+              {/* CUSTOMERS SECTION */}
+              {(activeTab === 'all' || activeTab === 'customers') && (
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 px-1 flex items-center justify-between">
+                    <span>Matching Customers ({filteredCustomers.length})</span>
+                  </div>
+                  {filteredCustomers.length === 0 ? (
+                    activeTab === 'customers' && (
+                      <div className="py-8 text-center text-xs text-slate-400">
+                        No customer found matching "{searchTerm}"
+                      </div>
+                    )
+                  ) : (
+                    <div className="space-y-2">
+                      {filteredCustomers.map((cust) => (
+                        <div
+                          key={cust.id}
+                          onClick={() => handleSelectCustomer(cust)}
+                          className="p-3 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/40 cursor-pointer transition-all flex items-center justify-between group bg-white shadow-2xs"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs shrink-0">
+                              {cust.name.charAt(0)}
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                {cust.name}
+                              </h4>
+                              <div className="flex items-center text-xs text-slate-500 gap-2 mt-0.5">
+                                <span className="flex items-center gap-1">
+                                  <Phone className="w-3 h-3 text-slate-400" />
+                                  {cust.phone}
+                                </span>
+                                {cust.address && <span>• {cust.address.split(',')[0]}</span>}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-right">
+                            <div className="text-xs font-bold text-slate-900">
+                              {formatCurrency(cust.totalBusiness)}
+                            </div>
+                            <div className="text-xs font-medium text-amber-600 flex items-center justify-end gap-1">
+                              {cust.outstanding > 0 ? (
+                                <span className="text-rose-600 font-bold">Due: {formatCurrency(cust.outstanding)}</span>
+                              ) : (
+                                <span className="text-emerald-600 font-semibold">Clear</span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-
-                      <div className="text-right">
-                        <div className="text-sm font-bold text-slate-900">
-                          {formatCurrency(cust.totalBusiness)}
-                        </div>
-                        <div className="text-xs font-medium text-amber-600 flex items-center justify-end gap-1">
-                          {cust.outstanding > 0 ? (
-                            <>Due: {formatCurrency(cust.outstanding)}</>
-                          ) : (
-                            <span className="text-emerald-600">Clear</span>
-                          )}
-                        </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
+
+              {/* SUPPLIERS / CHAMBER PARTNERS SECTION */}
+              {(activeTab === 'all' || activeTab === 'suppliers') && (
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-orange-800 mb-2 px-1 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Building className="w-3.5 h-3.5 text-orange-600" />
+                      Matching Suppliers / Brick Chambers ({filteredSuppliers.length})
+                    </span>
+                  </div>
+                  {filteredSuppliers.length === 0 ? (
+                    activeTab === 'suppliers' && (
+                      <div className="py-8 text-center text-xs text-slate-400">
+                        No supplier found matching "{searchTerm}"
+                      </div>
+                    )
+                  ) : (
+                    <div className="space-y-2">
+                      {filteredSuppliers.map((sup) => {
+                        const supData = getSupplierData(sup.name);
+                        return (
+                          <div
+                            key={sup.id}
+                            onClick={() => handleSelectSupplier(sup)}
+                            className="p-3 rounded-xl border border-orange-200/70 hover:border-orange-400 hover:bg-orange-50/40 cursor-pointer transition-all flex items-center justify-between group bg-white shadow-2xs"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-orange-100 text-orange-700 font-bold flex items-center justify-center text-xs shrink-0">
+                                <Building className="w-4 h-4 text-orange-600" />
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-bold text-slate-900 group-hover:text-orange-600 transition-colors">
+                                  {sup.name}
+                                </h4>
+                                <div className="flex items-center text-xs text-slate-500 gap-2 mt-0.5">
+                                  <span className="flex items-center gap-1 font-medium">
+                                    <Phone className="w-3 h-3 text-slate-400" />
+                                    {sup.phone || 'No phone'}
+                                  </span>
+                                  <span className="text-orange-700 bg-orange-100 px-1.5 py-0.2 rounded-md text-[10px] font-bold">
+                                    Supplier
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="text-right">
+                              <div className="text-xs text-slate-500 font-medium">
+                                {supData.history.length} past orders
+                              </div>
+                              <div className="text-xs font-bold mt-0.5">
+                                {supData.totalDue > 0 ? (
+                                  <span className="text-rose-600 font-extrabold bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                                    Pay Due: {formatCurrency(supData.totalDue)}
+                                  </span>
+                                ) : (
+                                  <span className="text-emerald-600 font-bold">Paid Clear</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {filteredCustomers.length === 0 && filteredSuppliers.length === 0 && (
+                <div className="py-12 text-center">
+                  <User className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-slate-600">No matching customer or supplier found</p>
+                  <p className="text-xs text-slate-400 mt-1">Try searching with a name or mobile number</p>
+                </div>
+              )}
+
             </div>
-          ) : (
-            /* Selected Customer Preview Card */
+          )}
+
+          {/* SELECTED CUSTOMER PREVIEW CARD */}
+          {selectedCust && (
             <div className="space-y-4">
               <button
                 onClick={() => setSelectedCust(null)}
-                className="text-xs text-indigo-600 font-medium hover:underline mb-1 inline-flex items-center gap-1"
+                className="text-xs text-indigo-600 font-bold hover:underline mb-1 inline-flex items-center gap-1 cursor-pointer"
               >
-                ← Back to results
+                ← Back to search results
               </button>
 
               <div className="p-4 rounded-xl bg-slate-900 text-white flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
@@ -130,13 +329,13 @@ const CustomerQuickSearchModal = () => {
                   </div>
                   <p className="text-xs text-slate-300 flex items-center gap-2 mt-1">
                     <span>📞 {selectedCust.phone}</span>
-                    <span>📍 {selectedCust.address}</span>
+                    {selectedCust.address && <span>📍 {selectedCust.address}</span>}
                   </p>
                 </div>
 
                 <button
                   onClick={() => handleViewLedger(selectedCust.id)}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all shrink-0"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all shrink-0 cursor-pointer"
                 >
                   View Full Ledger <ArrowRight className="w-3.5 h-3.5" />
                 </button>
@@ -167,7 +366,7 @@ const CustomerQuickSearchModal = () => {
               {/* Recent History */}
               <div>
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                  Recent Purchases across Businesses
+                  Recent Purchases
                 </h4>
                 <div className="space-y-2">
                   {getCustTransactions(selectedCust.id).length === 0 ? (
@@ -203,12 +402,127 @@ const CustomerQuickSearchModal = () => {
               </div>
             </div>
           )}
+
+          {/* SELECTED SUPPLIER PREVIEW CARD & DUE LEDGER */}
+          {selectedSupplier && (() => {
+            const supData = getSupplierData(selectedSupplier.name);
+            return (
+              <div className="space-y-4">
+                <button
+                  onClick={() => setSelectedSupplier(null)}
+                  className="text-xs text-orange-600 font-bold hover:underline mb-1 inline-flex items-center gap-1 cursor-pointer"
+                >
+                  ← Back to search results
+                </button>
+
+                {/* Supplier Header Banner */}
+                <div className="p-4 rounded-xl bg-orange-950 text-white flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center shadow-md">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Building className="w-5 h-5 text-orange-400 shrink-0" />
+                      <h3 className="text-lg font-bold">{selectedSupplier.name}</h3>
+                      <span className="px-2 py-0.5 bg-orange-500/20 text-orange-300 text-xs rounded-md font-bold border border-orange-500/30">
+                        Outsourcing Partner
+                      </span>
+                    </div>
+                    <p className="text-xs text-orange-200/80 flex items-center gap-2 mt-1">
+                      <span>📞 {selectedSupplier.phone || 'N/A'}</span>
+                      {selectedSupplier.location && <span>📍 {selectedSupplier.location}</span>}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => handleAddTransactionForSupplier(selectedSupplier)}
+                    className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-md shadow-orange-600/30 transition-all shrink-0 cursor-pointer"
+                  >
+                    <PlusCircle className="w-4 h-4" /> Add Transaction / Order
+                  </button>
+                </div>
+
+                {/* Supplier Financial Balance Owed Overview */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <span className="text-[11px] text-slate-500 font-bold uppercase block">Total Purchases</span>
+                    <p className="text-base font-bold text-slate-900 mt-0.5">
+                      {formatCurrency(supData.totalCost)}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200">
+                    <span className="text-[11px] text-emerald-700 font-bold uppercase block">Amount Paid</span>
+                    <p className="text-base font-bold text-emerald-700 mt-0.5">
+                      {formatCurrency(supData.totalPaid)}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-rose-600 text-white rounded-xl shadow-xs">
+                    <span className="text-[11px] text-rose-100 font-extrabold uppercase block">Total Owed to Pay</span>
+                    <p className="text-base font-black text-amber-300 mt-0.5">
+                      {formatCurrency(supData.totalDue)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Supplier Past Order Transactions Ledger Table */}
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-orange-950 mb-2 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-orange-600" />
+                    Supplier Transaction History ({supData.history.length} orders)
+                  </h4>
+
+                  {supData.history.length === 0 ? (
+                    <div className="p-4 bg-orange-50/50 rounded-xl border border-orange-200 text-xs text-slate-500 italic text-center">
+                      No order transaction history recorded yet for {selectedSupplier.name}.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto border border-orange-200 rounded-xl bg-white">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-orange-100/80 text-orange-950 text-[10px] font-black uppercase border-b border-orange-200">
+                          <tr>
+                            <th className="p-2.5">Date</th>
+                            <th className="p-2.5">Bricks Qty</th>
+                            <th className="p-2.5">Total Cost</th>
+                            <th className="p-2.5">Amount Paid</th>
+                            <th className="p-2.5 text-right">Unpaid Due</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-orange-100 font-medium text-slate-800">
+                          {supData.history.map((h, i) => {
+                            const hCost = Number(h.outsourcedCost) || Number(h.amount) || 0;
+                            const hPaid = Number(h.outsourcedPaid) || 0;
+                            const hDue = (h.outsourcedDue !== undefined && h.outsourcedDue !== null && !isNaN(Number(h.outsourcedDue)))
+                              ? Number(h.outsourcedDue)
+                              : Math.max(0, hCost - hPaid);
+                            return (
+                              <tr key={h.id || i} className="hover:bg-orange-50/50">
+                                <td className="p-2.5 font-bold text-slate-900">{h.displayDate || h.date}</td>
+                                <td className="p-2.5">{h.outsourcedBrickQty ? `${h.outsourcedBrickQty} bricks` : `${h.quantity} ${h.unit}`}</td>
+                                <td className="p-2.5 font-bold text-slate-900">{formatCurrency(hCost)}</td>
+                                <td className="p-2.5 text-emerald-700 font-semibold">{formatCurrency(hPaid)}</td>
+                                <td className="p-2.5 text-right font-black text-rose-600">
+                                  {formatCurrency(hDue)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Footer */}
-        <div className="p-3 bg-slate-50 border-t border-slate-100 text-xs text-slate-400 flex items-center justify-between">
-          <span>Press ESC or click outside to dismiss</span>
-          <span className="text-indigo-600 font-medium">Business Portal Search</span>
+        <div className="p-3 bg-slate-50 border-t border-slate-100 text-[11px] sm:text-xs text-slate-400 flex items-center justify-between shrink-0">
+          <span className="hidden sm:inline">Press ESC or click outside to dismiss</span>
+          <button
+            onClick={closeSearchModal}
+            className="sm:hidden text-slate-600 font-bold hover:text-slate-900 flex items-center gap-1 cursor-pointer"
+          >
+            ← Close Search
+          </button>
+          <span className="text-orange-600 font-bold">Ledger Search</span>
         </div>
       </div>
     </div>

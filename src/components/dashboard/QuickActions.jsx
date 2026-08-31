@@ -53,7 +53,7 @@ const QuickActions = () => {
   ];
 
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col h-full">
+    <div className="hidden sm:flex bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex-col h-full">
       <div className="mb-4">
         <h3 className="text-base font-bold text-slate-900">Quick Actions</h3>
         <p className="text-xs text-slate-500 font-medium">Fast shortcuts for daily tasks</p>

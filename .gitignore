@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Compressed archives / cached binaries
+*.zip
+*.tar.gz
+

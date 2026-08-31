@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { App as CapacitorApp } from '@capacitor/app';
 import { BusinessProvider, useBusiness } from './context/BusinessContext';
 
 // Layout Components
@@ -14,6 +15,7 @@ import Finance from './pages/Finance';
 import Customers from './pages/Customers';
 import AddCustomer from './pages/AddCustomer';
 import CustomerLedger from './pages/CustomerLedger';
+import SupplierLedger from './pages/SupplierLedger';
 import Transactions from './pages/Transactions';
 import AddTransaction from './pages/AddTransaction';
 import Payments from './pages/Payments';
@@ -24,13 +26,40 @@ import WaterSupply from './pages/WaterSupply';
 import BricksSupply from './pages/BricksSupply';
 import JCBRental from './pages/JCBRental';
 import JalliService from './pages/JalliService';
+import SandSupply from './pages/SandSupply';
 import Reports from './pages/Reports';
 import Ledger from './pages/Ledger';
 import Settings from './pages/Settings';
+import QuickExcelEntryPage from './pages/QuickExcelEntryPage';
 
 const AppContent = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { toastMessage } = useBusiness();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    let listener;
+    const setupListener = async () => {
+      try {
+        listener = await CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+          if (location.pathname !== '/') {
+            navigate(-1);
+          } else {
+            CapacitorApp.minimizeApp();
+          }
+        });
+      } catch (err) {
+        // Not running on a native Capacitor platform or plugin unhandled
+      }
+    };
+    setupListener();
+    return () => {
+      if (listener && typeof listener.remove === 'function') {
+        listener.remove();
+      }
+    };
+  }, [navigate, location]);
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
@@ -54,6 +83,7 @@ const AppContent = () => {
             <Route path="/customers" element={<Customers />} />
             <Route path="/customers/add" element={<AddCustomer />} />
             <Route path="/customers/:id" element={<CustomerLedger />} />
+            <Route path="/suppliers/:id" element={<SupplierLedger />} />
 
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/transactions/add" element={<AddTransaction />} />
@@ -68,11 +98,13 @@ const AppContent = () => {
             <Route path="/business/bricks" element={<BricksSupply />} />
             <Route path="/business/jcb" element={<JCBRental />} />
             <Route path="/business/jalli" element={<JalliService />} />
+            <Route path="/business/sand" element={<SandSupply />} />
 
             <Route path="/reports" element={<Reports />} />
             <Route path="/ledger" element={<Ledger />} />
 
             <Route path="/settings" element={<Settings />} />
+            <Route path="/excel-entry" element={<QuickExcelEntryPage />} />
           </Routes>
         </main>
       </div>

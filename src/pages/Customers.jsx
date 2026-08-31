@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import CustomerTable from '../components/customers/CustomerTable';
+import SupplierSection from '../components/suppliers/SupplierSection';
 import { Search, UserPlus, Filter } from 'lucide-react';
 
 const Customers = () => {
@@ -88,6 +89,9 @@ const Customers = () => {
 
       {/* Customer Data Table */}
       <CustomerTable customers={filteredCustomers} onDelete={(c) => deleteCustomer(c.id)} />
+
+      {/* Suppliers Section (Rendered right after Customer Details) */}
+      <SupplierSection />
     </div>
   );
 };

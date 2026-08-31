@@ -1,6 +1,7 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useBusiness } from '../../context/BusinessContext';
-import { Search, Bell, Menu } from 'lucide-react';
+import { Search, Bell, Menu, LayoutDashboard } from 'lucide-react';
 import { formatDate } from '../../utils/formatCurrency';
 
 const Header = ({ onMobileMenuOpen }) => {
@@ -17,36 +18,49 @@ const Header = ({ onMobileMenuOpen }) => {
   const todayDisplay = formatDate('2026-08-11');
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs">
-      {/* Mobile Drawer Trigger & Title */}
-      <div className="flex items-center gap-3">
+    <header className="h-16 bg-white border-b border-slate-200/80 px-3 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+      {/* Mobile Drawer Trigger, Home Shortcut & Title */}
+      <div className="flex items-center gap-1.5 sm:gap-3">
         <button
           onClick={onMobileMenuOpen}
-          className="p-2 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 lg:hidden"
+          className="p-2 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 lg:hidden cursor-pointer"
           aria-label="Open Mobile Menu"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        <div className="hidden sm:block">
+        {/* Dashboard Direct Shortcut Button on Mobile */}
+        <Link
+          to="/"
+          className="lg:hidden p-1.5 text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl border border-indigo-200/80 flex items-center gap-1 text-xs font-bold shrink-0 transition-colors"
+          title="Go to Dashboard"
+        >
+          <LayoutDashboard className="w-4 h-4" />
+          <span className="hidden xs:inline text-[11px]">Dashboard</span>
+        </Link>
+
+        <Link to="/" className="hidden sm:block hover:opacity-90 transition-opacity">
           <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-1.5">
             Loganathan Earth Movers 🚜
           </h2>
           <p className="text-xs text-slate-500 font-medium">{getGreeting()} • Today is {todayDisplay}</p>
-        </div>
+        </Link>
       </div>
 
       {/* Global Quick Search Bar */}
-      <div className="flex-1 max-w-md mx-4">
+      <div className="flex-1 min-w-0 max-w-lg mx-1.5 sm:mx-4">
         <button
           onClick={() => openSearchModal()}
-          className="w-full flex items-center justify-between px-3.5 py-1.5 bg-slate-100/80 hover:bg-slate-100 border border-slate-200/80 rounded-xl text-slate-500 text-xs font-medium transition-all group shadow-xs"
+          className="w-full flex items-center justify-between px-2.5 sm:px-4 py-1.5 sm:py-2 bg-slate-100/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl sm:rounded-2xl text-slate-700 font-semibold transition-all group shadow-2xs hover:border-indigo-300 cursor-pointer"
         >
-          <div className="flex items-center gap-2 truncate">
-            <Search className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
-            <span className="truncate">Search by customer name or mobile number...</span>
+          <div className="flex items-center gap-1.5 sm:gap-2.5 truncate min-w-0">
+            <Search className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 group-hover:scale-110 transition-transform shrink-0" />
+            <span className="truncate text-xs sm:text-sm font-semibold text-slate-700">
+              <span className="sm:hidden">Search customer / phone...</span>
+              <span className="hidden sm:inline">Search customer or supplier name or phone...</span>
+            </span>
           </div>
-          <span className="hidden md:inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 bg-white border border-slate-200 rounded-md shadow-2xs">
+          <span className="hidden md:inline-flex items-center px-2 py-0.5 text-[11px] font-bold text-slate-400 bg-white border border-slate-200 rounded-lg shadow-2xs shrink-0 ml-2">
             Ctrl + K
           </span>
         </button>

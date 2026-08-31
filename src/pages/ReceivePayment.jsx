@@ -22,11 +22,11 @@ const ReceivePayment = () => {
   const [newCustPhone, setNewCustPhone] = useState('');
   const [newCustAddress, setNewCustAddress] = useState('');
 
-  const [amount, setAmount] = useState('5000');
+  const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('Cash');
   const [reference, setReference] = useState(`REF-${Math.floor(100000 + Math.random() * 900000)}`);
-  const [date, setDate] = useState('2026-08-11');
-  const [notes, setNotes] = useState('Partial payment for outstanding balance');
+  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [notes, setNotes] = useState('');
 
   // WhatsApp notification state
   const [sendWhatsApp, setSendWhatsApp] = useState(true);

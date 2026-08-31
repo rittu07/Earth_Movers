@@ -1,0 +1,8 @@
+{
+  "appId": "com.loganathan.earthmovers",
+  "appName": "Loganathan Earth Movers",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}

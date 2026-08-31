@@ -1,12 +1,9 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { X, PlusCircle, MinusCircle, Wallet, Search } from 'lucide-react';
-import { useBusiness } from '../../context/BusinessContext';
+import { X, Home, Building2, TrendingDown, BarChart3, Users, Activity } from 'lucide-react';
 
 const MobileNav = ({ isOpen, onClose }) => {
-  const { openSearchModal } = useBusiness();
-
   if (!isOpen) return null;
 
   return (
@@ -37,53 +34,56 @@ const MobileNav = ({ isOpen, onClose }) => {
 };
 
 export const MobileBottomBar = () => {
-  const { openSearchModal } = useBusiness();
-
   return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 z-40 px-3 flex items-center justify-around shadow-lg">
+    <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 z-40 px-2 flex items-center justify-around shadow-lg">
       <NavLink
-        to="/transactions/add"
+        to="/"
+        end
         className={({ isActive }) =>
-          `flex flex-col items-center gap-1 text-[11px] font-medium transition-colors ${
+          `flex flex-col items-center gap-1 text-xs font-black transition-colors ${
             isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
           }`
         }
       >
-        <PlusCircle className="w-5 h-5" />
-        <span>+ Transaction</span>
+        <Home className="w-5 h-5" />
+        <span>Home</span>
       </NavLink>
 
       <NavLink
-        to="/expenses/add"
+        to="/finance"
         className={({ isActive }) =>
-          `flex flex-col items-center gap-1 text-[11px] font-medium transition-colors ${
-            isActive ? 'text-rose-600' : 'text-slate-600 hover:text-slate-900'
+          `flex flex-col items-center gap-1 text-xs font-black transition-colors ${
+            isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
           }`
         }
       >
-        <MinusCircle className="w-5 h-5" />
-        <span>+ Expense</span>
+        <Building2 className="w-5 h-5" />
+        <span>Business</span>
       </NavLink>
 
       <NavLink
-        to="/payments/receive"
+        to="/expenses"
         className={({ isActive }) =>
-          `flex flex-col items-center gap-1 text-[11px] font-medium transition-colors ${
-            isActive ? 'text-emerald-600' : 'text-slate-600 hover:text-slate-900'
+          `flex flex-col items-center gap-1 text-xs font-black transition-colors ${
+            isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
           }`
         }
       >
-        <Wallet className="w-5 h-5" />
-        <span>Payment</span>
+        <Activity className="w-5 h-5" />
+        <span>Recent Activity</span>
       </NavLink>
 
-      <button
-        onClick={() => openSearchModal()}
-        className="flex flex-col items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-indigo-600"
+      <NavLink
+        to="/reports"
+        className={({ isActive }) =>
+          `flex flex-col items-center gap-1 text-xs font-black transition-colors ${
+            isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
+          }`
+        }
       >
-        <Search className="w-5 h-5" />
-        <span>Search</span>
-      </button>
+        <BarChart3 className="w-5 h-5" />
+        <span>Report</span>
+      </NavLink>
     </div>
   );
 };

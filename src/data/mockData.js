@@ -3,6 +3,7 @@ export const initialBusinesses = [
   { id: 'jcb', name: 'JCB Rental', icon: 'Truck', color: 'yellow', active: true },
   { id: 'water', name: 'Water Supply', icon: 'Droplets', color: 'blue', active: true },
   { id: 'jalli', name: 'Jalli Service', icon: 'Layers', color: 'slate', active: true },
+  { id: 'sand', name: 'Sand Supply', icon: 'Mountain', color: 'teal', active: true },
 ];
 
 export const initialCustomers = [
@@ -115,6 +116,8 @@ export const initialTransactions = [
     isOutsourced: true,
     outsourcedSupplier: 'Sri Lakshmi Brick Chamber',
     outsourcedCost: 12000,
+    outsourcedPaid: 0,
+    outsourcedDue: 12000,
     notes: 'Delivery at VIT construction site'
   },
   {
@@ -604,5 +607,29 @@ export const initialFinanceLoans = [
     dueAmount: 150000,
     status: 'Active',
     notes: 'Site excavation & levelling finance'
+  }
+];
+
+export const initialSuppliers = [
+  {
+    id: 'sup-1',
+    name: 'Sri Lakshmi Brick Chamber',
+    phone: '9845012345',
+    contactPerson: 'Srinivasan',
+    location: 'Katpadi Brick Kiln Road, Vellore'
+  },
+  {
+    id: 'sup-2',
+    name: 'Vellore Red Chamber Suppliers',
+    phone: '9789012345',
+    contactPerson: 'Murugan',
+    location: 'Ranipet Industrial Estate'
+  },
+  {
+    id: 'sup-3',
+    name: 'Sri Vinayaga Clay Bricks',
+    phone: '9443210987',
+    contactPerson: 'Kannan',
+    location: 'Gudiyattam Road'
   }
 ];

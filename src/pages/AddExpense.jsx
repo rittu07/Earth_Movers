@@ -1,23 +1,28 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import AddDieselModal from '../components/businesses/AddDieselModal';
+import ExcelQuickEntry from '../components/common/ExcelQuickEntry';
 import { formatCurrency } from '../utils/formatCurrency';
-import { Tag, CreditCard, Fuel } from 'lucide-react';
+import { Tag, CreditCard, Fuel, FileSpreadsheet, FileText } from 'lucide-react';
 
 const AddExpense = () => {
   const { businesses, addExpense } = useBusiness();
   const navigate = useNavigate();
-  const [isDieselModalOpen, setIsDieselModalOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const preselectedBusiness = searchParams.get('business') || 'jcb';
 
-  const [businessId, setBusinessId] = useState('jcb');
+  // Default to Standard Form view (unless ?mode=excel is specified in URL)
+  const [isExcelMode, setIsExcelMode] = useState(searchParams.get('mode') === 'excel');
+  const [isDieselModalOpen, setIsDieselModalOpen] = useState(false);
+  const [businessId, setBusinessId] = useState(preselectedBusiness);
   const [category, setCategory] = useState('Diesel');
-  const [description, setDescription] = useState('Diesel for JCB 3CX (50 Litres)');
-  const [amount, setAmount] = useState('3500');
+  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('Cash');
-  const [date, setDate] = useState('2026-08-11');
-  const [notes, setNotes] = useState('Fuel bought from IOCL bunk Katpadi');
+  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [notes, setNotes] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();

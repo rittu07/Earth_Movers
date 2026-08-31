@@ -10,7 +10,8 @@ import {
   initialFinanceLoans,
   initialDieselLogs,
   initialJcbMonthlyHours,
-  initialDriverMonthlyReports
+  initialDriverMonthlyReports,
+  initialSuppliers
 } from '../data/mockData';
 import { formatDate } from '../utils/formatCurrency';
 
@@ -28,6 +29,7 @@ export const BusinessProvider = ({ children }) => {
   const [dieselLogs, setDieselLogs] = useState(initialDieselLogs);
   const [jcbMonthlyHours, setJcbMonthlyHours] = useState(initialJcbMonthlyHours);
   const [driverMonthlyReports, setDriverMonthlyReports] = useState(initialDriverMonthlyReports);
+  const [suppliers, setSuppliers] = useState(initialSuppliers);
 
   // Global Customer Search Modal state
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -52,6 +54,20 @@ export const BusinessProvider = ({ children }) => {
   const closeSearchModal = () => {
     setIsSearchOpen(false);
     setPreviewCustomer(null);
+  };
+
+  // Add Supplier
+  const addSupplier = (supplierData) => {
+    const newId = `sup-${Date.now()}`;
+    const newSup = {
+      id: newId,
+      name: supplierData.name,
+      phone: supplierData.phone || '',
+      location: supplierData.location || '',
+      defaultCostPerBrick: Number(supplierData.defaultCostPerBrick) || 7.5
+    };
+    setSuppliers((prev) => [newSup, ...prev]);
+    return newSup;
   };
 
   // Add Customer
@@ -132,12 +148,35 @@ export const BusinessProvider = ({ children }) => {
       driverAmount: Number(trxData.driverAmount) || 0,
       isOutsourced: Boolean(trxData.isOutsourced),
       outsourcedSupplier: trxData.outsourcedSupplier || '',
+      outsourcedPhone: trxData.outsourcedPhone || '',
+      outsourcedBrickQty: Number(trxData.outsourcedBrickQty) || 0,
+      outsourcedCostPerBrick: Number(trxData.outsourcedCostPerBrick) || 0,
       outsourcedCost: Number(trxData.outsourcedCost) || 0,
+      outsourcedPaid: Number(trxData.outsourcedPaid) || 0,
+      outsourcedDue: trxData.outsourcedDue !== undefined && trxData.outsourcedDue !== null && !isNaN(Number(trxData.outsourcedDue))
+        ? Number(trxData.outsourcedDue)
+        : Math.max(0, (Number(trxData.outsourcedCost) || 0) - (Number(trxData.outsourcedPaid) || 0)),
       waterSource: trxData.waterSource || '',
       deliveryPlace: trxData.deliveryPlace || ''
     };
 
     setTransactions((prev) => [newTrx, ...prev]);
+
+    // Automatically record an expense entry for outsourced bricks purchase if amount paid/cost is present
+    if (trxData.isOutsourced && (Number(trxData.outsourcedCost) > 0 || Number(trxData.outsourcedPaid) > 0)) {
+      const expAmt = Number(trxData.outsourcedPaid) || Number(trxData.outsourcedCost) || 0;
+      if (expAmt > 0) {
+        addExpense({
+          businessId: 'bricks',
+          category: 'Raw Materials / Bricks',
+          description: `Outsourced Bricks - ${trxData.outsourcedSupplier || 'Supplier'} (${trxData.outsourcedBrickQty || 0} bricks @ ₹${trxData.outsourcedCostPerBrick || 0}/brick)`,
+          amount: expAmt,
+          method: 'Cash',
+          date: trxData.date || todayStr,
+          notes: `Supplier Phone: ${trxData.outsourcedPhone || 'N/A'}. Total Cost: ₹${trxData.outsourcedCost || 0}, Paid to Supplier: ₹${trxData.outsourcedPaid || 0}`
+        });
+      }
+    }
 
     // Update customer metrics
     setCustomers((prev) =>
@@ -345,6 +384,35 @@ export const BusinessProvider = ({ children }) => {
     return newLog;
   };
 
+  // Supplier Payment operations
+  const addSupplierPayment = (paymentData) => {
+    const payId = `SPAY-${Date.now()}`;
+    const amount = Number(paymentData.amount) || 0;
+    const todayStr = paymentData.date || new Date().toISOString().split('T')[0];
+
+    const supplierObj = suppliers.find(
+      (s) => s.id === paymentData.supplierId || s.name === paymentData.supplierName
+    );
+
+    const newExp = {
+      id: payId,
+      date: todayStr,
+      displayDate: formatDate(todayStr),
+      category: 'Supplier Payment',
+      businessId: 'bricks',
+      businessName: 'Bricks Supply',
+      description: `Payment to Supplier: ${supplierObj ? supplierObj.name : paymentData.supplierName}`,
+      amount: amount,
+      method: paymentData.method || 'Cash',
+      notes: paymentData.notes || `Ref: ${paymentData.reference || 'N/A'}`
+    };
+
+    setExpenses((prev) => [newExp, ...prev]);
+
+    showToast(`Payment of ₹${amount.toLocaleString('en-IN')} to ${supplierObj ? supplierObj.name : paymentData.supplierName} recorded!`);
+    return newExp;
+  };
+
   // Finance Loan operations
   const addFinanceLoan = (loanData) => {
     const loanId = `FIN-${Math.floor(100 + Math.random() * 900)}`;
@@ -415,6 +483,7 @@ export const BusinessProvider = ({ children }) => {
 
   // Helper getters
   const getCustomerById = (id) => customers.find((c) => c.id === id);
+  const getSupplierById = (id) => suppliers.find((s) => s.id === id || s.name.toLowerCase().includes(id.toLowerCase()));
 
   const getCustomerLedger = (customerId) => {
     const custTrxs = transactions.filter((t) => t.customerId === customerId);
@@ -449,6 +518,48 @@ export const BusinessProvider = ({ children }) => {
         description: `Payment Received (${p.method} - Ref: ${p.reference})`,
         amount: 0,
         paid: p.amount,
+        due: 0,
+        status: 'Settled'
+      }))
+    ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    return items;
+  };
+
+  const getSupplierLedger = (supplierId) => {
+    const supplierObj = getSupplierById(supplierId);
+    const supplierName = supplierObj ? supplierObj.name.toLowerCase() : supplierId.toLowerCase();
+
+    const supTrxs = transactions.filter(
+      (t) => t.isOutsourced && t.outsourcedSupplier && t.outsourcedSupplier.toLowerCase().includes(supplierName)
+    );
+
+    const supExps = expenses.filter(
+      (e) => e.description && e.description.toLowerCase().includes(supplierName)
+    );
+
+    const items = [
+      ...supTrxs.map((t) => ({
+        id: t.id,
+        date: t.date,
+        displayDate: t.displayDate || formatDate(t.date),
+        type: 'Supply Entry',
+        business: 'Bricks Supply',
+        description: `Chamber Bricks Supply (${t.outsourcedBrickQty || t.quantity} bricks @ ₹${t.outsourcedCostPerBrick || 7.5}/brick)`,
+        amount: t.outsourcedCost || t.amount,
+        paid: t.outsourcedPaid || t.paid,
+        due: t.outsourcedDue || t.due,
+        status: (t.outsourcedDue || 0) === 0 ? 'Paid' : 'Partial'
+      })),
+      ...supExps.map((e) => ({
+        id: e.id,
+        date: e.date,
+        displayDate: e.displayDate || formatDate(e.date),
+        type: 'Payment Made',
+        business: 'Supplier Payout',
+        description: e.description,
+        amount: 0,
+        paid: e.amount,
         due: 0,
         status: 'Settled'
       }))
@@ -494,6 +605,9 @@ export const BusinessProvider = ({ children }) => {
         dieselLogs,
         jcbMonthlyHours,
         driverMonthlyReports,
+        suppliers,
+        addSupplier,
+        addSupplierPayment,
         addDieselLog,
         addFinanceLoan,
         recordReturnPayment,
@@ -515,6 +629,8 @@ export const BusinessProvider = ({ children }) => {
         addExpense,
         getCustomerById,
         getCustomerLedger,
+        getSupplierById,
+        getSupplierLedger,
         toastMessage,
         showToast
       }}

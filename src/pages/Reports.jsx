@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import { formatCurrency } from '../utils/formatCurrency';
+import { exportToPdf } from '../utils/pdfGenerator';
 import { reportsSummaryData, weeklyPerformanceData, businessPerformanceDonut } from '../data/mockData';
 import {
   BarChart,
@@ -25,7 +26,27 @@ const Reports = () => {
   const [activeTab, setActiveTab] = useState('summary');
 
   const handleDownload = () => {
-    showToast('Generating and downloading report CSV/PDF...');
+    exportToPdf({
+      title: 'BUSINESS FINANCIAL & ANALYTICS REPORT',
+      subtitle: `Scope: ${dateRange.toUpperCase()} PERFORMANCE`,
+      filename: `Business_Report_${dateRange}.pdf`,
+      columns: [
+        { header: 'Business Unit / Sector', key: 'name', bold: true },
+        { header: 'Revenue Generated', key: 'formattedValue', align: 'right', bold: true, color: '#15803d' },
+        { header: 'Contribution %', key: 'percentage', align: 'right' }
+      ],
+      data: businessPerformanceDonut.map((item) => ({
+        name: item.name,
+        formattedValue: formatCurrency(item.value),
+        percentage: `${Math.round((item.value / reportsSummaryData.totalIncome) * 100)}%`
+      })),
+      summary: [
+        { label: 'Total Revenue Income', value: formatCurrency(reportsSummaryData.totalIncome), color: '#15803d' },
+        { label: 'Total Expenses & Costs', value: formatCurrency(reportsSummaryData.totalExpense), color: '#b91c1c' },
+        { label: 'Net Profit Margin', value: formatCurrency(reportsSummaryData.totalProfit), color: '#0284c7' },
+        { label: 'Total Receivables Outstanding', value: formatCurrency(reportsSummaryData.outstanding), color: '#d97706' }
+      ]
+    });
   };
 
   return (

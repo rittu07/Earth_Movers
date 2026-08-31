@@ -3,18 +3,15 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   Landmark,
-  Users,
-  Receipt,
-  Wallet,
-  TrendingDown,
+  Activity,
   Droplets,
   Boxes,
   Truck,
   Layers,
+  Mountain,
   BarChart3,
   BookOpen,
   Settings,
-  Building2,
   ChevronRight,
   UserCheck
 } from 'lucide-react';
@@ -22,10 +19,7 @@ import {
 const mainNavItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
   { name: 'Finance (💰)', path: '/finance', icon: Landmark, color: 'text-amber-400' },
-  { name: 'Customers', path: '/customers', icon: Users },
-  { name: 'Transactions', path: '/transactions', icon: Receipt },
-  { name: 'Payments', path: '/payments', icon: Wallet },
-  { name: 'Expenses', path: '/expenses', icon: TrendingDown },
+  { name: 'Recent Activity', path: '/expenses', icon: Activity },
 ];
 
 const businessNavItems = [
@@ -33,6 +27,7 @@ const businessNavItems = [
   { name: 'Bricks Supply', path: '/business/bricks', icon: Boxes, color: 'text-orange-400' },
   { name: 'JCB Rental', path: '/business/jcb', icon: Truck, color: 'text-yellow-400' },
   { name: 'Jalli Service', path: '/business/jalli', icon: Layers, color: 'text-emerald-400' },
+  { name: 'Sand Supply', path: '/business/sand', icon: Mountain, color: 'text-teal-400' },
 ];
 
 const reportNavItems = [
@@ -47,7 +42,7 @@ const settingNavItems = [
 const Sidebar = ({ mobileClose }) => {
   const renderNavGroup = (title, items) => (
     <div className="mb-5">
-      <h3 className="px-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+      <h3 className="px-3 text-xs font-black text-slate-400 uppercase tracking-wider mb-2">
         {title}
       </h3>
       <nav className="space-y-1">
@@ -59,7 +54,7 @@ const Sidebar = ({ mobileClose }) => {
               to={item.path}
               onClick={mobileClose}
               className={({ isActive }) =>
-                `flex items-center justify-between px-3 py-2 rounded-xl text-sm font-medium transition-all group ${
+                `flex items-center justify-between px-3 py-2.5 rounded-xl text-base font-bold transition-all group ${
                   isActive
                     ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
                     : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
