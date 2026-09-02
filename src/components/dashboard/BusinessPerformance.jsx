@@ -1,9 +1,15 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { businessPerformanceDonut } from '../../data/mockData';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { calculateReportData } from '../../utils/calculations';
+import { useBusiness } from '../../context/BusinessContext';
 
 const BusinessPerformance = () => {
+  const { transactions, payments, expenses, businesses } = useBusiness();
+  const businessPerformanceDonut = useMemo(
+    () => calculateReportData(transactions, payments, expenses, businesses, 'today').businessPerformance,
+    [transactions, payments, expenses, businesses]
+  );
   const total = businessPerformanceDonut.reduce((acc, item) => acc + item.value, 0);
 
   return (
@@ -52,7 +58,7 @@ const BusinessPerformance = () => {
         {/* Custom Legend Table */}
         <div className="space-y-3 pl-0 sm:pl-2">
           {businessPerformanceDonut.map((item) => {
-            const percentage = ((item.value / total) * 100).toFixed(1);
+            const percentage = total ? ((item.value / total) * 100).toFixed(1) : '0.0';
             return (
               <div key={item.name} className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">

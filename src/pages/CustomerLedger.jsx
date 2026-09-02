@@ -4,6 +4,7 @@ import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import StatusBadge from '../components/common/StatusBadge';
 import { formatCurrency } from '../utils/formatCurrency';
+import { getDateRange, isDateInRange } from '../utils/calculations';
 import { exportToPdf } from '../utils/pdfGenerator';
 import {
   Phone,
@@ -57,11 +58,8 @@ const CustomerLedger = () => {
     if (activeTab === 'payments' && item.type !== 'Payment') return false;
     if (activeTab === 'outstanding' && item.due <= 0) return false;
 
-    if (dateFilter === 'today') {
-      const todayStr = new Date().toISOString().split('T')[0];
-      if (item.date !== '2026-08-11' && item.date !== todayStr) return false;
-    } else if (dateFilter === 'week') {
-      if (!item.date.startsWith('2026-08')) return false;
+    if (dateFilter === 'today' || dateFilter === 'week' || dateFilter === 'month') {
+      if (!isDateInRange(item.date, getDateRange(dateFilter))) return false;
     } else if (dateFilter === 'custom' && customDate) {
       if (item.date !== customDate) return false;
     }
@@ -224,7 +222,7 @@ const CustomerLedger = () => {
             <option value="all">All Dates</option>
             <option value="today">Today</option>
             <option value="week">This Week</option>
-            <option value="month">August 2026</option>
+             <option value="month">This Month</option>
             <option value="custom">Specific Date</option>
           </select>
           {dateFilter === 'custom' && (

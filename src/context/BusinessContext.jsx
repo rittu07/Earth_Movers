@@ -1,35 +1,28 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import {
-  initialCustomers,
-  initialTransactions,
-  initialPayments,
-  initialExpenses,
-  initialJcbJobs,
   initialBusinesses,
   initialJcbVehicles,
-  initialFinanceLoans,
-  initialDieselLogs,
-  initialJcbMonthlyHours,
-  initialDriverMonthlyReports,
-  initialSuppliers
 } from '../data/mockData';
 import { formatDate } from '../utils/formatCurrency';
+import { calculateSummaryMetrics } from '../utils/calculations';
+import { getAllLocal, putLocal, putManyLocal } from '../db/localDb';
+import { queueEntity, startSync, syncNow } from '../db/syncQueue';
 
 const BusinessContext = createContext();
 
 export const BusinessProvider = ({ children }) => {
-  const [customers, setCustomers] = useState(initialCustomers);
-  const [transactions, setTransactions] = useState(initialTransactions);
-  const [payments, setPayments] = useState(initialPayments);
-  const [expenses, setExpenses] = useState(initialExpenses);
-  const [jcbJobs, setJcbJobs] = useState(initialJcbJobs);
+  const [customers, setCustomers] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [jcbJobs, setJcbJobs] = useState([]);
   const [jcbVehicles] = useState(initialJcbVehicles);
   const [businesses] = useState(initialBusinesses);
-  const [financeLoans, setFinanceLoans] = useState(initialFinanceLoans);
-  const [dieselLogs, setDieselLogs] = useState(initialDieselLogs);
-  const [jcbMonthlyHours, setJcbMonthlyHours] = useState(initialJcbMonthlyHours);
-  const [driverMonthlyReports, setDriverMonthlyReports] = useState(initialDriverMonthlyReports);
-  const [suppliers, setSuppliers] = useState(initialSuppliers);
+  const [financeLoans, setFinanceLoans] = useState([]);
+  const [dieselLogs, setDieselLogs] = useState([]);
+  const [jcbMonthlyHours, setJcbMonthlyHours] = useState([]);
+  const [driverMonthlyReports, setDriverMonthlyReports] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
 
   // Global Customer Search Modal state
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -38,6 +31,50 @@ export const BusinessProvider = ({ children }) => {
 
   // Toast notification state
   const [toastMessage, setToastMessage] = useState(null);
+
+  const reloadPersistedData = async () => {
+    const stores = [
+      ['customers', setCustomers],
+      ['transactions', setTransactions],
+      ['payments', setPayments],
+      ['expenses', setExpenses],
+      ['dieselLogs', setDieselLogs],
+      ['suppliers', setSuppliers],
+      ['financeLoans', setFinanceLoans]
+    ];
+    await Promise.all(stores.map(async ([store, setter]) => setter(await getAllLocal(store))));
+  };
+
+  const persist = (store, entity, operation = 'create') => {
+    putLocal(store, entity).catch(() => {});
+    queueEntity(
+      store === 'dieselLogs' ? 'dieselLog' : store === 'financeLoans' ? 'financeLoan' : store.slice(0, -1),
+      entity,
+      operation
+    ).then(() => syncNow((result) => {
+      if (result?.changed) reloadPersistedData().catch(() => {});
+    })).catch(() => {});
+  };
+
+  useEffect(() => {
+    const stores = [
+      ['customers', setCustomers, []],
+      ['transactions', setTransactions, []],
+      ['payments', setPayments, []],
+      ['expenses', setExpenses, []],
+      ['dieselLogs', setDieselLogs, []],
+      ['suppliers', setSuppliers, []],
+      ['financeLoans', setFinanceLoans, []]
+    ];
+    Promise.all(stores.map(async ([store, setter, seed]) => {
+      const local = await getAllLocal(store);
+      if (local.length) setter(local);
+      else await putManyLocal(store, seed);
+    })).catch(() => {});
+    return startSync((result) => {
+      if (result?.changed) reloadPersistedData().catch(() => {});
+    });
+  }, []);
 
   const showToast = (message) => {
     setToastMessage(message);
@@ -67,6 +104,7 @@ export const BusinessProvider = ({ children }) => {
       defaultCostPerBrick: Number(supplierData.defaultCostPerBrick) || 7.5
     };
     setSuppliers((prev) => [newSup, ...prev]);
+    persist('suppliers', newSup);
     return newSup;
   };
 
@@ -92,6 +130,7 @@ export const BusinessProvider = ({ children }) => {
     };
 
     setCustomers((prev) => [newCust, ...prev]);
+    persist('customers', newCust);
     showToast(`Customer "${newCust.name}" added successfully!`);
     return newCust;
   };
@@ -101,12 +140,15 @@ export const BusinessProvider = ({ children }) => {
     setCustomers((prev) =>
       prev.map((c) => (c.id === id ? { ...c, ...updatedFields } : c))
     );
+    const current = customers.find((customer) => customer.id === id);
+    if (current) persist('customers', { ...current, ...updatedFields, updatedAt: new Date().toISOString() }, 'update');
     showToast('Customer updated successfully!');
   };
 
   // Delete Customer
   const deleteCustomer = (id) => {
     setCustomers((prev) => prev.filter((c) => c.id !== id));
+    persist('customers', { id, deletedAt: new Date().toISOString() }, 'update');
     showToast('Customer deleted successfully!');
   };
 
@@ -161,6 +203,7 @@ export const BusinessProvider = ({ children }) => {
     };
 
     setTransactions((prev) => [newTrx, ...prev]);
+    persist('transactions', newTrx);
 
     // Automatically record an expense entry for outsourced bricks purchase if amount paid/cost is present
     if (trxData.isOutsourced && (Number(trxData.outsourcedCost) > 0 || Number(trxData.outsourcedPaid) > 0)) {
@@ -290,6 +333,7 @@ export const BusinessProvider = ({ children }) => {
     };
 
     setPayments((prev) => [newPayment, ...prev]);
+    persist('payments', newPayment);
 
     // Update customer outstanding
     setCustomers((prev) =>
@@ -334,6 +378,7 @@ export const BusinessProvider = ({ children }) => {
     };
 
     setExpenses((prev) => [newExp, ...prev]);
+    persist('expenses', newExp);
     showToast(`Expense of ₹${amt.toLocaleString('en-IN')} recorded!`);
     return newExp;
   };
@@ -362,6 +407,7 @@ export const BusinessProvider = ({ children }) => {
     };
 
     setDieselLogs((prev) => [newLog, ...prev]);
+    persist('dieselLogs', newLog);
 
     // Automatically sync to global Expenses
     const expId = `EXP-${Math.floor(300 + Math.random() * 700)}`;
@@ -379,6 +425,7 @@ export const BusinessProvider = ({ children }) => {
       notes: data.bunkName ? `Bunk: ${data.bunkName}. ${data.notes || ''}` : data.notes || ''
     };
     setExpenses((prev) => [newExp, ...prev]);
+    persist('expenses', newExp);
 
     showToast(`Diesel refill of ${qty} Litres (₹${totalCost.toLocaleString('en-IN')}) saved for ${data.jcbVehicle}!`);
     return newLog;
@@ -408,6 +455,7 @@ export const BusinessProvider = ({ children }) => {
     };
 
     setExpenses((prev) => [newExp, ...prev]);
+    persist('expenses', newExp);
 
     showToast(`Payment of ₹${amount.toLocaleString('en-IN')} to ${supplierObj ? supplierObj.name : paymentData.supplierName} recorded!`);
     return newExp;
@@ -441,43 +489,67 @@ export const BusinessProvider = ({ children }) => {
     };
 
     setFinanceLoans((prev) => [newLoan, ...prev]);
+    persist('financeLoans', newLoan);
     showToast(`Finance record for ${newLoan.borrowerName} added!`);
     return newLoan;
   };
 
-  const recordReturnPayment = (loanId, amount) => {
+  const recordReturnPayment = (loanId, amount, monthLabel, newMonths) => {
     const payAmt = Number(amount) || 0;
+    let updatedLoan = null;
     setFinanceLoans((prev) =>
       prev.map((loan) => {
         if (loan.id === loanId) {
           const newReturned = loan.returnedAmount + payAmt;
           const newDue = Math.max(0, loan.totalAmount - newReturned);
-          return {
+          const history = [...(loan.paymentHistory || []), {
+            month: monthLabel || 'Unspecified',
+            amount: payAmt,
+            date: new Date().toISOString().split('T')[0]
+          }];
+          const updatedMonths = Number(newMonths) || loan.months;
+          const monthlyInterest = (loan.principal * loan.interestRate) / 100;
+          const totalInterest = monthlyInterest * updatedMonths;
+          const totalAmount = loan.principal + totalInterest;
+          updatedLoan = {
             ...loan,
             returnedAmount: newReturned,
-            dueAmount: newDue,
-            status: newDue === 0 ? 'Settled' : loan.status
+            dueAmount: Math.max(0, totalAmount - newReturned),
+            months: updatedMonths,
+            monthlyInterest,
+            totalInterest,
+            totalAmount,
+            status: Math.max(0, totalAmount - newReturned) === 0 ? 'Settled' : loan.status,
+            paymentHistory: history
           };
+          return updatedLoan;
         }
         return loan;
       })
     );
+    if (updatedLoan) persist('financeLoans', updatedLoan, 'update');
     showToast(`Return payment of ₹${payAmt.toLocaleString('en-IN')} recorded!`);
   };
 
   const settleFinanceLoan = (loanId) => {
+    let updatedLoan = null;
     setFinanceLoans((prev) =>
-      prev.map((loan) =>
-        loan.id === loanId
-          ? { ...loan, status: 'Settled', returnedAmount: loan.totalAmount, dueAmount: 0 }
-          : loan
-      )
+      prev.map((loan) => {
+        if (loan.id === loanId) {
+          updatedLoan = { ...loan, status: 'Settled', returnedAmount: loan.totalAmount, dueAmount: 0 };
+          return updatedLoan;
+        }
+        return loan;
+      })
     );
+    if (updatedLoan) persist('financeLoans', updatedLoan, 'update');
     showToast('Loan record settled!');
   };
 
   const deleteFinanceLoan = (loanId) => {
+    const loan = financeLoans.find((l) => l.id === loanId);
     setFinanceLoans((prev) => prev.filter((l) => l.id !== loanId));
+    if (loan) persist('financeLoans', loan, 'delete');
     showToast('Loan record removed.');
   };
 
@@ -570,23 +642,18 @@ export const BusinessProvider = ({ children }) => {
 
   // Computed Overview Metrics
   const overviewMetrics = useMemo(() => {
-    const todayStr = '2026-08-11';
-    const todayIncome = transactions
-      .filter((t) => t.date === todayStr)
-      .reduce((sum, t) => sum + t.paid, 0);
-
-    const todayExpense = expenses
-      .filter((e) => e.date === todayStr)
-      .reduce((sum, e) => sum + e.amount, 0);
-
-    const totalOutstanding = customers.reduce((sum, c) => sum + c.outstanding, 0);
-    const todayProfit = todayIncome - todayExpense;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayTransactions = transactions.filter((item) => item.date === todayStr);
+    const todayExpenses = expenses.filter((item) => item.date === todayStr);
+    const todayIncome = todayTransactions.reduce((sum, item) => sum + Number(item.paid || 0), 0);
+    const todayExpense = todayExpenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const summary = calculateSummaryMetrics(transactions, payments, expenses);
 
     return {
-      todayIncome: todayIncome || 42500,
-      todayExpense: todayExpense || 12300,
-      totalOutstanding: totalOutstanding || 124500,
-      todayProfit: todayProfit || 30200,
+      todayIncome,
+      todayExpense,
+      totalOutstanding: summary.totalOutstanding,
+      todayProfit: todayIncome - todayExpense,
       customerCount: customers.length
     };
   }, [transactions, expenses, customers]);
@@ -627,6 +694,9 @@ export const BusinessProvider = ({ children }) => {
         addTransaction,
         addPayment,
         addExpense,
+        syncNow: () => syncNow((result) => {
+          if (result?.changed) reloadPersistedData().catch(() => {});
+        }),
         getCustomerById,
         getCustomerLedger,
         getSupplierById,

@@ -8,6 +8,11 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "worker:install": "npm install --prefix worker",
+    "worker:dev": "npm run dev --prefix worker",
+    "worker:deploy": "npm run deploy --prefix worker",
+    "db:migrate:local": "npm run db:migrate:local --prefix worker",
+    "db:migrate:remote": "npm run db:migrate:remote --prefix worker",
     "cap:sync": "cap sync",
     "cap:open": "cap open android",
     "cap:build": "npm run build && cap sync"

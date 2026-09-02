@@ -1,0 +1,15 @@
+name = "earth-movers-api"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "earth-movers-db"
+# Replace this with the database_id returned by `wrangler d1 create`.
+database_id = "f69026ef-5ce0-4725-bd00-1780e9fd4711"
+migrations_dir = "migrations"
+
+[assets]
+directory = "../dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"

@@ -4,6 +4,7 @@ import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import TransactionTable from '../components/transactions/TransactionTable';
 import { PlusCircle, Search, Filter } from 'lucide-react';
+import { getDateRange, isDateInRange } from '../utils/calculations';
 
 const Transactions = () => {
   const { transactions, businesses } = useBusiness();
@@ -23,11 +24,8 @@ const Transactions = () => {
     if (businessFilter !== 'all' && trx.businessId !== businessFilter) return false;
     if (statusFilter !== 'all' && trx.status.toLowerCase() !== statusFilter) return false;
 
-    if (dateFilter === 'today') {
-      const todayStr = new Date().toISOString().split('T')[0];
-      if (trx.date !== '2026-08-11' && trx.date !== todayStr) return false;
-    } else if (dateFilter === 'week') {
-      if (!trx.date.startsWith('2026-08')) return false;
+    if (dateFilter === 'today' || dateFilter === 'week' || dateFilter === 'month') {
+      if (!isDateInRange(trx.date, getDateRange(dateFilter))) return false;
     } else if (dateFilter === 'custom' && customDate) {
       if (trx.date !== customDate) return false;
     }
@@ -76,7 +74,7 @@ const Transactions = () => {
               <option value="all">All Dates</option>
               <option value="today">Today</option>
               <option value="week">This Week</option>
-              <option value="month">August 2026</option>
+              <option value="month">This Month</option>
               <option value="custom">Specific Date</option>
             </select>
             {dateFilter === 'custom' && (

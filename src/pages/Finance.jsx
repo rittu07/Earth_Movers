@@ -39,6 +39,8 @@ const Finance = () => {
   const [selectedLoan, setSelectedLoan] = useState(null);
   const [returnPayAmount, setReturnPayAmount] = useState('');
   const [returnPayMethod, setReturnPayMethod] = useState('Cash');
+  const [returnPayMonth, setReturnPayMonth] = useState('');
+  const [returnPayMonths, setReturnPayMonths] = useState('');
 
   // New Loan Form State
   const [newBorrowerName, setNewBorrowerName] = useState('');
@@ -92,30 +94,47 @@ const Finance = () => {
     e.preventDefault();
     if (!selectedLoan || !returnPayAmount) return;
 
-    recordReturnPayment(selectedLoan.id, Number(returnPayAmount) || 0);
+    const newMonths = Number(returnPayMonths) || selectedLoan.months;
+    recordReturnPayment(selectedLoan.id, Number(returnPayAmount) || 0, returnPayMonth || 'Month 1', newMonths);
     setIsReturnModalOpen(false);
     setSelectedLoan(null);
     setReturnPayAmount('');
+    setReturnPayMonth('');
+    setReturnPayMonths('');
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
+      {/* Page Header with Add Data Button */}
+      <PageHeader
+        title="Finance"
+        subtitle="Loan ledger, interest tracking and return payments"
+        action={
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all cursor-pointer"
+          >
+            <PlusCircle className="w-4 h-4" /> + Add Loan
+          </button>
+        }
+      />
+
       {/* Receive Customer Payment Card & Business Quick Action Blocks (Mobile View Only) */}
       <div className="md:hidden space-y-6">
         <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-              <Wallet className="w-5 h-5 text-emerald-600" />
+              <Landmark className="w-5 h-5 text-emerald-600" />
             </div>
-            <h4 className="text-sm font-extrabold text-slate-900">Receive Payment</h4>
+            <h4 className="text-sm font-extrabold text-slate-900">Give New Loan</h4>
           </div>
-          <Link
-            to="/payments/receive"
+          <button
+            onClick={() => setIsAddModalOpen(true)}
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 shrink-0 cursor-pointer"
           >
-            <Wallet className="w-4 h-4" />
-            <span>+ Receive Payment</span>
-          </Link>
+            <PlusCircle className="w-4 h-4" />
+            <span>+ Add Loan</span>
+          </button>
         </div>
 
         <BusinessQuickActions />
@@ -247,6 +266,7 @@ const Finance = () => {
                                 onClick={() => {
                                   setSelectedLoan(loan);
                                   setReturnPayAmount(loan.monthlyInterest.toString());
+                                  setReturnPayMonths(loan.months.toString());
                                   setIsReturnModalOpen(true);
                                 }}
                                 className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-lg text-[11px] border border-emerald-200 transition-all cursor-pointer"
@@ -281,34 +301,45 @@ const Finance = () => {
         </div>
       </div>
 
-      {/* Modal 1: Give New Loan */}
+      {/* Full-Screen: Give New Loan */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col animate-in fade-in duration-200">
+          {/* Top Bar */}
+          <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <Landmark className="w-5 h-5 text-emerald-600" />
                 Give New Loan
               </h3>
-              <button
-                onClick={() => setIsAddModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
             </div>
+            <button
+              type="submit"
+              form="add-loan-form"
+              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md shadow-emerald-600/20 text-sm cursor-pointer"
+            >
+              Save Loan
+            </button>
+          </div>
 
-            <form onSubmit={handleAddSubmit} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
+          {/* Scrollable Form Body */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <form id="add-loan-form" onSubmit={handleAddSubmit} className="max-w-lg mx-auto space-y-5 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Person / Borrower Name *</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Person A / Ramesh"
+                    placeholder="e.g. Ramesh"
                     value={newBorrowerName}
                     onChange={(e) => setNewBorrowerName(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-hidden focus:border-emerald-500"
+                    className="w-full p-3 bg-white border border-slate-200 rounded-xl font-medium focus:outline-hidden focus:border-emerald-500 text-base"
                   />
                 </div>
 
@@ -319,26 +350,26 @@ const Finance = () => {
                     placeholder="9876543210"
                     value={newPhone}
                     onChange={(e) => setNewPhone(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-hidden focus:border-emerald-500"
+                    className="w-full p-3 bg-white border border-slate-200 rounded-xl font-medium focus:outline-hidden focus:border-emerald-500 text-base"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Principal Amount (₹) *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Principal (₹) *</label>
                   <input
                     type="number"
                     required
                     placeholder="100000"
                     value={newPrincipal}
                     onChange={(e) => setNewPrincipal(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-emerald-500"
+                    className="w-full p-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-emerald-500 text-base"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Monthly Interest (%) *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Interest % / mo *</label>
                   <input
                     type="number"
                     step="0.1"
@@ -346,26 +377,26 @@ const Finance = () => {
                     placeholder="2"
                     value={newRate}
                     onChange={(e) => setNewRate(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-amber-600 focus:outline-hidden focus:border-emerald-500"
+                    className="w-full p-3 bg-white border border-slate-200 rounded-xl font-bold text-amber-600 focus:outline-hidden focus:border-emerald-500 text-base"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Tenure (Months) *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Months *</label>
                   <input
                     type="number"
                     required
                     placeholder="1"
                     value={newMonths}
                     onChange={(e) => setNewMonths(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-hidden focus:border-emerald-500"
+                    className="w-full p-3 bg-white border border-slate-200 rounded-xl font-medium focus:outline-hidden focus:border-emerald-500 text-base"
                   />
                 </div>
               </div>
 
-              {/* Automatic calculation preview */}
-              <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200 space-y-1 text-xs">
-                <div className="flex justify-between font-bold text-emerald-900">
+              {/* Auto calculation preview */}
+              <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200 space-y-2">
+                <div className="flex justify-between font-bold text-emerald-900 text-sm">
                   <span>1 Month Interest:</span>
                   <span>
                     {formatCurrency(
@@ -373,8 +404,8 @@ const Finance = () => {
                     )}
                   </span>
                 </div>
-                <div className="flex justify-between font-extrabold text-emerald-950 pt-1 border-t border-emerald-200/80">
-                  <span>Total Amount Payable after {newMonths || 1} Month(s):</span>
+                <div className="flex justify-between font-extrabold text-emerald-950 text-base pt-2 border-t border-emerald-200/80">
+                  <span>Total after {newMonths || 1} month(s):</span>
                   <span>
                     {formatCurrency(
                       (Number(newPrincipal) || 0) +
@@ -385,126 +416,179 @@ const Finance = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Date & Notes</label>
-                <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Start Date</label>
                   <input
                     type="date"
                     value={newStartDate}
                     onChange={(e) => setNewStartDate(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Notes e.g. Site construction loan"
-                    value={newNotes}
-                    onChange={(e) => setNewNotes(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+                    className="w-full p-3 bg-white border border-slate-200 rounded-xl font-medium text-base"
                   />
                 </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md shadow-emerald-600/20"
-                >
-                  Save Loan Entry
-                </button>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Notes</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Site construction loan"
+                    value={newNotes}
+                    onChange={(e) => setNewNotes(e.target.value)}
+                    className="w-full p-3 bg-white border border-slate-200 rounded-xl font-medium text-base"
+                  />
+                </div>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Modal 2: Record Return Amount Paid by Person */}
+      {/* Full-Screen: Record Return Payment */}
       {isReturnModalOpen && selectedLoan && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Wallet className="w-5 h-5 text-emerald-600" />
-                Record Loan Return Payment
-              </h3>
+        <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col animate-in fade-in duration-200">
+          {/* Top Bar */}
+          <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => setIsReturnModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                onClick={() => { setIsReturnModalOpen(false); setSelectedLoan(null); setReturnPayMonth(''); }}
+                className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Wallet className="w-5 h-5 text-emerald-600" />
+                Record Return Payment
+              </h3>
             </div>
+            <button
+              type="submit"
+              form="return-pay-form"
+              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md shadow-emerald-600/20 text-sm cursor-pointer"
+            >
+              Save Payment
+            </button>
+          </div>
 
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5 text-xs">
-              <p className="font-bold text-slate-900 text-sm">{selectedLoan.borrowerName}</p>
-              <div className="flex justify-between text-slate-600">
-                <span>Principal Given:</span>
-                <span className="font-bold text-slate-900">{formatCurrency(selectedLoan.principal)}</span>
+          {/* Scrollable Body */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <div className="max-w-lg mx-auto space-y-5">
+              {/* Loan Summary Card */}
+              <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-2">
+                <p className="font-bold text-slate-900 text-base">{selectedLoan.borrowerName}</p>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase">Principal</span>
+                    <p className="font-bold text-slate-900">{formatCurrency(selectedLoan.principal)}</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase">Total Payable</span>
+                    <p className="font-bold text-slate-900">{formatCurrency(selectedLoan.totalAmount)}</p>
+                  </div>
+                  <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
+                    <span className="text-[11px] font-bold text-emerald-600 uppercase">Returned</span>
+                    <p className="font-bold text-emerald-700">{formatCurrency(selectedLoan.returnedAmount || 0)}</p>
+                  </div>
+                  <div className="bg-rose-50 rounded-xl p-3 border border-rose-100">
+                    <span className="text-[11px] font-bold text-rose-500 uppercase">Remaining Due</span>
+                    <p className="font-bold text-rose-600">{formatCurrency(selectedLoan.dueAmount !== undefined ? selectedLoan.dueAmount : Math.max(0, selectedLoan.totalAmount - (selectedLoan.returnedAmount || 0)))}</p>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between text-slate-600">
-                <span>Total Amount (with Interest):</span>
-                <span className="font-bold text-slate-900">{formatCurrency(selectedLoan.totalAmount)}</span>
-              </div>
-              <div className="flex justify-between text-emerald-700 font-bold">
-                <span>Returned So Far:</span>
-                <span>{formatCurrency(selectedLoan.returnedAmount || 0)}</span>
-              </div>
-              <div className="flex justify-between text-rose-600 font-bold border-t border-slate-200 pt-1">
-                <span>Remaining Due:</span>
-                <span>{formatCurrency(selectedLoan.dueAmount !== undefined ? selectedLoan.dueAmount : Math.max(0, selectedLoan.totalAmount - (selectedLoan.returnedAmount || 0)))}</span>
-              </div>
+
+              {/* Payment Form */}
+              <form id="return-pay-form" onSubmit={handleReturnSubmit} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-4">
+                {/* Tenure & Month */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Tenure (Months) *</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      value={returnPayMonths}
+                      onChange={(e) => setReturnPayMonths(e.target.value)}
+                      placeholder={selectedLoan.months}
+                      className="w-full p-3 bg-white border border-slate-200 rounded-xl font-bold text-lg text-slate-900 focus:outline-hidden focus:border-emerald-500"
+                    />
+                    <span className="text-[10px] text-slate-400 mt-0.5 block">Currently: {selectedLoan.months} months</span>
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Repayment for Month *</label>
+                    <select
+                      value={returnPayMonth}
+                      onChange={(e) => setReturnPayMonth(e.target.value)}
+                      required
+                      className="w-full p-3 bg-white border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-500"
+                    >
+                      <option value="">-- Select Month --</option>
+                      {Array.from({ length: Number(returnPayMonths) || selectedLoan.months || 1 }, (_, i) => {
+                        const monthDate = new Date(selectedLoan.startDate || new Date());
+                        monthDate.setMonth(monthDate.getMonth() + i);
+                        const label = monthDate.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+                        return (
+                          <option key={i + 1} value={`Month ${i + 1} (${label})`}>
+                            Month {i + 1} — {label}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Amount */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Return Amount Paid (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="e.g. 2000"
+                    value={returnPayAmount}
+                    onChange={(e) => setReturnPayAmount(e.target.value)}
+                    className="w-full p-3 bg-white border border-slate-200 rounded-xl font-bold text-lg text-slate-900 focus:outline-hidden focus:border-emerald-500"
+                  />
+                </div>
+
+                {/* Payment Method */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Payment Method</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['Cash', 'UPI', 'Bank Transfer'].map((method) => (
+                      <button
+                        key={method}
+                        type="button"
+                        onClick={() => setReturnPayMethod(method)}
+                        className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                          returnPayMethod === method
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'
+                        }`}
+                      >
+                        {method}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Payment History */}
+                {selectedLoan.paymentHistory && selectedLoan.paymentHistory.length > 0 && (
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-2">Payment History</label>
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                      {selectedLoan.paymentHistory.map((p, idx) => (
+                        <div key={idx} className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2 border border-slate-100 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-slate-400 bg-white rounded-md px-1.5 py-0.5 border border-slate-200">
+                              {p.month}
+                            </span>
+                            <span className="text-xs text-slate-500">{p.method}</span>
+                          </div>
+                          <span className="font-bold text-emerald-600">{formatCurrency(p.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </form>
             </div>
-
-            <form onSubmit={handleReturnSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Return Amount Paid by Person (₹) *
-                </label>
-                <input
-                  type="number"
-                  required
-                  placeholder="e.g. 2000"
-                  value={returnPayAmount}
-                  onChange={(e) => setReturnPayAmount(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-base text-slate-900 focus:outline-hidden focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Payment Method</label>
-                <select
-                  value={returnPayMethod}
-                  onChange={(e) => setReturnPayMethod(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900"
-                >
-                  <option value="Cash">Cash</option>
-                  <option value="UPI">UPI / GPay / PhonePe</option>
-                  <option value="Bank Transfer">Bank Transfer (NEFT/IMPS)</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsReturnModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md shadow-emerald-600/20"
-                >
-                  Record Return Payment
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

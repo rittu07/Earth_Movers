@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import { formatCurrency } from '../utils/formatCurrency';
 import { exportToPdf } from '../utils/pdfGenerator';
-import { reportsSummaryData, weeklyPerformanceData, businessPerformanceDonut } from '../data/mockData';
+import { calculateReportData } from '../utils/calculations';
 import {
   BarChart,
   Bar,
@@ -21,9 +21,13 @@ import {
 import { Download, Calendar, TrendingUp, TrendingDown, DollarSign, Wallet } from 'lucide-react';
 
 const Reports = () => {
-  const { showToast } = useBusiness();
-  const [dateRange, setDateRange] = useState('month'); // today, week, month, custom
+  const { transactions, payments, expenses, businesses } = useBusiness();
+  const [dateRange, setDateRange] = useState('month'); // today, week, month, year
   const [activeTab, setActiveTab] = useState('summary');
+  const reportData = useMemo(
+    () => calculateReportData(transactions, payments, expenses, businesses, dateRange),
+    [transactions, payments, expenses, businesses, dateRange]
+  );
 
   const handleDownload = () => {
     exportToPdf({
@@ -35,16 +39,16 @@ const Reports = () => {
         { header: 'Revenue Generated', key: 'formattedValue', align: 'right', bold: true, color: '#15803d' },
         { header: 'Contribution %', key: 'percentage', align: 'right' }
       ],
-      data: businessPerformanceDonut.map((item) => ({
-        name: item.name,
-        formattedValue: formatCurrency(item.value),
-        percentage: `${Math.round((item.value / reportsSummaryData.totalIncome) * 100)}%`
-      })),
-      summary: [
-        { label: 'Total Revenue Income', value: formatCurrency(reportsSummaryData.totalIncome), color: '#15803d' },
-        { label: 'Total Expenses & Costs', value: formatCurrency(reportsSummaryData.totalExpense), color: '#b91c1c' },
-        { label: 'Net Profit Margin', value: formatCurrency(reportsSummaryData.totalProfit), color: '#0284c7' },
-        { label: 'Total Receivables Outstanding', value: formatCurrency(reportsSummaryData.outstanding), color: '#d97706' }
+       data: reportData.businessPerformance.map((item) => ({
+         name: item.name,
+         formattedValue: formatCurrency(item.value),
+         percentage: `${reportData.totalIncome ? Math.round((item.value / reportData.totalIncome) * 100) : 0}%`
+       })),
+       summary: [
+         { label: 'Total Revenue Income', value: formatCurrency(reportData.totalIncome), color: '#15803d' },
+         { label: 'Total Expenses & Costs', value: formatCurrency(reportData.totalExpense), color: '#b91c1c' },
+         { label: 'Net Profit Margin', value: formatCurrency(reportData.totalProfit), color: '#0284c7' },
+         { label: 'Total Receivables Outstanding', value: formatCurrency(reportData.outstanding), color: '#d97706' }
       ]
     });
   };
@@ -82,28 +86,28 @@ const Reports = () => {
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <span className="text-[11px] font-bold text-slate-400 uppercase">Total Income</span>
           <p className="text-2xl font-extrabold text-emerald-600 mt-1">
-            {formatCurrency(reportsSummaryData.totalIncome)}
+             {formatCurrency(reportData.totalIncome)}
           </p>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <span className="text-[11px] font-bold text-slate-400 uppercase">Total Expense</span>
           <p className="text-2xl font-extrabold text-rose-600 mt-1">
-            {formatCurrency(reportsSummaryData.totalExpense)}
+             {formatCurrency(reportData.totalExpense)}
           </p>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <span className="text-[11px] font-bold text-slate-400 uppercase">Net Profit</span>
           <p className="text-2xl font-extrabold text-blue-600 mt-1">
-            {formatCurrency(reportsSummaryData.totalProfit)}
+             {formatCurrency(reportData.totalProfit)}
           </p>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <span className="text-[11px] font-bold text-slate-400 uppercase">Outstanding</span>
           <p className="text-2xl font-extrabold text-amber-600 mt-1">
-            {formatCurrency(reportsSummaryData.outstanding)}
+             {formatCurrency(reportData.outstanding)}
           </p>
         </div>
       </div>
@@ -149,7 +153,7 @@ const Reports = () => {
           <h3 className="text-base font-bold text-slate-900 mb-4">Revenue & Expense Trend</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={weeklyPerformanceData}>
+               <LineChart data={reportData.weeklyPerformance}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="day" axisLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                 <YAxis
@@ -184,7 +188,7 @@ const Reports = () => {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={businessPerformanceDonut}
+                   data={reportData.businessPerformance}
                   cx="50%"
                   cy="50%"
                   innerRadius={65}
@@ -192,7 +196,7 @@ const Reports = () => {
                   paddingAngle={4}
                   dataKey="value"
                 >
-                  {businessPerformanceDonut.map((entry, index) => (
+                   {reportData.businessPerformance.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -222,7 +226,7 @@ const Reports = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {reportsSummaryData.businessBreakdown.map((row) => (
+               {reportData.businessBreakdown.map((row) => (
                 <tr key={row.business} className="hover:bg-slate-50/70 transition-colors">
                   <td className="py-3.5 px-4 font-bold text-slate-900">{row.business}</td>
                   <td className="py-3.5 px-4 text-right font-extrabold text-emerald-600">

@@ -4,14 +4,14 @@ import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import TransactionTable from '../components/transactions/TransactionTable';
 import { formatCurrency } from '../utils/formatCurrency';
+import { calculateBusinessMetrics } from '../utils/calculations';
 import { Boxes, PlusCircle, TrendingUp } from 'lucide-react';
 
 const BricksSupply = () => {
-  const { transactions } = useBusiness();
+  const { transactions, payments, expenses } = useBusiness();
   const bricksTrxs = transactions.filter((t) => t.businessId === 'bricks');
 
-  const todayIncome = bricksTrxs.reduce((sum, t) => sum + t.paid, 0);
-  const totalOutstanding = bricksTrxs.reduce((sum, t) => sum + t.due, 0);
+  const metrics = calculateBusinessMetrics(transactions, payments, expenses, 'bricks');
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -33,28 +33,28 @@ const BricksSupply = () => {
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <span className="text-[11px] font-bold text-slate-400 uppercase">Today's Income</span>
           <p className="text-xl font-extrabold text-orange-600 mt-1">
-            {formatCurrency(todayIncome || 18500)}
+            {formatCurrency(metrics.todayIncome)}
           </p>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <span className="text-[11px] font-bold text-slate-400 uppercase">Today's Transactions</span>
           <p className="text-xl font-extrabold text-slate-900 mt-1">
-            {bricksTrxs.length || 7} Orders
+            {metrics.todayTransactions} Orders
           </p>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <span className="text-[11px] font-bold text-slate-400 uppercase">Outstanding</span>
           <p className="text-xl font-extrabold text-amber-600 mt-1">
-            {formatCurrency(totalOutstanding || 64000)}
+            {formatCurrency(metrics.totalOutstanding)}
           </p>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <span className="text-[11px] font-bold text-slate-400 uppercase">This Month's Revenue</span>
           <p className="text-xl font-extrabold text-slate-900 mt-1">
-            {formatCurrency(320000)}
+            {formatCurrency(metrics.monthlyRevenue)}
           </p>
         </div>
       </div>

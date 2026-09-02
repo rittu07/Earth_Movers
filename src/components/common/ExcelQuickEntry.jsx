@@ -21,13 +21,18 @@ const createEmptyTxRow = (defaultBusId = 'bricks') => ({
   customerName: '',
   customerPhone: '',
   isNewCustomer: false,
-  itemService: defaultBusId === 'jcb' ? 'JCB Earthmoving' : defaultBusId === 'water' ? 'Water Tanker' : defaultBusId === 'jalli' ? '20mm Jalli' : 'Red Bricks',
+  itemService: defaultBusId === 'jcb' ? 'JCB Earthmoving' : defaultBusId === 'water' ? 'Water Tanker' : defaultBusId === 'jalli' ? '20mm Jalli' : defaultBusId === 'sand' ? 'M-Sand' : 'Red Bricks',
   quantity: '1',
   unit: defaultBusId === 'jcb' ? 'Hours' : defaultBusId === 'water' ? 'Loads' : 'Lorry',
   rate: '',
   paid: '',
   paymentMethod: 'Cash',
-  notes: ''
+  notes: '',
+  sourcingType: 'local',
+  supplierId: '',
+  supplierName: '',
+  supplierPhone: '',
+  isNewSupplier: false
 });
 
 const createEmptyExpRow = (defaultBusId = 'jcb') => ({
@@ -42,7 +47,7 @@ const createEmptyExpRow = (defaultBusId = 'jcb') => ({
 });
 
 const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null }) => {
-  const { customers, businesses, addTransaction, addExpense, showToast } = useBusiness();
+  const { customers, businesses, suppliers, addCustomer, addSupplier, addTransaction, addExpense, showToast } = useBusiness();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState(initialMode);
@@ -88,8 +93,26 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
               updated.itemService = '20mm Jalli';
               updated.unit = 'Lorry';
             } else if (value === 'sand') {
-              updated.itemService = 'Sand Supply';
+              updated.itemService = 'M-Sand';
               updated.unit = 'Lorry';
+            }
+          }
+
+          if (field === 'supplierId') {
+            if (value === '__new__') {
+              updated.isNewSupplier = true;
+              updated.supplierId = '';
+              updated.supplierName = '';
+              updated.supplierPhone = '';
+            } else {
+              updated.isNewSupplier = false;
+              if (value) {
+                const foundSupplier = suppliers.find((s) => s.id === value);
+                if (foundSupplier) {
+                  updated.supplierName = foundSupplier.name;
+                  updated.supplierPhone = foundSupplier.phone || '';
+                }
+              }
             }
           }
 
@@ -164,6 +187,23 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
       const paid = Number(r.paid) || 0;
       const selBus = businesses.find((b) => b.id === r.businessId) || businesses[0];
 
+      let supName = r.supplierName || '';
+      let supPhone = r.supplierPhone || '';
+      if (r.sourcingType === 'outsourced' && r.isNewSupplier && r.supplierName.trim()) {
+        const newSup = addSupplier({
+          name: r.supplierName.trim(),
+          phone: r.supplierPhone.trim() || ''
+        });
+        supName = newSup.name;
+        supPhone = newSup.phone;
+      } else if (r.sourcingType === 'outsourced' && r.supplierId) {
+        const foundSup = suppliers.find((s) => s.id === r.supplierId);
+        if (foundSup) {
+          supName = foundSup.name;
+          supPhone = foundSup.phone || '';
+        }
+      }
+
       addTransaction({
         customerId: custId,
         customerName: custName,
@@ -179,7 +219,10 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
         due: Math.max(0, totalAmount - paid),
         paymentMethod: r.paymentMethod || 'Cash',
         date: r.date || getTodayString(),
-        notes: r.notes || ''
+        notes: r.notes || '',
+        isOutsourced: r.sourcingType === 'outsourced',
+        outsourcedSupplier: supName,
+        outsourcedPhone: supPhone
       });
       count++;
     });
@@ -356,17 +399,89 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                     )}
                   </div>
 
-                  {/* Item Description (3 cols) */}
-                  <div className="sm:col-span-3">
-                    <label className="block text-xs font-extrabold text-slate-700 mb-1">Item / Details</label>
-                    <input
-                      type="text"
-                      value={row.itemService}
-                      onChange={(e) => handleTxChange(row.id, 'itemService', e.target.value)}
-                      placeholder="Details"
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:bg-white focus:border-indigo-500 focus:outline-hidden"
-                    />
-                  </div>
+                  {/* Material Source + Supplier (bricks/jalli/sand) */}
+                  {['bricks', 'jalli', 'sand'].includes(row.businessId) ? (
+                    <div className="sm:col-span-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-extrabold text-slate-700">
+                          {row.sourcingType === 'outsourced' ? 'Supplier *' : 'Material Source'}
+                        </label>
+                        {row.sourcingType === 'outsourced' && (
+                          <button
+                            type="button"
+                            onClick={() => handleTxChange(row.id, 'isNewSupplier', !row.isNewSupplier)}
+                            className="text-xs text-indigo-600 font-bold hover:underline"
+                          >
+                            {row.isNewSupplier ? 'Select Existing' : '+ New Supplier'}
+                          </button>
+                        )}
+                      </div>
+
+                      {row.sourcingType !== 'outsourced' ? (
+                        <select
+                          value={row.sourcingType}
+                          onChange={(e) => handleTxChange(row.id, 'sourcingType', e.target.value)}
+                          className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:bg-white focus:border-indigo-500 focus:outline-hidden"
+                        >
+                          <option value="local">Local (Own)</option>
+                          <option value="outsourced">Outsourced</option>
+                        </select>
+                      ) : !row.isNewSupplier ? (
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <select
+                            value={row.supplierId}
+                            onChange={(e) => handleTxChange(row.id, 'supplierId', e.target.value)}
+                            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:bg-white focus:border-indigo-500 focus:outline-hidden"
+                          >
+                            <option value="">-- Choose Supplier --</option>
+                            <option value="__new__">+ Add New Supplier</option>
+                            {suppliers.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.name} {s.phone ? `(${s.phone})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            value={row.sourcingType}
+                            onChange={(e) => handleTxChange(row.id, 'sourcingType', e.target.value)}
+                            className="w-full p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs font-bold text-amber-700 focus:bg-white focus:border-amber-400 focus:outline-hidden"
+                          >
+                            <option value="outsourced">Outsourced</option>
+                            <option value="local">Switch to Local</option>
+                          </select>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <input
+                            type="text"
+                            value={row.supplierName}
+                            onChange={(e) => handleTxChange(row.id, 'supplierName', e.target.value)}
+                            placeholder="Supplier Name *"
+                            className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:outline-hidden"
+                          />
+                          <input
+                            type="tel"
+                            value={row.supplierPhone}
+                            onChange={(e) => handleTxChange(row.id, 'supplierPhone', e.target.value)}
+                            placeholder="Phone"
+                            className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Item Description (4 cols) for non-bricks */
+                    <div className="sm:col-span-4">
+                      <label className="block text-xs font-extrabold text-slate-700 mb-1">Item / Details</label>
+                      <input
+                        type="text"
+                        value={row.itemService}
+                        onChange={(e) => handleTxChange(row.id, 'itemService', e.target.value)}
+                        placeholder="Details"
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:bg-white focus:border-indigo-500 focus:outline-hidden"
+                      />
+                    </div>
+                  )}
 
                   {/* Qty (1 col) */}
                   <div className="sm:col-span-1">

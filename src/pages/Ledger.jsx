@@ -5,6 +5,7 @@ import PageHeader from '../components/layout/PageHeader';
 import { formatCurrency } from '../utils/formatCurrency';
 import { exportToPdf } from '../utils/pdfGenerator';
 import { BookOpen, Search, Download, ChevronDown, Eye } from 'lucide-react';
+import { getDateRange, isDateInRange } from '../utils/calculations';
 
 const Ledger = () => {
   const { transactions, payments, customers, businesses, showToast } = useBusiness();
@@ -51,11 +52,8 @@ const Ledger = () => {
     if (selectedCust !== 'all' && ev.customerId !== selectedCust) return false;
     if (selectedBusiness !== 'all' && ev.businessId !== selectedBusiness) return false;
 
-    if (dateFilter === 'today') {
-      const todayStr = new Date().toISOString().split('T')[0];
-      if (ev.date !== '2026-08-11' && ev.date !== todayStr) return false;
-    } else if (dateFilter === 'week') {
-      if (!ev.date.startsWith('2026-08')) return false;
+    if (dateFilter === 'today' || dateFilter === 'week' || dateFilter === 'month') {
+      if (!isDateInRange(ev.date, getDateRange(dateFilter))) return false;
     } else if (dateFilter === 'custom' && customDate) {
       if (ev.date !== customDate) return false;
     }
@@ -121,7 +119,7 @@ const Ledger = () => {
               <option value="all">All Dates</option>
               <option value="today">Today</option>
               <option value="week">This Week</option>
-              <option value="month">August 2026</option>
+               <option value="month">This Month</option>
               <option value="custom">Specific Date</option>
             </select>
             {dateFilter === 'custom' && (

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   BarChart,
   Bar,
@@ -9,10 +9,17 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
-import { weeklyPerformanceData } from '../../data/mockData';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { calculateReportData } from '../../utils/calculations';
+import { useBusiness } from '../../context/BusinessContext';
 
 const RevenueChart = () => {
+  const { transactions, payments, expenses, businesses } = useBusiness();
+  const weeklyPerformanceData = useMemo(
+    () => calculateReportData(transactions, payments, expenses, businesses, 'week').weeklyPerformance,
+    [transactions, payments, expenses, businesses]
+  );
+
   return (
     <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col h-full">
       <div className="flex items-center justify-between mb-4">

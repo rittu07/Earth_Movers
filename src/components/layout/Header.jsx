@@ -15,7 +15,7 @@ const Header = ({ onMobileMenuOpen }) => {
     return 'Good evening';
   };
 
-  const todayDisplay = formatDate('2026-08-11');
+  const todayDisplay = formatDate(new Date().toISOString().split('T')[0]);
 
   return (
     <header className="h-16 bg-white border-b border-slate-200/80 px-3 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs">
