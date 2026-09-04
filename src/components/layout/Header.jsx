@@ -56,8 +56,8 @@ const Header = ({ onMobileMenuOpen }) => {
           <div className="flex items-center gap-1.5 sm:gap-2.5 truncate min-w-0">
             <Search className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 group-hover:scale-110 transition-transform shrink-0" />
             <span className="truncate text-xs sm:text-sm font-semibold text-slate-700">
-              <span className="sm:hidden">Search customer / phone...</span>
-              <span className="hidden sm:inline">Search customer or supplier name or phone...</span>
+              <span className="sm:hidden">Search customer / phone / JCB...</span>
+              <span className="hidden sm:inline">Search customer, supplier or JCB reg no (e.g. TN-23-AX-1234)...</span>
             </span>
           </div>
           <span className="hidden md:inline-flex items-center px-2 py-0.5 text-[11px] font-bold text-slate-400 bg-white border border-slate-200 rounded-lg shadow-2xs shrink-0 ml-2">

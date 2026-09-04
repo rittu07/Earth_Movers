@@ -53,6 +53,16 @@ const CustomerLedger = () => {
 
   const ledgerItems = getCustomerLedger(customer.id);
 
+  // Overall activity totals
+  const totalBusiness = ledgerItems
+    .filter((item) => item.type === 'Transaction')
+    .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+
+  const totalPaid = ledgerItems
+    .reduce((sum, item) => sum + (Number(item.paid) || 0), 0);
+
+  const totalOutstanding = Math.max(0, totalBusiness - totalPaid);
+
   const filteredItems = ledgerItems.filter((item) => {
     if (activeTab === 'transactions' && item.type !== 'Transaction') return false;
     if (activeTab === 'payments' && item.type !== 'Payment') return false;
@@ -66,6 +76,16 @@ const CustomerLedger = () => {
 
     return true;
   });
+
+  // Filtered scope statement totals
+  const filteredBusiness = filteredItems
+    .filter((item) => item.type === 'Transaction')
+    .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+
+  const filteredPaid = filteredItems
+    .reduce((sum, item) => sum + (Number(item.paid) || 0), 0);
+
+  const filteredOutstanding = Math.max(0, filteredBusiness - filteredPaid);
 
   const handleDownload = () => {
     exportToPdf({
@@ -90,9 +110,9 @@ const CustomerLedger = () => {
         formattedDue: item.due > 0 ? formatCurrency(item.due) : '₹0'
       })),
       summary: [
-        { label: 'Total Business / Sales', value: formatCurrency(customer.totalBusiness) },
-        { label: 'Total Amount Received', value: formatCurrency(customer.paid), color: '#15803d' },
-        { label: 'Net Outstanding Due', value: formatCurrency(customer.outstanding), color: '#b91c1c' }
+        { label: 'Total Business / Sales', value: formatCurrency(filteredBusiness) },
+        { label: 'Total Amount Received', value: formatCurrency(filteredPaid), color: '#15803d' },
+        { label: 'Net Outstanding Due', value: formatCurrency(filteredOutstanding), color: '#b91c1c' }
       ]
     });
   };
@@ -154,14 +174,30 @@ const CustomerLedger = () => {
         </div>
       </div>
 
-      {/* Outstanding Metric Card */}
-      <div className="max-w-xs">
+      {/* Financial Metrics Cards Header */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <span className="text-xs font-black text-slate-500 uppercase tracking-wider block">
+            Total Business / Sales
+          </span>
+          <p className="text-2xl font-black text-slate-900 mt-1">
+            {formatCurrency(totalBusiness)}
+          </p>
+        </div>
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <span className="text-xs font-black text-emerald-600 uppercase tracking-wider block">
+            Total Paid / Received
+          </span>
+          <p className="text-2xl font-black text-emerald-600 mt-1">
+            {formatCurrency(totalPaid)}
+          </p>
+        </div>
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <span className="text-xs font-black text-rose-600 uppercase tracking-wider block">
-            Outstanding
+            Net Outstanding Due
           </span>
           <p className="text-2xl font-black text-rose-600 mt-1">
-            {formatCurrency(customer.outstanding)}
+            {formatCurrency(totalOutstanding)}
           </p>
         </div>
       </div>

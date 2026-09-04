@@ -1,23 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import TransactionTable from '../components/transactions/TransactionTable';
+import JCBServiceTracker from '../components/businesses/JCBServiceTracker';
+import JCBDieselSummary from '../components/businesses/JCBDieselSummary';
 import { formatCurrency } from '../utils/formatCurrency';
 import { calculateBusinessMetrics } from '../utils/calculations';
-import { Truck, PlusCircle } from 'lucide-react';
+import { Truck, PlusCircle, Wrench, Fuel, FileText } from 'lucide-react';
 
 const JCBRental = () => {
   const { transactions, payments, expenses } = useBusiness();
-  const jcbTrxs = transactions.filter((t) => t.businessId === 'jcb');
+  const [activeTab, setActiveTab] = useState('maintenance'); // maintenance, sales, diesel
 
+  const jcbTrxs = transactions.filter((t) => t.businessId === 'jcb');
   const metrics = calculateBusinessMetrics(transactions, payments, expenses, 'jcb');
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <PageHeader
         title="JCB Rental Service"
-        subtitle="JCB earthmover rental, excavator service, site work dispatch and hourly tracking"
+        subtitle="JCB earthmover rental, excavator service, oil maintenance tracker & hourly monitoring"
         action={
           <Link
             to="/transactions/add?business=jcb"
@@ -59,13 +62,58 @@ const JCBRental = () => {
         </div>
       </div>
 
-      {/* Transaction Log */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-          JCB Rental Log
-        </h3>
-        <TransactionTable transactions={jcbTrxs} />
+      {/* Navigation Tabs */}
+      <div className="border-b border-slate-200 flex items-center gap-6 text-xs font-bold">
+        <button
+          onClick={() => setActiveTab('maintenance')}
+          className={`pb-3 transition-all relative flex items-center gap-2 cursor-pointer ${
+            activeTab === 'maintenance'
+              ? 'text-amber-600 border-b-2 border-amber-600'
+              : 'text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Wrench className="w-4 h-4" />
+          <span>JCB Fleet & Oil Maintenance (300h/3000h)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('sales')}
+          className={`pb-3 transition-all relative flex items-center gap-2 cursor-pointer ${
+            activeTab === 'sales'
+              ? 'text-amber-600 border-b-2 border-amber-600'
+              : 'text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>JCB Rental Orders ({jcbTrxs.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('diesel')}
+          className={`pb-3 transition-all relative flex items-center gap-2 cursor-pointer ${
+            activeTab === 'diesel'
+              ? 'text-amber-600 border-b-2 border-amber-600'
+              : 'text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Fuel className="w-4 h-4" />
+          <span>Diesel Management</span>
+        </button>
       </div>
+
+      {/* Tab Content */}
+      {activeTab === 'maintenance' && <JCBServiceTracker />}
+
+      {activeTab === 'sales' && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+            JCB Rental Log
+          </h3>
+          <TransactionTable transactions={jcbTrxs} />
+        </div>
+      )}
+
+      {activeTab === 'diesel' && <JCBDieselSummary onOpenAddDieselModal={() => {}} />}
     </div>
   );
 };

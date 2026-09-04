@@ -1,13 +1,22 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBusiness } from '../../context/BusinessContext';
-import { Search, X, User, Phone, ArrowRight, Building, Clock, PlusCircle } from 'lucide-react';
+import { Search, X, User, Phone, ArrowRight, Building, Clock, PlusCircle, Truck } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatCurrency';
+
+const defaultJcbFleet = [
+  { id: 'jcb-1', code: 'JCB-01', regNo: 'TN-23-AX-1234', totalHours: 1420, driver: 'Kumar', status: 'Active' },
+  { id: 'jcb-2', code: 'JCB-02', regNo: 'TN-23-BY-5678', totalHours: 1560, driver: 'Ravi', status: 'Active' },
+  { id: 'jcb-3', code: 'JCB-03', regNo: 'TN-23-CZ-9012', totalHours: 1680, driver: 'Ramesh', status: 'Active' },
+  { id: 'jcb-4', code: 'JCB-04', regNo: 'TN-23-DW-3456', totalHours: 1120, driver: 'Velu', status: 'Active' },
+  { id: 'jcb-5', code: 'JCB-05', regNo: 'TN-23-EV-7890', totalHours: 980, driver: 'Selvam', status: 'Active' },
+  { id: 'jcb-6', code: 'JCB-06', regNo: 'TN-23-FU-2468', totalHours: 850, driver: 'Saravanan', status: 'Active' }
+];
 
 const CustomerQuickSearchModal = () => {
   const { isSearchOpen, closeSearchModal, customers = [], suppliers = [], transactions = [] } = useBusiness();
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('all'); // 'all', 'customers', 'suppliers'
+  const [activeTab, setActiveTab] = useState('all'); // 'all', 'customers', 'suppliers', 'jcb'
   const [selectedCust, setSelectedCust] = useState(null);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const navigate = useNavigate();
@@ -49,6 +58,7 @@ const CustomerQuickSearchModal = () => {
   if (!isSearchOpen) return null;
 
   const query = searchTerm.toLowerCase().trim();
+  const cleanQuery = query.replace(/[^a-z0-9]/gi, '');
 
   // Filter customers matching query
   const filteredCustomers = (customers || []).filter(
@@ -62,6 +72,16 @@ const CustomerQuickSearchModal = () => {
     (s) =>
       s.name.toLowerCase().includes(query) ||
       (s.phone && s.phone.includes(query))
+  );
+
+  // Filter JCB machines matching reg number or code or driver
+  const filteredJcbs = defaultJcbFleet.filter(
+    (j) =>
+      !query ||
+      j.code.toLowerCase().includes(query) ||
+      j.regNo.toLowerCase().includes(query) ||
+      (cleanQuery && j.regNo.replace(/[^a-z0-9]/gi, '').toLowerCase().includes(cleanQuery)) ||
+      j.driver.toLowerCase().includes(query)
   );
 
   // Get transactions for a given customer
@@ -119,7 +139,7 @@ const CustomerQuickSearchModal = () => {
             <Search className="w-5 h-5 text-slate-400 shrink-0" />
             <input
               type="text"
-              placeholder="Search customer or supplier name or phone..."
+              placeholder="Search customer, supplier or JCB reg no (e.g. TN-23-AX-1234)..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -146,7 +166,7 @@ const CustomerQuickSearchModal = () => {
                 activeTab === 'all' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
               }`}
             >
-              All ({filteredCustomers.length + filteredSuppliers.length})
+              All ({filteredCustomers.length + filteredSuppliers.length + filteredJcbs.length})
             </button>
             <button
               onClick={() => setActiveTab('customers')}
@@ -162,7 +182,15 @@ const CustomerQuickSearchModal = () => {
                 activeTab === 'suppliers' ? 'bg-orange-600 text-white shadow-2xs' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
               }`}
             >
-              Suppliers / Chambers ({filteredSuppliers.length})
+              Suppliers ({filteredSuppliers.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('jcb')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                activeTab === 'jcb' ? 'bg-amber-500 text-slate-950 shadow-2xs' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              JCB Machines ({filteredJcbs.length})
             </button>
           </div>
         </div>
@@ -298,11 +326,72 @@ const CustomerQuickSearchModal = () => {
                 </div>
               )}
 
-              {filteredCustomers.length === 0 && filteredSuppliers.length === 0 && (
+              {/* JCB FLEET MACHINES SECTION */}
+              {(activeTab === 'all' || activeTab === 'jcb') && (
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-amber-800 mb-2 px-1 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Truck className="w-3.5 h-3.5 text-amber-600" />
+                      Matching JCB Fleet Machines ({filteredJcbs.length})
+                    </span>
+                  </div>
+                  {filteredJcbs.length === 0 ? (
+                    activeTab === 'jcb' && (
+                      <div className="py-8 text-center text-xs text-slate-400">
+                        No JCB machine found matching "{searchTerm}"
+                      </div>
+                    )
+                  ) : (
+                    <div className="space-y-2">
+                      {filteredJcbs.map((jcb) => (
+                        <div
+                          key={jcb.id}
+                          onClick={() => {
+                            closeSearchModal();
+                            navigate('/business/jcb');
+                          }}
+                          className="p-3 rounded-xl border border-amber-200/90 hover:border-amber-400 hover:bg-amber-50/40 cursor-pointer transition-all flex items-center justify-between group bg-white shadow-2xs"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-800 font-extrabold flex items-center justify-center text-xs shrink-0">
+                              <Truck className="w-4 h-4 text-amber-700" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="text-sm font-black text-slate-900 group-hover:text-amber-600 transition-colors">
+                                  {jcb.code}
+                                </h4>
+                                <span className="text-xs font-extrabold text-amber-900 font-mono bg-amber-100 px-2 py-0.5 rounded-md border border-amber-200">
+                                  {jcb.regNo}
+                                </span>
+                              </div>
+                              <div className="flex items-center text-xs text-slate-500 gap-2 mt-0.5 font-medium">
+                                <span>Driver: <strong>{jcb.driver}</strong></span>
+                                <span>• Status: {jcb.status}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-right">
+                            <div className="text-xs font-black text-slate-900">
+                              {jcb.totalHours} hrs <span className="text-[10px] text-slate-400 font-semibold">meter</span>
+                            </div>
+                            <span className="text-[10px] font-bold text-amber-600 group-hover:underline flex items-center justify-end gap-0.5 mt-0.5">
+                              View Machine Maintenance →
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {filteredCustomers.length === 0 && filteredSuppliers.length === 0 && filteredJcbs.length === 0 && (
                 <div className="py-12 text-center">
                   <User className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-slate-600">No matching customer or supplier found</p>
-                  <p className="text-xs text-slate-400 mt-1">Try searching with a name or mobile number</p>
+                  <p className="text-sm font-medium text-slate-600">No matching customer, supplier, or JCB machine found</p>
+                  <p className="text-xs text-slate-400 mt-1">Try searching with a name, mobile number, or JCB registration number (e.g. TN-23-AX-1234)</p>
                 </div>
               )}
 

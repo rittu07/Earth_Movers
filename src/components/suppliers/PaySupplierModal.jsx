@@ -3,9 +3,12 @@ import { useBusiness } from '../../context/BusinessContext';
 import { Wallet, X, DollarSign, Calendar, CreditCard, FileText, Building2 } from 'lucide-react';
 
 const PaySupplierModal = ({ isOpen, onClose, preselectedSupplierId = '' }) => {
-  const { suppliers = [], addSupplierPayment, showToast } = useBusiness();
+  const { suppliers = [], addSupplier, addSupplierPayment, showToast } = useBusiness();
 
   const [supplierId, setSupplierId] = useState(preselectedSupplierId || (suppliers[0]?.id || ''));
+  const [isNewSupplier, setIsNewSupplier] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState('');
+  const [newSupplierPhone, setNewSupplierPhone] = useState('');
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('UPI');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -24,9 +27,25 @@ const PaySupplierModal = ({ isOpen, onClose, preselectedSupplierId = '' }) => {
       return;
     }
 
+    let finalSupId = supplierId;
+    let finalSupName = selectedSupplier ? selectedSupplier.name : 'Supplier';
+
+    if (isNewSupplier) {
+      if (!newSupplierName.trim()) {
+        showToast('Please enter a valid supplier name');
+        return;
+      }
+      const createdSup = addSupplier({
+        name: newSupplierName.trim(),
+        phone: newSupplierPhone.trim() || ''
+      });
+      finalSupId = createdSup.id;
+      finalSupName = createdSup.name;
+    }
+
     addSupplierPayment({
-      supplierId: selectedSupplier ? selectedSupplier.id : supplierId,
-      supplierName: selectedSupplier ? selectedSupplier.name : 'Supplier',
+      supplierId: finalSupId,
+      supplierName: finalSupName,
       amount: payAmt,
       method,
       date,
@@ -35,6 +54,9 @@ const PaySupplierModal = ({ isOpen, onClose, preselectedSupplierId = '' }) => {
     });
 
     setAmount('');
+    setNewSupplierName('');
+    setNewSupplierPhone('');
+    setIsNewSupplier(false);
     setReference('');
     setNotes('');
     onClose();
@@ -64,20 +86,58 @@ const PaySupplierModal = ({ isOpen, onClose, preselectedSupplierId = '' }) => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
-          {/* Supplier Select */}
+          {/* Supplier Select / Inline New Supplier */}
           <div>
-            <label className="block font-bold text-slate-700 mb-1">Select Supplier *</label>
-            <select
-              value={supplierId}
-              onChange={(e) => setSupplierId(e.target.value)}
-              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-hidden focus:border-emerald-500"
-            >
-              {suppliers.map((sup) => (
-                <option key={sup.id} value={sup.id}>
-                  {sup.name} ({sup.phone || 'No phone'})
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block font-bold text-slate-700">Select Supplier *</label>
+              <button
+                type="button"
+                onClick={() => setIsNewSupplier(!isNewSupplier)}
+                className="text-xs text-indigo-600 font-extrabold hover:underline cursor-pointer"
+              >
+                {isNewSupplier ? 'Select Existing' : '+ Add New Supplier'}
+              </button>
+            </div>
+
+            {!isNewSupplier ? (
+              <select
+                value={supplierId}
+                onChange={(e) => {
+                  if (e.target.value === '__new__') {
+                    setIsNewSupplier(true);
+                  } else {
+                    setSupplierId(e.target.value);
+                  }
+                }}
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-hidden focus:border-emerald-500 cursor-pointer"
+              >
+                <option value="">-- Choose Supplier --</option>
+                <option value="__new__">+ Add New Supplier</option>
+                {suppliers.map((sup) => (
+                  <option key={sup.id} value={sup.id}>
+                    {sup.name} ({sup.phone || 'No phone'})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  required
+                  value={newSupplierName}
+                  onChange={(e) => setNewSupplierName(e.target.value)}
+                  placeholder="Supplier Name *"
+                  className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-hidden focus:border-emerald-500 shadow-2xs"
+                />
+                <input
+                  type="tel"
+                  value={newSupplierPhone}
+                  onChange={(e) => setNewSupplierPhone(e.target.value)}
+                  placeholder="Phone"
+                  className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-500 shadow-2xs"
+                />
+              </div>
+            )}
           </div>
 
           {/* Amount */}

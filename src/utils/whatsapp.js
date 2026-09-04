@@ -7,18 +7,53 @@ export const COMPANY_NAME = 'Loganathan Earth Movers';
 /**
  * Format WhatsApp message for a New Transaction
  */
+/**
+ * Format WhatsApp message for a New Transaction with complete breakdown
+ */
 export const formatTransactionWhatsApp = ({
   customerName = 'Customer',
   serviceName = 'JCB Rental',
-  quantity = 5,
-  unit = 'Hours',
-  amount = 7500,
-  paid = 5000,
-  due = 2500
+  businessName = '',
+  quantity = 1,
+  unit = 'Units',
+  rate = 0,
+  amount = 0,
+  paid = 0,
+  due = 0,
+  date = '',
+  jcbVehicle = '',
+  driverName = '',
+  driverPhone = '',
+  driverAmount = 0,
+  startTime = '',
+  endTime = '',
+  deliveryPlace = ''
 }) => {
   const serviceTitle = serviceName.includes('JCB') ? '🚜 JCB Rental' : `📦 ${serviceName}`;
+  const rateText = rate ? ` (Rate: ₹${Number(rate).toLocaleString('en-IN')}/${unit})` : '';
+  const dateText = date ? `\n📅 Date: ${date}` : '';
+  const timeText = (startTime && endTime) ? `\n⏱ Running Hours: ${startTime} to ${endTime} (${quantity} hrs)` : '';
+  const jcbText = jcbVehicle ? `\n🚜 JCB Machine: ${jcbVehicle}` : '';
+  const driverText = driverName ? `\n👤 Driver: ${driverName}${driverPhone ? ` (${driverPhone})` : ''}${Number(driverAmount) > 0 ? ` [Bata: ₹${driverAmount}]` : ''}` : '';
+  const siteText = deliveryPlace ? `\n📍 Site: ${deliveryPlace}` : '';
 
-  return `Hello ${customerName} 👋\n\nYour ${serviceName} transaction has been recorded.\n\n${serviceTitle}: ${quantity} ${unit}\n💰 Total: ₹${Number(amount).toLocaleString('en-IN')}\n✅ Paid: ₹${Number(paid).toLocaleString('en-IN')}\n⏳ Remaining: ₹${Number(due).toLocaleString('en-IN')}\n\nThank you for choosing ${COMPANY_NAME}.`;
+  return `Hello ${customerName} 👋\n\nYour transaction with ${COMPANY_NAME} has been recorded.\n${dateText}\n\n${serviceTitle}: ${quantity} ${unit}${rateText}${timeText}${jcbText}${driverText}${siteText}\n\n💰 Total Bill: ₹${Number(amount).toLocaleString('en-IN')}\n✅ Paid Amount: ₹${Number(paid).toLocaleString('en-IN')}\n⏳ Remaining Due: ₹${Number(due).toLocaleString('en-IN')}\n\nThank you for doing business with ${COMPANY_NAME}! 🙏`;
+};
+
+/**
+ * Format WhatsApp message for JCB Oil Maintenance Overdue Alert
+ */
+export const formatJCBOverdueWhatsApp = ({
+  code = 'JCB-01',
+  regNo = 'TN-23-AX-1234',
+  totalHours = 1420,
+  overdueServices = []
+}) => {
+  const serviceList = overdueServices.length > 0
+    ? overdueServices.map((s) => `• ${s.name}: ${s.hoursRun}/${s.limit} hrs (${s.overdueHrs > 0 ? `OVERDUE by ${s.overdueHrs} hrs!` : 'Due Soon'})`).join('\n')
+    : '• Service Recommended';
+
+  return `🚨 *JCB OIL SERVICE OVERDUE ALERT* 🚨\n\n🚜 *Equipment:* ${code} (${regNo})\n⏱ *Current Meter Hours:* ${totalHours} hrs\n\n⚠️ *Pending / Overdue Maintenance:*\n${serviceList}\n\n⚠️ Please schedule oil change & lubrication servicing immediately for ${COMPANY_NAME} fleet safety.`;
 };
 
 /**

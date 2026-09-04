@@ -1,13 +1,40 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useBusiness } from '../../context/BusinessContext';
 import StatusBadge from '../common/StatusBadge';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { openWhatsAppChat } from '../../utils/whatsapp';
 import { Eye, Trash2, Phone, MapPin, ChevronDown, MessageSquare, PlusCircle, Wallet } from 'lucide-react';
 
 const CustomerTable = ({ customers, onDelete }) => {
+  const { transactions = [], payments = [] } = useBusiness();
   const [expandedId, setExpandedId] = useState(null);
   const navigate = useNavigate();
+
+  const getCustMetrics = (cust) => {
+    const custNameLower = cust.name ? cust.name.toLowerCase().trim() : '';
+    const custTrxs = transactions.filter(
+      (t) => t.customerId === cust.id || (t.customerName && t.customerName.toLowerCase().trim() === custNameLower)
+    );
+    const custPays = payments.filter(
+      (p) => p.customerId === cust.id || (p.customerName && p.customerName.toLowerCase().trim() === custNameLower)
+    );
+
+    const totalBus = custTrxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const trxPaid = custTrxs.reduce((sum, t) => sum + (Number(t.paid) || 0), 0);
+    const directPaid = custPays.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const totalPaid = trxPaid + directPaid;
+
+    const finalTotalBus = totalBus > 0 ? totalBus : (Number(cust.totalBusiness) || 0);
+    const finalTotalPaid = totalPaid > 0 ? totalPaid : (Number(cust.paid) || 0);
+    const finalOutstanding = Math.max(0, finalTotalBus - finalTotalPaid);
+
+    return {
+      totalBusiness: finalTotalBus,
+      paid: finalTotalPaid,
+      outstanding: finalOutstanding
+    };
+  };
 
   return (
     <div>
@@ -20,6 +47,8 @@ const CustomerTable = ({ customers, onDelete }) => {
         ) : (
           customers.map((cust) => {
             const isExpanded = expandedId === cust.id;
+            const metrics = getCustMetrics(cust);
+
             return (
               <div
                 key={cust.id}
@@ -48,8 +77,8 @@ const CustomerTable = ({ customers, onDelete }) => {
                   <div className="text-right shrink-0 flex items-center gap-2">
                     <div>
                       <div className="text-xs font-extrabold text-slate-500 uppercase">
-                        {cust.outstanding > 0 ? (
-                          <span className="text-rose-600 font-black text-base">{formatCurrency(cust.outstanding)}</span>
+                        {metrics.outstanding > 0 ? (
+                          <span className="text-rose-600 font-black text-base">{formatCurrency(metrics.outstanding)}</span>
                         ) : (
                           <span className="text-emerald-600 font-bold text-sm">Clear (₹0)</span>
                         )}
@@ -93,7 +122,7 @@ const CustomerTable = ({ customers, onDelete }) => {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              openWhatsAppChat(cust.phone, `Hello ${cust.name}, regarding your account balance of ${formatCurrency(cust.outstanding)}.`);
+                              openWhatsAppChat(cust.phone, `Hello ${cust.name}, regarding your account balance of ${formatCurrency(metrics.outstanding)}.`);
                             }}
                             className="p-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-bold transition-all flex items-center justify-center shadow-2xs cursor-pointer"
                             title="WhatsApp Message"
@@ -108,15 +137,15 @@ const CustomerTable = ({ customers, onDelete }) => {
                     <div className="grid grid-cols-3 gap-2">
                       <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center">
                         <span className="text-[9px] font-extrabold text-slate-400 uppercase block">Total Business</span>
-                        <span className="text-xs font-black text-slate-900 mt-0.5 block">{formatCurrency(cust.totalBusiness)}</span>
+                        <span className="text-xs font-black text-slate-900 mt-0.5 block">{formatCurrency(metrics.totalBusiness)}</span>
                       </div>
                       <div className="bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-200 text-center">
                         <span className="text-[9px] font-extrabold text-emerald-700 uppercase block">Total Paid</span>
-                        <span className="text-xs font-black text-emerald-700 mt-0.5 block">{formatCurrency(cust.paid)}</span>
+                        <span className="text-xs font-black text-emerald-700 mt-0.5 block">{formatCurrency(metrics.paid)}</span>
                       </div>
                       <div className="bg-rose-50/80 p-2.5 rounded-xl border border-rose-200 text-center">
                         <span className="text-[9px] font-extrabold text-rose-700 uppercase block">Outstanding</span>
-                        <span className="text-xs font-black text-rose-700 mt-0.5 block">{cust.outstanding > 0 ? formatCurrency(cust.outstanding) : '₹0'}</span>
+                        <span className="text-xs font-black text-rose-700 mt-0.5 block">{metrics.outstanding > 0 ? formatCurrency(metrics.outstanding) : '₹0'}</span>
                       </div>
                     </div>
 
@@ -176,9 +205,9 @@ const CustomerTable = ({ customers, onDelete }) => {
             <tr>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Customer</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Mobile Number</th>
-              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">Total Business</th>
-              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">Paid Amount</th>
-              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">Outstanding</th>
+              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">TOTAL BUSINESS</th>
+              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">PAID AMOUNT</th>
+              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">OUTSTANDING</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium">
@@ -189,53 +218,57 @@ const CustomerTable = ({ customers, onDelete }) => {
                 </td>
               </tr>
             ) : (
-              customers.map((cust) => (
-                <tr key={cust.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 font-black flex items-center justify-center text-sm shrink-0">
-                        {cust.name.charAt(0)}
+              customers.map((cust) => {
+                const metrics = getCustMetrics(cust);
+
+                return (
+                  <tr key={cust.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 font-black flex items-center justify-center text-sm shrink-0">
+                          {cust.name.charAt(0)}
+                        </div>
+                        <div>
+                          <Link
+                            to={`/customers/${cust.id}`}
+                            className="font-black text-base text-slate-900 hover:text-indigo-600 transition-colors"
+                          >
+                            {cust.name}
+                          </Link>
+                          <p className="text-xs text-slate-500 font-medium truncate max-w-xs">
+                            {cust.address}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <Link
-                          to={`/customers/${cust.id}`}
-                          className="font-black text-base text-slate-900 hover:text-indigo-600 transition-colors"
-                        >
-                          {cust.name}
-                        </Link>
-                        <p className="text-xs text-slate-500 font-medium truncate max-w-xs">
-                          {cust.address}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
+                    </td>
 
-                  <td className="py-4 px-4 text-slate-700 font-bold text-sm whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Phone className="w-3.5 h-3.5 text-slate-400" />
-                      {cust.phone}
-                    </span>
-                  </td>
-
-                  <td className="py-4 px-4 text-right font-black text-base text-slate-950 whitespace-nowrap">
-                    {formatCurrency(cust.totalBusiness)}
-                  </td>
-
-                  <td className="py-4 px-4 text-right font-black text-base text-emerald-700 whitespace-nowrap">
-                    {formatCurrency(cust.paid)}
-                  </td>
-
-                  <td className="py-4 px-4 text-right whitespace-nowrap">
-                    {cust.outstanding > 0 ? (
-                      <span className="font-black text-base text-amber-600">
-                        {formatCurrency(cust.outstanding)}
+                    <td className="py-4 px-4 text-slate-700 font-bold text-sm whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-slate-400" />
+                        {cust.phone}
                       </span>
-                    ) : (
-                      <span className="font-bold text-sm text-slate-400">₹0</span>
-                    )}
-                  </td>
-                </tr>
-              ))
+                    </td>
+
+                    <td className="py-4 px-4 text-right font-black text-base text-slate-950 whitespace-nowrap">
+                      {formatCurrency(metrics.totalBusiness)}
+                    </td>
+
+                    <td className="py-4 px-4 text-right font-black text-base text-emerald-700 whitespace-nowrap">
+                      {formatCurrency(metrics.paid)}
+                    </td>
+
+                    <td className="py-4 px-4 text-right whitespace-nowrap">
+                      {metrics.outstanding > 0 ? (
+                        <span className="font-black text-base text-amber-600">
+                          {formatCurrency(metrics.outstanding)}
+                        </span>
+                      ) : (
+                        <span className="font-bold text-sm text-slate-400">₹0</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

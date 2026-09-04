@@ -4,7 +4,7 @@ import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import CustomerTable from '../components/customers/CustomerTable';
 import SupplierSection from '../components/suppliers/SupplierSection';
-import { Search, UserPlus, Filter } from 'lucide-react';
+import { Search, PlusCircle, Filter } from 'lucide-react';
 
 const Customers = () => {
   const { customers, deleteCustomer } = useBusiness();
@@ -26,14 +26,14 @@ const Customers = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <PageHeader
-        title="Customers"
-        subtitle="Manage your customer base, phone contacts and balances"
+        title="Transactions"
+        subtitle="Manage transactions, customer base, phone contacts and balances"
         action={
           <Link
-            to="/customers/add"
+            to="/transactions/add"
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all"
           >
-            <UserPlus className="w-4 h-4" /> + Add Customer
+            <PlusCircle className="w-4 h-4" /> + Add Transaction
           </Link>
         }
       />

@@ -5,6 +5,7 @@ import {
 } from '../data/mockData';
 import { formatDate } from '../utils/formatCurrency';
 import { calculateSummaryMetrics } from '../utils/calculations';
+import { calculateElapsedMonths } from '../utils/loanUtils';
 import { getAllLocal, putLocal, putManyLocal } from '../db/localDb';
 import { queueEntity, startSync, syncNow } from '../db/syncQueue';
 
@@ -205,16 +206,16 @@ export const BusinessProvider = ({ children }) => {
     setTransactions((prev) => [newTrx, ...prev]);
     persist('transactions', newTrx);
 
-    // Automatically record an expense entry for outsourced bricks purchase if amount paid/cost is present
+    // Automatically record an expense entry for outsourced purchases if amount paid/cost is present
     if (trxData.isOutsourced && (Number(trxData.outsourcedCost) > 0 || Number(trxData.outsourcedPaid) > 0)) {
       const expAmt = Number(trxData.outsourcedPaid) || Number(trxData.outsourcedCost) || 0;
       if (expAmt > 0) {
         addExpense({
-          businessId: 'bricks',
-          category: 'Raw Materials / Bricks',
-          description: `Outsourced Bricks - ${trxData.outsourcedSupplier || 'Supplier'} (${trxData.outsourcedBrickQty || 0} bricks @ ₹${trxData.outsourcedCostPerBrick || 0}/brick)`,
+          businessId: trxData.businessId || 'sand',
+          category: 'Outsourced Material Purchase',
+          description: `Outsourced ${trxData.itemService || 'Material'} - ${trxData.outsourcedSupplier || 'Supplier'}`,
           amount: expAmt,
-          method: 'Cash',
+          method: trxData.paymentMethod || 'Cash',
           date: trxData.date || todayStr,
           notes: `Supplier Phone: ${trxData.outsourcedPhone || 'N/A'}. Total Cost: ₹${trxData.outsourcedCost || 0}, Paid to Supplier: ₹${trxData.outsourcedPaid || 0}`
         });
@@ -466,7 +467,8 @@ export const BusinessProvider = ({ children }) => {
     const loanId = `FIN-${Math.floor(100 + Math.random() * 900)}`;
     const principal = Number(loanData.principal) || 0;
     const rate = Number(loanData.interestRate) || 0;
-    const months = Number(loanData.months) || 1;
+    const startDate = loanData.startDate || new Date().toISOString().split('T')[0];
+    const months = Number(loanData.months) || calculateElapsedMonths(startDate);
     const monthlyInterest = (principal * rate) / 100;
     const totalInterest = monthlyInterest * months;
     const totalAmount = principal + totalInterest;
@@ -477,7 +479,7 @@ export const BusinessProvider = ({ children }) => {
       phone: loanData.phone || '',
       principal,
       interestRate: rate,
-      startDate: loanData.startDate || new Date().toISOString().split('T')[0],
+      startDate,
       months,
       monthlyInterest,
       totalInterest,
@@ -485,7 +487,8 @@ export const BusinessProvider = ({ children }) => {
       returnedAmount: 0,
       dueAmount: totalAmount,
       status: 'Active',
-      notes: loanData.notes || ''
+      notes: loanData.notes || '',
+      paymentHistory: []
     };
 
     setFinanceLoans((prev) => [newLoan, ...prev]);
@@ -494,32 +497,62 @@ export const BusinessProvider = ({ children }) => {
     return newLoan;
   };
 
+  const updateFinanceLoanMonths = (loanId, newMonths) => {
+    const targetMonths = Math.max(1, Number(newMonths) || 1);
+    let updatedLoan = null;
+    setFinanceLoans((prev) =>
+      prev.map((loan) => {
+        if (loan.id === loanId) {
+          const monthlyInterest = (loan.principal * loan.interestRate) / 100;
+          const totalInterest = monthlyInterest * targetMonths;
+          const totalAmount = loan.principal + totalInterest;
+          const returned = loan.returnedAmount || 0;
+          const newDue = Math.max(0, totalAmount - returned);
+          updatedLoan = {
+            ...loan,
+            months: targetMonths,
+            monthlyInterest,
+            totalInterest,
+            totalAmount,
+            dueAmount: newDue,
+            status: newDue === 0 ? 'Settled' : (loan.status === 'Settled' && newDue > 0) ? 'Active' : loan.status
+          };
+          return updatedLoan;
+        }
+        return loan;
+      })
+    );
+    if (updatedLoan) persist('financeLoans', updatedLoan, 'update');
+    showToast(`Loan tenure updated to ${targetMonths} month(s)!`);
+  };
+
   const recordReturnPayment = (loanId, amount, monthLabel, newMonths) => {
     const payAmt = Number(amount) || 0;
     let updatedLoan = null;
     setFinanceLoans((prev) =>
       prev.map((loan) => {
         if (loan.id === loanId) {
-          const newReturned = loan.returnedAmount + payAmt;
-          const newDue = Math.max(0, loan.totalAmount - newReturned);
-          const history = [...(loan.paymentHistory || []), {
-            month: monthLabel || 'Unspecified',
-            amount: payAmt,
-            date: new Date().toISOString().split('T')[0]
-          }];
-          const updatedMonths = Number(newMonths) || loan.months;
+          const updatedMonths = Number(newMonths) || loan.months || calculateElapsedMonths(loan.startDate);
           const monthlyInterest = (loan.principal * loan.interestRate) / 100;
           const totalInterest = monthlyInterest * updatedMonths;
           const totalAmount = loan.principal + totalInterest;
+          const newReturned = (loan.returnedAmount || 0) + payAmt;
+          const newDue = Math.max(0, totalAmount - newReturned);
+          const history = [...(loan.paymentHistory || []), {
+            month: monthLabel || `Month ${updatedMonths}`,
+            amount: payAmt,
+            date: new Date().toISOString().split('T')[0]
+          }];
+          
           updatedLoan = {
             ...loan,
             returnedAmount: newReturned,
-            dueAmount: Math.max(0, totalAmount - newReturned),
+            dueAmount: newDue,
             months: updatedMonths,
             monthlyInterest,
             totalInterest,
             totalAmount,
-            status: Math.max(0, totalAmount - newReturned) === 0 ? 'Settled' : loan.status,
+            status: newDue === 0 ? 'Settled' : loan.status,
             paymentHistory: history
           };
           return updatedLoan;
@@ -558,8 +591,21 @@ export const BusinessProvider = ({ children }) => {
   const getSupplierById = (id) => suppliers.find((s) => s.id === id || s.name.toLowerCase().includes(id.toLowerCase()));
 
   const getCustomerLedger = (customerId) => {
-    const custTrxs = transactions.filter((t) => t.customerId === customerId);
-    const custPays = payments.filter((p) => p.customerId === customerId);
+    const custObj = customers.find(
+      (c) => c.id === customerId || (c.name && customerId && c.name.toLowerCase() === customerId.toLowerCase())
+    );
+    const custNameLower = custObj ? custObj.name.toLowerCase() : (customerId ? customerId.toLowerCase() : '');
+
+    const custTrxs = transactions.filter(
+      (t) =>
+        t.customerId === customerId ||
+        (t.customerName && custNameLower && t.customerName.toLowerCase() === custNameLower)
+    );
+    const custPays = payments.filter(
+      (p) =>
+        p.customerId === customerId ||
+        (p.customerName && custNameLower && p.customerName.toLowerCase() === custNameLower)
+    );
 
     // Merge into chronological ledger events
     const items = [
@@ -570,9 +616,9 @@ export const BusinessProvider = ({ children }) => {
         type: 'Transaction',
         business: t.businessName,
         description: `${t.itemService} (${t.quantity} ${t.unit})`,
-        amount: t.amount,
-        paid: t.paid,
-        due: t.due,
+        amount: Number(t.amount) || 0,
+        paid: Number(t.paid) || 0,
+        due: Number(t.due) !== undefined && !isNaN(Number(t.due)) ? Number(t.due) : Math.max(0, (Number(t.amount) || 0) - (Number(t.paid) || 0)),
         status: t.status,
         driverName: t.driverName,
         driverAmount: t.driverAmount,
@@ -587,9 +633,9 @@ export const BusinessProvider = ({ children }) => {
         displayDate: p.displayDate || formatDate(p.date),
         type: 'Payment',
         business: 'Payment Settlement',
-        description: `Payment Received (${p.method} - Ref: ${p.reference})`,
+        description: `Payment Received (${p.method} - Ref: ${p.reference || 'N/A'})`,
         amount: 0,
-        paid: p.amount,
+        paid: Number(p.amount) || 0,
         due: 0,
         status: 'Settled'
       }))
@@ -677,6 +723,7 @@ export const BusinessProvider = ({ children }) => {
         addSupplierPayment,
         addDieselLog,
         addFinanceLoan,
+        updateFinanceLoanMonths,
         recordReturnPayment,
         settleFinanceLoan,
         deleteFinanceLoan,

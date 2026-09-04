@@ -7,6 +7,7 @@ import BusinessQuickActions from '../components/dashboard/BusinessQuickActions';
 import RecentTransactions from '../components/dashboard/RecentTransactions';
 import QuickActions from '../components/dashboard/QuickActions';
 import { formatCurrency } from '../utils/formatCurrency';
+import { getLoanCalculatedDetails, calculateElapsedMonths } from '../utils/loanUtils';
 import {
   Landmark,
   PlusCircle,
@@ -16,7 +17,11 @@ import {
   Wallet,
   Trash2,
   X,
-  Search
+  Search,
+  Plus,
+  Minus,
+  Info,
+  Calendar
 } from 'lucide-react';
 
 const Finance = () => {
@@ -24,6 +29,7 @@ const Finance = () => {
     overviewMetrics,
     financeLoans = [],
     addFinanceLoan,
+    updateFinanceLoanMonths,
     recordReturnPayment,
     settleFinanceLoan,
     deleteFinanceLoan
@@ -51,8 +57,11 @@ const Finance = () => {
   const [newStartDate, setNewStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [newNotes, setNewNotes] = useState('');
 
+  // Process loans with dynamic variable month calculations
+  const processedLoans = financeLoans.map((loan) => getLoanCalculatedDetails(loan));
+
   // Filtered loans list
-  const filteredLoans = financeLoans.filter((loan) => {
+  const filteredLoans = processedLoans.filter((loan) => {
     const matchesSearch =
       loan.borrowerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       loan.phone.includes(searchTerm);
@@ -61,11 +70,17 @@ const Finance = () => {
   });
 
   // Summary Metrics
-  const activeLoans = financeLoans.filter((l) => l.status === 'Active');
-  const totalPrincipalGiven = financeLoans.reduce((sum, l) => sum + l.principal, 0);
+  const activeLoans = processedLoans.filter((l) => l.status === 'Active');
+  const totalPrincipalGiven = processedLoans.reduce((sum, l) => sum + l.principal, 0);
   const totalMonthlyInterest = activeLoans.reduce((sum, l) => sum + l.monthlyInterest, 0);
-  const totalReturnedAmount = financeLoans.reduce((sum, l) => sum + (l.returnedAmount || 0), 0);
-  const totalRemainingDue = financeLoans.reduce((sum, l) => sum + (l.dueAmount !== undefined ? l.dueAmount : Math.max(0, l.totalAmount - (l.returnedAmount || 0))), 0);
+  const totalReturnedAmount = processedLoans.reduce((sum, l) => sum + l.returnedAmount, 0);
+  const totalRemainingDue = processedLoans.reduce((sum, l) => sum + l.dueAmount, 0);
+
+  // Quick Month Increment / Decrement
+  const handleMonthIncrement = (loanId, currentMonths, delta) => {
+    const nextMonths = Math.max(1, (currentMonths || 1) + delta);
+    updateFinanceLoanMonths(loanId, nextMonths);
+  };
 
   // Handle Add Loan Form Submit
   const handleAddSubmit = (e) => {
@@ -95,7 +110,12 @@ const Finance = () => {
     if (!selectedLoan || !returnPayAmount) return;
 
     const newMonths = Number(returnPayMonths) || selectedLoan.months;
-    recordReturnPayment(selectedLoan.id, Number(returnPayAmount) || 0, returnPayMonth || 'Month 1', newMonths);
+    recordReturnPayment(
+      selectedLoan.id,
+      Number(returnPayAmount) || 0,
+      returnPayMonth || `Month ${newMonths}`,
+      newMonths
+    );
     setIsReturnModalOpen(false);
     setSelectedLoan(null);
     setReturnPayAmount('');
@@ -103,45 +123,324 @@ const Finance = () => {
     setReturnPayMonths('');
   };
 
+  // When selected loan changes for return payment modal, calculate dynamic view
+  const currentSelectedLoanCalculated = selectedLoan ? getLoanCalculatedDetails(selectedLoan) : null;
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Page Header with Add Data Button */}
-      <PageHeader
-        title="Finance"
-        subtitle="Loan ledger, interest tracking and return payments"
-        action={
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all cursor-pointer"
-          >
-            <PlusCircle className="w-4 h-4" /> + Add Loan
-          </button>
-        }
-      />
+      {/* Page Header (Hidden in Mobile View) */}
+      <div className="hidden md:block">
+        <PageHeader
+          title="Finance"
+          subtitle="Loan ledger, dynamic monthly interest tracking & variable tenure returns"
+          action={
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4" /> + Give New Loan
+            </button>
+          }
+        />
+      </div>
 
-      {/* Receive Customer Payment Card & Business Quick Action Blocks (Mobile View Only) */}
-      <div className="md:hidden space-y-6">
-        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-              <Landmark className="w-5 h-5 text-emerald-600" />
-            </div>
-            <h4 className="text-sm font-extrabold text-slate-900">Give New Loan</h4>
+      {/* Mobile Finance View Section (Ultra Mobile Optimized) */}
+      <div className="md:hidden space-y-5">
+        {/* Mobile Page Header */}
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Finance</h2>
+            <p className="text-[11px] font-bold text-slate-500">Variable Month Loan Tracker</p>
           </div>
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+            className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer shrink-0"
           >
-            <PlusCircle className="w-4 h-4" />
-            <span>+ Add Loan</span>
+            <PlusCircle className="w-4 h-4" /> + Give Loan
           </button>
         </div>
 
-        <BusinessQuickActions />
+        {/* Business Section Cards */}
+        <div className="space-y-3">
+          <BusinessQuickActions />
+        </div>
+
+        {/* 4 Summary KPI Cards (Dark/Vibrant Mobile Grid) */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-[#0b1329] p-3.5 rounded-2xl border border-slate-800 shadow-md">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+              TOTAL PRINCIPAL
+            </span>
+            <p className="text-lg font-black text-white mt-1">
+              {formatCurrency(totalPrincipalGiven)}
+            </p>
+          </div>
+
+          <div className="bg-[#0b1329] p-3.5 rounded-2xl border border-slate-800 shadow-md">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+              ACTIVE LOANS
+            </span>
+            <p className="text-lg font-black text-emerald-400 mt-1">
+              {activeLoans.length} Active
+            </p>
+          </div>
+
+          <div className="bg-[#0b1329] p-3.5 rounded-2xl border border-slate-800 shadow-md">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+              REMAINING DUE
+            </span>
+            <p className="text-lg font-black text-rose-400 mt-1">
+              {formatCurrency(totalRemainingDue)}
+            </p>
+          </div>
+
+          <div className="bg-[#0b1329] p-3.5 rounded-2xl border border-slate-800 shadow-md">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+              TOTAL RETURNED
+            </span>
+            <p className="text-lg font-black text-emerald-500 mt-1">
+              {formatCurrency(totalReturnedAmount)}
+            </p>
+          </div>
+        </div>
+
+        {/* Mobile Finance Loan Records Section */}
+        <div className="space-y-3.5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+              FINANCE LOAN RECORDS
+            </h3>
+            <span className="text-[10px] font-black text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+              ⚡ Variable Interest
+            </span>
+          </div>
+
+          {/* Search & Filter bar for mobile */}
+          <div className="space-y-2.5">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search person or phone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 pr-3 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 focus:outline-hidden focus:border-emerald-500 w-full shadow-2xs"
+              />
+            </div>
+
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl w-full">
+              {['All', 'Active', 'Settled'].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setStatusFilter(tab)}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
+                    statusFilter === tab
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Mobile Dark Aesthetic Loan Cards */}
+          <div className="space-y-4 pt-1">
+            {filteredLoans.length === 0 ? (
+              <div className="p-8 text-center bg-[#0b1329] rounded-3xl border border-slate-800 text-slate-400 text-xs font-semibold">
+                No finance loan records match search.
+              </div>
+            ) : (
+              filteredLoans.map((loan) => {
+                const returned = loan.returnedAmount || 0;
+                const due = loan.dueAmount;
+                const progressPct = Math.min(100, Math.round((returned / (loan.totalAmount || 1)) * 100));
+
+                return (
+                  <div
+                    key={loan.id}
+                    className="bg-[#0b1329] text-white rounded-3xl p-5 border border-slate-800 shadow-xl space-y-4 font-sans"
+                  >
+                    {/* Card Top: Tag + Borrower Name + Status Badge */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="bg-amber-500 text-slate-950 font-black text-[11px] px-2.5 py-0.5 rounded-full uppercase tracking-wide">
+                            {loan.id}
+                          </span>
+                          <h4 className="text-xl font-black tracking-tight text-white leading-tight">
+                            {loan.borrowerName}
+                          </h4>
+                        </div>
+                        <p className="text-xs text-slate-400 font-medium mt-1 flex items-center gap-1.5">
+                          <span>📞 {loan.phone || 'No phone'}</span>
+                          <span>•</span>
+                          <span>Start: {loan.startDate}</span>
+                        </p>
+                      </div>
+
+                      <span
+                        className={`px-3 py-1 rounded-full text-[11px] font-black shrink-0 ${
+                          due === 0 || loan.status === 'Settled'
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                            : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                        }`}
+                      >
+                        {due === 0 ? 'Settled' : 'Active'}
+                      </span>
+                    </div>
+
+                    {/* WhatsApp Action Button */}
+                    <a
+                      href={`https://wa.me/${(loan.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(
+                        `Hello ${loan.borrowerName}, Loan Statement: Principal ${formatCurrency(loan.principal)}, Month ${loan.months} Interest (${loan.interestRate}%/mo): ${formatCurrency(loan.totalInterest)}. Remaining Due: ${formatCurrency(loan.dueAmount)}.`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-extrabold text-xs rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+                    >
+                      <span className="text-sm">💬</span> Send WhatsApp Statement 📊
+                    </a>
+
+                    {/* Primary KPI Box: Principal & Variable Month Stepper */}
+                    <div className="bg-[#16203a] p-4 rounded-2xl border border-slate-700/80 flex items-center justify-between gap-3">
+                      <div>
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+                          TOTAL PRINCIPAL
+                        </span>
+                        <div className="flex items-baseline gap-1 mt-0.5">
+                          <span className="text-2xl font-black text-amber-400">
+                            {formatCurrency(loan.principal)}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-slate-300 font-bold block mt-0.5">
+                          Rate: <strong className="text-amber-300">{loan.interestRate}% / mo</strong> ({formatCurrency(loan.monthlyInterest)}/mo)
+                        </span>
+                      </div>
+
+                      {/* Variable Month Stepper */}
+                      <div className="flex flex-col items-end gap-1.5">
+                        <span className="text-[9px] font-black text-amber-400 uppercase tracking-wider">
+                          VARIABLE MONTH
+                        </span>
+                        <div className="flex items-center gap-1.5 bg-amber-500 text-slate-950 px-2.5 py-1 rounded-xl shadow-md font-black text-xs">
+                          <button
+                            type="button"
+                            onClick={() => handleMonthIncrement(loan.id, loan.months, -1)}
+                            disabled={loan.months <= 1}
+                            className="w-6 h-6 rounded-lg bg-slate-950 text-amber-400 font-black flex items-center justify-center text-sm border border-amber-400/40 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                            title="Decrease Month"
+                          >
+                            -
+                          </button>
+                          <span className="px-1 text-slate-950 font-black text-xs whitespace-nowrap">
+                            Month {loan.months}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleMonthIncrement(loan.id, loan.months, 1)}
+                            className="w-6 h-6 rounded-lg bg-slate-950 text-amber-400 font-black flex items-center justify-center text-sm border border-amber-400/40 cursor-pointer"
+                            title="Advance Next Month (+ Interest)"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Accrued Interest & Repayment Progress Bar Card */}
+                    <div className="bg-[#16203a] p-4 rounded-2xl border border-slate-700/80 space-y-3">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+                          <span className="font-extrabold text-amber-300 uppercase tracking-wide text-[10px]">
+                            MONTH {loan.months} INTEREST ACCRUED
+                          </span>
+                        </div>
+                        <span className="font-black text-amber-400 text-sm">
+                          {formatCurrency(loan.totalInterest)}
+                        </span>
+                      </div>
+
+                      {/* Repayment Progress Bar */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] font-extrabold">
+                          <span className="text-emerald-400">
+                            Returned: {formatCurrency(returned)}
+                          </span>
+                          <span className="text-slate-400">
+                            Total Payable: {formatCurrency(loan.totalAmount)}
+                          </span>
+                        </div>
+
+                        <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                          <div
+                            className="bg-emerald-400 h-full rounded-full transition-all duration-500"
+                            style={{ width: `${progressPct}%` }}
+                          ></div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300">
+                          <span>
+                            {progressPct}% paid
+                          </span>
+                          <span className="text-rose-400 font-extrabold">
+                            Due: {formatCurrency(due)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Big Action Buttons */}
+                    {due > 0 ? (
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => {
+                            setSelectedLoan(loan);
+                            setReturnPayAmount((loan.monthlyInterest || 2000).toString());
+                            setReturnPayMonths(loan.months.toString());
+                            setReturnPayMonth(`Month ${loan.months}`);
+                            setIsReturnModalOpen(true);
+                          }}
+                          className="flex-1 py-3 px-4 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 font-black text-xs rounded-2xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <span>💰</span> Record Return Payment
+                        </button>
+                        <button
+                          onClick={() => settleFinanceLoan(loan.id)}
+                          className="py-3 px-3.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 font-bold text-xs rounded-2xl border border-indigo-500/30 transition-all cursor-pointer"
+                        >
+                          Settle
+                        </button>
+                        <button
+                          onClick={() => deleteFinanceLoan(loan.id)}
+                          className="p-3 bg-slate-800 hover:bg-rose-900/40 text-rose-400 rounded-2xl border border-rose-500/30 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-2xl text-emerald-400 text-xs font-black">
+                        <span>🎉 Loan Fully Settled!</span>
+                        <button
+                          onClick={() => deleteFinanceLoan(loan.id)}
+                          className="text-rose-400 hover:underline text-[11px] font-bold"
+                        >
+                          Remove Record
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Finance Loan & Return Records Directory */}
-      <div className="space-y-6">
+      {/* Finance Loan & Return Records Directory (Desktop View) */}
+      <div className="hidden md:block space-y-6">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
@@ -150,11 +449,18 @@ const Finance = () => {
                 Finance Loan & Return Ledger
               </h3>
               <p className="text-xs text-slate-500 font-medium">
-                List of people who took loans, monthly interest rates, return amounts paid & dues
+                Dynamic monthly interest loan ledger — month advances automatically or manually adds dues if unpaid
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all cursor-pointer shrink-0"
+              >
+                <PlusCircle className="w-4 h-4" /> + Give New Loan
+              </button>
+
               {/* Search Input */}
               <div className="relative w-full sm:w-56">
                 <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
@@ -194,9 +500,10 @@ const Finance = () => {
                   <th className="py-3 px-3">Person / Borrower</th>
                   <th className="py-3 px-3 text-right">Principal Amount</th>
                   <th className="py-3 px-3 text-center">Interest Rate</th>
-                  <th className="py-3 px-3 text-right">Monthly Interest</th>
+                  <th className="py-3 px-3 text-center">Variable Month</th>
+                  <th className="py-3 px-3 text-right">Accrued Interest</th>
                   <th className="py-3 px-3 text-right">Total Payable</th>
-                  <th className="py-3 px-3 text-right">Return Amount Paid</th>
+                  <th className="py-3 px-3 text-right">Returned Paid</th>
                   <th className="py-3 px-3 text-right">Remaining Due</th>
                   <th className="py-3 px-3 text-center">Status</th>
                   <th className="py-3 px-3 text-center">Actions</th>
@@ -205,20 +512,21 @@ const Finance = () => {
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                 {filteredLoans.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="py-8 text-center text-slate-400 font-medium">
+                    <td colSpan="10" className="py-8 text-center text-slate-400 font-medium">
                       No finance loan records found.
                     </td>
                   </tr>
                 ) : (
                   filteredLoans.map((loan) => {
                     const returned = loan.returnedAmount || 0;
-                    const due = loan.dueAmount !== undefined ? loan.dueAmount : Math.max(0, loan.totalAmount - returned);
+                    const due = loan.dueAmount;
 
                     return (
                       <tr key={loan.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-3 px-3">
                           <div className="font-bold text-slate-900 text-sm">{loan.borrowerName}</div>
                           <div className="text-[11px] text-slate-400 font-normal">{loan.phone || loan.id}</div>
+                          <div className="text-[10px] text-slate-400">Start: {loan.startDate}</div>
                         </td>
 
                         <td className="py-3 px-3 text-right font-bold text-slate-900">
@@ -229,10 +537,39 @@ const Finance = () => {
                           <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200 font-bold">
                             {loan.interestRate}% / mo
                           </span>
+                          <span className="block text-[10px] text-amber-700 font-medium mt-0.5">
+                            ({formatCurrency(loan.monthlyInterest)}/mo)
+                          </span>
+                        </td>
+
+                        {/* Variable Month Stepper */}
+                        <td className="py-3 px-3 text-center">
+                          <div className="inline-flex items-center gap-1 bg-amber-50/90 border border-amber-200 p-1 rounded-xl">
+                            <button
+                              type="button"
+                              onClick={() => handleMonthIncrement(loan.id, loan.months, -1)}
+                              disabled={loan.months <= 1}
+                              className="w-5 h-5 rounded-lg bg-white text-amber-900 font-extrabold flex items-center justify-center text-xs shadow-2xs border border-amber-200 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                              title="Decrease Month"
+                            >
+                              -
+                            </button>
+                            <span className="text-[11px] font-black text-amber-900 px-1.5 whitespace-nowrap">
+                              Month {loan.months}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleMonthIncrement(loan.id, loan.months, 1)}
+                              className="w-5 h-5 rounded-lg bg-white text-amber-900 font-extrabold flex items-center justify-center text-xs shadow-2xs border border-amber-200 hover:bg-amber-100 cursor-pointer"
+                              title="Advance Next Month (+ Interest)"
+                            >
+                              +
+                            </button>
+                          </div>
                         </td>
 
                         <td className="py-3 px-3 text-right font-bold text-amber-600">
-                          {formatCurrency(loan.monthlyInterest)}
+                          {formatCurrency(loan.totalInterest)}
                         </td>
 
                         <td className="py-3 px-3 text-right font-bold text-slate-900">
@@ -249,7 +586,7 @@ const Finance = () => {
 
                         <td className="py-3 px-3 text-center">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                               loan.status === 'Settled' || due === 0
                                 ? 'bg-slate-100 text-slate-600'
                                 : 'bg-emerald-100 text-emerald-800'
@@ -259,14 +596,15 @@ const Finance = () => {
                           </span>
                         </td>
 
-                        <td className="py-3 px-3 text-center space-x-1">
+                        <td className="py-3 px-3 text-center space-x-1 whitespace-nowrap">
                           {due > 0 && (
                             <>
                               <button
                                 onClick={() => {
                                   setSelectedLoan(loan);
-                                  setReturnPayAmount(loan.monthlyInterest.toString());
+                                  setReturnPayAmount((loan.monthlyInterest || 2000).toString());
                                   setReturnPayMonths(loan.months.toString());
+                                  setReturnPayMonth(`Month ${loan.months}`);
                                   setIsReturnModalOpen(true);
                                 }}
                                 className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-lg text-[11px] border border-emerald-200 transition-all cursor-pointer"
@@ -301,7 +639,7 @@ const Finance = () => {
         </div>
       </div>
 
-      {/* Full-Screen: Give New Loan */}
+      {/* Full-Screen Modal: Give New Loan */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col animate-in fade-in duration-200">
           {/* Top Bar */}
@@ -382,10 +720,11 @@ const Finance = () => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Months *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Start Month</label>
                   <input
                     type="number"
                     required
+                    min="1"
                     placeholder="1"
                     value={newMonths}
                     onChange={(e) => setNewMonths(e.target.value)}
@@ -394,10 +733,10 @@ const Finance = () => {
                 </div>
               </div>
 
-              {/* Auto calculation preview */}
-              <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200 space-y-2">
+              {/* Auto calculation & variable month explanation */}
+              <div className="bg-emerald-50/90 p-4 rounded-xl border border-emerald-200 space-y-2.5">
                 <div className="flex justify-between font-bold text-emerald-900 text-sm">
-                  <span>1 Month Interest:</span>
+                  <span>Monthly Interest (Each Month):</span>
                   <span>
                     {formatCurrency(
                       ((Number(newPrincipal) || 0) * (Number(newRate) || 0)) / 100
@@ -405,7 +744,7 @@ const Finance = () => {
                   </span>
                 </div>
                 <div className="flex justify-between font-extrabold text-emerald-950 text-base pt-2 border-t border-emerald-200/80">
-                  <span>Total after {newMonths || 1} month(s):</span>
+                  <span>Month {newMonths || 1} Total Due:</span>
                   <span>
                     {formatCurrency(
                       (Number(newPrincipal) || 0) +
@@ -413,6 +752,12 @@ const Finance = () => {
                           (Number(newMonths) || 1)
                     )}
                   </span>
+                </div>
+                <div className="bg-white/80 p-2.5 rounded-lg border border-emerald-200 text-xs text-emerald-800 flex items-start gap-2">
+                  <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <p>
+                    <strong>Variable Month Rule:</strong> Month 1 adds {formatCurrency(((Number(newPrincipal) || 0) * (Number(newRate) || 0)) / 100)} interest. If unpaid in Month 1, Month 2 automatically adds another {formatCurrency(((Number(newPrincipal) || 0) * (Number(newRate) || 0)) / 100)} due (Total {formatCurrency((Number(newPrincipal) || 0) + (((Number(newPrincipal) || 0) * (Number(newRate) || 0)) / 100) * 2)}), and so on.
+                  </p>
                 </div>
               </div>
 
@@ -442,8 +787,8 @@ const Finance = () => {
         </div>
       )}
 
-      {/* Full-Screen: Record Return Payment */}
-      {isReturnModalOpen && selectedLoan && (
+      {/* Full-Screen Modal: Record Return Payment */}
+      {isReturnModalOpen && currentSelectedLoanCalculated && (
         <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col animate-in fade-in duration-200">
           {/* Top Bar */}
           <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0">
@@ -472,71 +817,109 @@ const Finance = () => {
           <div className="flex-1 overflow-y-auto p-4 sm:p-6">
             <div className="max-w-lg mx-auto space-y-5">
               {/* Loan Summary Card */}
-              <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-2">
-                <p className="font-bold text-slate-900 text-base">{selectedLoan.borrowerName}</p>
+              <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="font-extrabold text-slate-900 text-base">{currentSelectedLoanCalculated.borrowerName}</p>
+                  <span className="text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                    {currentSelectedLoanCalculated.interestRate}% / month ({formatCurrency(currentSelectedLoanCalculated.monthlyInterest)}/mo)
+                  </span>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase">Principal</span>
-                    <p className="font-bold text-slate-900">{formatCurrency(selectedLoan.principal)}</p>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase">Principal Given</span>
+                    <p className="font-bold text-slate-900">{formatCurrency(currentSelectedLoanCalculated.principal)}</p>
                   </div>
-                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase">Total Payable</span>
-                    <p className="font-bold text-slate-900">{formatCurrency(selectedLoan.totalAmount)}</p>
+                  <div className="bg-amber-50/60 rounded-xl p-3 border border-amber-100">
+                    <span className="text-[11px] font-bold text-amber-700 uppercase">Total Accrued ({returnPayMonths || currentSelectedLoanCalculated.months} Mo)</span>
+                    <p className="font-bold text-amber-900">
+                      {formatCurrency(
+                        currentSelectedLoanCalculated.principal +
+                        currentSelectedLoanCalculated.monthlyInterest * (Number(returnPayMonths) || currentSelectedLoanCalculated.months || 1)
+                      )}
+                    </p>
                   </div>
                   <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
-                    <span className="text-[11px] font-bold text-emerald-600 uppercase">Returned</span>
-                    <p className="font-bold text-emerald-700">{formatCurrency(selectedLoan.returnedAmount || 0)}</p>
+                    <span className="text-[11px] font-bold text-emerald-600 uppercase">Returned So Far</span>
+                    <p className="font-bold text-emerald-700">{formatCurrency(currentSelectedLoanCalculated.returnedAmount || 0)}</p>
                   </div>
                   <div className="bg-rose-50 rounded-xl p-3 border border-rose-100">
                     <span className="text-[11px] font-bold text-rose-500 uppercase">Remaining Due</span>
-                    <p className="font-bold text-rose-600">{formatCurrency(selectedLoan.dueAmount !== undefined ? selectedLoan.dueAmount : Math.max(0, selectedLoan.totalAmount - (selectedLoan.returnedAmount || 0)))}</p>
+                    <p className="font-bold text-rose-600">
+                      {formatCurrency(
+                        Math.max(
+                          0,
+                          (currentSelectedLoanCalculated.principal +
+                            currentSelectedLoanCalculated.monthlyInterest * (Number(returnPayMonths) || currentSelectedLoanCalculated.months || 1)) -
+                            (currentSelectedLoanCalculated.returnedAmount || 0)
+                        )
+                      )}
+                    </p>
                   </div>
                 </div>
               </div>
 
               {/* Payment Form */}
               <form id="return-pay-form" onSubmit={handleReturnSubmit} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-4">
-                {/* Tenure & Month */}
+                {/* Tenure & Month Selection */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Tenure (Months) *</label>
+                    <label className="block font-bold text-slate-700 mb-1">Variable Month *</label>
                     <input
                       type="number"
                       required
                       min="1"
                       value={returnPayMonths}
-                      onChange={(e) => setReturnPayMonths(e.target.value)}
-                      placeholder={selectedLoan.months}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setReturnPayMonths(val);
+                        if (val) setReturnPayMonth(`Month ${val}`);
+                      }}
+                      placeholder={currentSelectedLoanCalculated.months}
                       className="w-full p-3 bg-white border border-slate-200 rounded-xl font-bold text-lg text-slate-900 focus:outline-hidden focus:border-emerald-500"
                     />
-                    <span className="text-[10px] text-slate-400 mt-0.5 block">Currently: {selectedLoan.months} months</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5 block">Accrues interest per month</span>
                   </div>
+
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Repayment for Month *</label>
+                    <label className="block font-bold text-slate-700 mb-1">Repayment For *</label>
                     <select
                       value={returnPayMonth}
-                      onChange={(e) => setReturnPayMonth(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setReturnPayMonth(val);
+                        if (val.startsWith('Month ')) {
+                          const m = val.split(' ')[1];
+                          if (m && !isNaN(m)) setReturnPayMonths(m);
+                        }
+                      }}
                       required
-                      className="w-full p-3 bg-white border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-500"
+                      className="w-full p-3 bg-white border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-500 text-xs sm:text-sm"
                     >
-                      <option value="">-- Select Month --</option>
-                      {Array.from({ length: Number(returnPayMonths) || selectedLoan.months || 1 }, (_, i) => {
-                        const monthDate = new Date(selectedLoan.startDate || new Date());
-                        monthDate.setMonth(monthDate.getMonth() + i);
-                        const label = monthDate.toLocaleString('en-US', { month: 'short', year: 'numeric' });
-                        return (
-                          <option key={i + 1} value={`Month ${i + 1} (${label})`}>
-                            Month {i + 1} — {label}
-                          </option>
-                        );
-                      })}
+                      <option value="">-- Select Repayment --</option>
+                      {Array.from({ length: Math.max(Number(returnPayMonths) || 1, currentSelectedLoanCalculated.months || 1) }, (_, i) => (
+                        <option key={i + 1} value={`Month ${i + 1}`}>
+                          Month {i + 1} Interest ({formatCurrency(currentSelectedLoanCalculated.monthlyInterest)})
+                        </option>
+                      ))}
+                      <option value="Full Settlement">Full Remaining Settlement</option>
+                      <option value="Partial Principal Return">Partial Principal Return</option>
                     </select>
                   </div>
                 </div>
 
                 {/* Amount */}
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Return Amount Paid (₹) *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-700">Return Amount Paid (₹) *</label>
+                    <button
+                      type="button"
+                      onClick={() => setReturnPayAmount(currentSelectedLoanCalculated.monthlyInterest.toString())}
+                      className="text-[11px] font-bold text-emerald-600 hover:underline cursor-pointer"
+                    >
+                      Fill 1 Month Int ({formatCurrency(currentSelectedLoanCalculated.monthlyInterest)})
+                    </button>
+                  </div>
                   <input
                     type="number"
                     required
@@ -569,17 +952,17 @@ const Finance = () => {
                 </div>
 
                 {/* Payment History */}
-                {selectedLoan.paymentHistory && selectedLoan.paymentHistory.length > 0 && (
+                {currentSelectedLoanCalculated.paymentHistory && currentSelectedLoanCalculated.paymentHistory.length > 0 && (
                   <div>
-                    <label className="block font-bold text-slate-700 mb-2">Payment History</label>
+                    <label className="block font-bold text-slate-700 mb-2">Previous Return Payments</label>
                     <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                      {selectedLoan.paymentHistory.map((p, idx) => (
+                      {currentSelectedLoanCalculated.paymentHistory.map((p, idx) => (
                         <div key={idx} className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2 border border-slate-100 text-sm">
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-slate-400 bg-white rounded-md px-1.5 py-0.5 border border-slate-200">
+                            <span className="text-[10px] font-bold text-amber-800 bg-amber-50 rounded-md px-1.5 py-0.5 border border-amber-200">
                               {p.month}
                             </span>
-                            <span className="text-xs text-slate-500">{p.method}</span>
+                            <span className="text-xs text-slate-500">{p.method || 'Cash'}</span>
                           </div>
                           <span className="font-bold text-emerald-600">{formatCurrency(p.amount)}</span>
                         </div>

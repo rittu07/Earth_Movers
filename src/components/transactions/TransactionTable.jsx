@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import StatusBadge from '../common/StatusBadge';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { openWhatsAppChat } from '../../utils/whatsapp';
+import { openWhatsAppChat, formatTransactionWhatsApp } from '../../utils/whatsapp';
 import { Eye, Phone, Boxes, Droplets, UserCheck, MapPin, MessageSquare, ChevronDown } from 'lucide-react';
 
 const getShortDesc = (trx) => {
@@ -100,10 +100,22 @@ const TransactionTable = ({ transactions = [] }) => {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              openWhatsAppChat(trx.phone, `Hello ${trx.customerName}, regarding your transaction ${trx.id} of ${formatCurrency(trx.amount)}.`);
+                              const msg = formatTransactionWhatsApp({
+                                customerName: trx.customerName,
+                                serviceName: trx.itemService,
+                                businessName: trx.businessName,
+                                quantity: trx.quantity,
+                                unit: trx.unit,
+                                rate: trx.rate,
+                                amount: trx.amount,
+                                paid: trx.paid,
+                                due: trx.due,
+                                date: trx.displayDate || trx.date
+                              });
+                              openWhatsAppChat(trx.phone, msg);
                             }}
                             className="p-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-bold transition-all flex items-center justify-center shadow-2xs cursor-pointer"
-                            title="WhatsApp Message"
+                            title="WhatsApp Receipt"
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
                           </button>
@@ -347,13 +359,39 @@ const TransactionTable = ({ transactions = [] }) => {
                   </td>
 
                   <td className="py-4 px-4 text-center whitespace-nowrap">
-                    <Link
-                      to={`/customers/${trx.customerId}`}
-                      className="p-2 inline-flex items-center text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-xl transition-colors"
-                      title="View Customer Ledger"
-                    >
-                      <Eye className="w-5 h-5" />
-                    </Link>
+                    <div className="flex items-center justify-center gap-1.5">
+                      {trx.phone && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const msg = formatTransactionWhatsApp({
+                              customerName: trx.customerName,
+                              serviceName: trx.itemService,
+                              businessName: trx.businessName,
+                              quantity: trx.quantity,
+                              unit: trx.unit,
+                              rate: trx.rate,
+                              amount: trx.amount,
+                              paid: trx.paid,
+                              due: trx.due,
+                              date: trx.displayDate || trx.date
+                            });
+                            openWhatsAppChat(trx.phone, msg);
+                          }}
+                          className="p-2 inline-flex items-center text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-xl transition-colors cursor-pointer"
+                          title="Send WhatsApp Receipt"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                        </button>
+                      )}
+                      <Link
+                        to={`/customers/${trx.customerId}`}
+                        className="p-2 inline-flex items-center text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-xl transition-colors"
+                        title="View Customer Ledger"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))

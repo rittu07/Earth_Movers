@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import { formatCurrency } from '../utils/formatCurrency';
@@ -18,10 +19,24 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts';
-import { Download, Calendar, TrendingUp, TrendingDown, DollarSign, Wallet } from 'lucide-react';
+import {
+  Download,
+  Calendar,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Wallet,
+  Boxes,
+  Truck,
+  Droplets,
+  Layers,
+  Mountain,
+  ArrowRight,
+  Landmark
+} from 'lucide-react';
 
 const Reports = () => {
-  const { transactions, payments, expenses, businesses } = useBusiness();
+  const { transactions, payments, expenses, businesses, financeLoans = [] } = useBusiness();
   const [dateRange, setDateRange] = useState('month'); // today, week, month, year
   const [activeTab, setActiveTab] = useState('summary');
   const reportData = useMemo(
@@ -81,6 +96,127 @@ const Reports = () => {
         }
       />
 
+      {/* Interactive Business Unit Total Sales Cards */}
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-black text-slate-500 uppercase tracking-wider">
+            Business Unit Total Sales
+          </h3>
+          <span className="text-[11px] text-slate-400 font-semibold hidden sm:inline">
+            Click any business card to view its total sales & dispatch ledger
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+          {reportData.businessBreakdown.map((item) => {
+            const icons = {
+              bricks: Boxes,
+              jcb: Truck,
+              water: Droplets,
+              jalli: Layers,
+              sand: Mountain
+            };
+            const themeMap = {
+              bricks: {
+                cardBg: 'hover:border-orange-300 hover:bg-orange-50/30',
+                badgeBg: 'bg-orange-100 text-orange-700',
+                textColor: 'text-orange-600'
+              },
+              jcb: {
+                cardBg: 'hover:border-amber-300 hover:bg-amber-50/30',
+                badgeBg: 'bg-amber-100 text-amber-800',
+                textColor: 'text-amber-600'
+              },
+              water: {
+                cardBg: 'hover:border-blue-300 hover:bg-blue-50/30',
+                badgeBg: 'bg-blue-100 text-blue-700',
+                textColor: 'text-blue-600'
+              },
+              jalli: {
+                cardBg: 'hover:border-emerald-300 hover:bg-emerald-50/30',
+                badgeBg: 'bg-emerald-100 text-emerald-700',
+                textColor: 'text-emerald-600'
+              },
+              sand: {
+                cardBg: 'hover:border-teal-300 hover:bg-teal-50/30',
+                badgeBg: 'bg-teal-100 text-teal-800',
+                textColor: 'text-teal-600'
+              }
+            };
+
+            const theme = themeMap[item.businessId] || {
+              cardBg: 'hover:border-indigo-300',
+              badgeBg: 'bg-slate-100 text-slate-700',
+              textColor: 'text-indigo-600'
+            };
+
+            const IconComp = icons[item.businessId] || Boxes;
+
+            return (
+              <Link
+                key={item.businessId}
+                to={`/business/${item.businessId}`}
+                className={`bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs ${theme.cardBg} transition-all group flex flex-col justify-between cursor-pointer space-y-3`}
+                title={`View total sales & dispatch log for ${item.business}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className={`w-9 h-9 rounded-xl ${theme.badgeBg} flex items-center justify-center shrink-0 font-black shadow-2xs`}>
+                    <IconComp className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] font-extrabold text-slate-400 group-hover:text-slate-900 flex items-center gap-0.5 transition-colors">
+                    Sales <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                </div>
+
+                <div>
+                  <h4 className="text-xs font-black text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors">
+                    {item.business}
+                  </h4>
+                  <div className="mt-1">
+                    <span className={`text-base font-black ${theme.textColor}`}>
+                      {formatCurrency(item.revenue)}
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-400 mt-0.5">
+                    {item.transactions} total sales orders
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
+
+          {/* Finance Loans Card */}
+          <Link
+            to="/finance"
+            className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs hover:border-purple-300 hover:bg-purple-50/30 transition-all group flex flex-col justify-between cursor-pointer space-y-3"
+            title="View Finance Loan Ledger & Returns"
+          >
+            <div className="flex items-center justify-between">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 font-black shadow-2xs">
+                <Landmark className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-extrabold text-slate-400 group-hover:text-slate-900 flex items-center gap-0.5 transition-colors">
+                Loans <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-black text-slate-900 leading-tight group-hover:text-purple-600 transition-colors">
+                Finance Loans
+              </h4>
+              <div className="mt-1">
+                <span className="text-base font-black text-purple-600">
+                  {formatCurrency(financeLoans.reduce((sum, l) => sum + (l.principal || 0), 0))}
+                </span>
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 mt-0.5">
+                {financeLoans.length} total loan records
+              </p>
+            </div>
+          </Link>
+        </div>
+      </div>
+
       {/* 4 Summary KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
@@ -112,100 +248,7 @@ const Reports = () => {
         </div>
       </div>
 
-      {/* Report Tabs */}
-      <div className="border-b border-slate-200 flex items-center gap-6 text-xs font-bold">
-        <button
-          onClick={() => setActiveTab('summary')}
-          className={`pb-3 transition-all relative ${
-            activeTab === 'summary'
-              ? 'text-indigo-600 border-b-2 border-indigo-600'
-              : 'text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          Executive Summary
-        </button>
-        <button
-          onClick={() => setActiveTab('income-expense')}
-          className={`pb-3 transition-all relative ${
-            activeTab === 'income-expense'
-              ? 'text-indigo-600 border-b-2 border-indigo-600'
-              : 'text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          Income vs Expense Trend
-        </button>
-        <button
-          onClick={() => setActiveTab('business-wise')}
-          className={`pb-3 transition-all relative ${
-            activeTab === 'business-wise'
-              ? 'text-indigo-600 border-b-2 border-indigo-600'
-              : 'text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          Business Wise Breakdown
-        </button>
-      </div>
 
-      {/* Visual Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Line Chart */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
-          <h3 className="text-base font-bold text-slate-900 mb-4">Revenue & Expense Trend</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-               <LineChart data={reportData.weeklyPerformance}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="day" axisLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                <YAxis
-                  axisLine={false}
-                  tick={{ fill: '#64748b', fontSize: 11 }}
-                  tickFormatter={(val) => `₹${val / 1000}k`}
-                />
-                <Tooltip formatter={(val) => [formatCurrency(val)]} />
-                <Line
-                  type="monotone"
-                  dataKey="income"
-                  stroke="#10b981"
-                  strokeWidth={3}
-                  dot={{ r: 4 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="expense"
-                  stroke="#f43f5e"
-                  strokeWidth={3}
-                  dot={{ r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Business Share Donut */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
-          <h3 className="text-base font-bold text-slate-900 mb-4">Revenue Share by Business</h3>
-          <div className="h-64 flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                   data={reportData.businessPerformance}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={65}
-                  outerRadius={90}
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                   {reportData.businessPerformance.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(val) => [formatCurrency(val)]} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
 
       {/* Business Unit Comparative Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
