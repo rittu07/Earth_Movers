@@ -165,40 +165,40 @@ const Finance = () => {
           <BusinessQuickActions />
         </div>
 
-        {/* 4 Summary KPI Cards (Dark/Vibrant Mobile Grid) */}
+        {/* 4 Summary KPI Cards (White Light Mode Grid) */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-[#0b1329] p-3.5 rounded-2xl border border-slate-800 shadow-md">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <span className="text-[10px] font-mono font-black text-slate-500 uppercase tracking-widest block">
               TOTAL PRINCIPAL
             </span>
-            <p className="text-lg font-black text-white mt-1">
+            <p className="text-lg font-mono font-black text-slate-900 mt-1">
               {formatCurrency(totalPrincipalGiven)}
             </p>
           </div>
 
-          <div className="bg-[#0b1329] p-3.5 rounded-2xl border border-slate-800 shadow-md">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <span className="text-[10px] font-mono font-black text-slate-500 uppercase tracking-widest block">
               ACTIVE LOANS
             </span>
-            <p className="text-lg font-black text-emerald-400 mt-1">
+            <p className="text-lg font-mono font-black text-emerald-700 mt-1">
               {activeLoans.length} Active
             </p>
           </div>
 
-          <div className="bg-[#0b1329] p-3.5 rounded-2xl border border-slate-800 shadow-md">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <span className="text-[10px] font-mono font-black text-slate-500 uppercase tracking-widest block">
               REMAINING DUE
             </span>
-            <p className="text-lg font-black text-rose-400 mt-1">
+            <p className="text-lg font-mono font-black text-rose-700 mt-1">
               {formatCurrency(totalRemainingDue)}
             </p>
           </div>
 
-          <div className="bg-[#0b1329] p-3.5 rounded-2xl border border-slate-800 shadow-md">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <span className="text-[10px] font-mono font-black text-slate-500 uppercase tracking-widest block">
               TOTAL RETURNED
             </span>
-            <p className="text-lg font-black text-emerald-500 mt-1">
+            <p className="text-lg font-mono font-black text-emerald-700 mt-1">
               {formatCurrency(totalReturnedAmount)}
             </p>
           </div>
@@ -206,17 +206,17 @@ const Finance = () => {
 
         {/* Mobile Finance Loan Records Section */}
         <div className="space-y-3.5">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between font-mono">
             <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
               FINANCE LOAN RECORDS
             </h3>
-            <span className="text-[10px] font-black text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+            <span className="text-[10px] font-black text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
               ⚡ Variable Interest
             </span>
           </div>
 
           {/* Search & Filter bar for mobile */}
-          <div className="space-y-2.5">
+          <div className="space-y-2.5 font-mono">
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
               <input
@@ -224,7 +224,7 @@ const Finance = () => {
                 placeholder="Search person or phone..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 pr-3 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 focus:outline-hidden focus:border-emerald-500 w-full shadow-2xs"
+                className="pl-8 pr-3 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 focus:outline-hidden focus:border-amber-600 w-full shadow-2xs"
               />
             </div>
 
@@ -245,10 +245,10 @@ const Finance = () => {
             </div>
           </div>
 
-          {/* Mobile Dark Aesthetic Loan Cards */}
+          {/* Mobile Pure White Light Mode Loan Cards */}
           <div className="space-y-4 pt-1">
             {filteredLoans.length === 0 ? (
-              <div className="p-8 text-center bg-[#0b1329] rounded-3xl border border-slate-800 text-slate-400 text-xs font-semibold">
+              <div className="p-8 text-center bg-white rounded-3xl border border-slate-200 text-slate-500 text-xs font-mono font-bold shadow-xs">
                 No finance loan records match search.
               </div>
             ) : (
@@ -260,20 +260,20 @@ const Finance = () => {
                 return (
                   <div
                     key={loan.id}
-                    className="bg-[#0b1329] text-white rounded-3xl p-5 border border-slate-800 shadow-xl space-y-4 font-sans"
+                    className="bg-white text-slate-900 rounded-3xl p-5 border border-slate-200 shadow-md space-y-4 font-sans"
                   >
                     {/* Card Top: Tag + Borrower Name + Status Badge */}
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start justify-between gap-2 font-mono">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="bg-amber-500 text-slate-950 font-black text-[11px] px-2.5 py-0.5 rounded-full uppercase tracking-wide">
+                          <span className="bg-amber-600 text-white font-black text-[11px] px-2.5 py-0.5 rounded-full uppercase tracking-wide shadow-2xs">
                             {loan.id}
                           </span>
-                          <h4 className="text-xl font-black tracking-tight text-white leading-tight">
+                          <h4 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-tight font-mono">
                             {loan.borrowerName}
                           </h4>
                         </div>
-                        <p className="text-xs text-slate-400 font-medium mt-1 flex items-center gap-1.5">
+                        <p className="text-xs text-slate-600 font-bold mt-1 flex items-center gap-1.5">
                           <span>📞 {loan.phone || 'No phone'}</span>
                           <span>•</span>
                           <span>Start: {loan.startDate}</span>
@@ -281,10 +281,10 @@ const Finance = () => {
                       </div>
 
                       <span
-                        className={`px-3 py-1 rounded-full text-[11px] font-black shrink-0 ${
+                        className={`px-3 py-1 rounded-full text-[11px] font-mono font-black shrink-0 shadow-2xs ${
                           due === 0 || loan.status === 'Settled'
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                            : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                            ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                            : 'bg-amber-100 text-amber-900 border border-amber-300'
                         }`}
                       >
                         {due === 0 ? 'Settled' : 'Active'}
@@ -298,49 +298,49 @@ const Finance = () => {
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-extrabold text-xs rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+                      className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-mono font-black text-xs sm:text-sm rounded-2xl flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
                     >
-                      <span className="text-sm">💬</span> Send WhatsApp Statement 📊
+                      <span className="text-base">💬</span> Send WhatsApp Statement 📊
                     </a>
 
                     {/* Primary KPI Box: Principal & Variable Month Stepper */}
-                    <div className="bg-[#16203a] p-4 rounded-2xl border border-slate-700/80 flex items-center justify-between gap-3">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 font-mono">
                       <div>
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+                        <span className="text-[10px] font-mono font-black text-slate-700 uppercase tracking-widest block">
                           TOTAL PRINCIPAL
                         </span>
                         <div className="flex items-baseline gap-1 mt-0.5">
-                          <span className="text-2xl font-black text-amber-400">
+                          <span className="text-2xl sm:text-3xl font-mono font-black text-amber-700">
                             {formatCurrency(loan.principal)}
                           </span>
                         </div>
-                        <span className="text-[11px] text-slate-300 font-bold block mt-0.5">
-                          Rate: <strong className="text-amber-300">{loan.interestRate}% / mo</strong> ({formatCurrency(loan.monthlyInterest)}/mo)
+                        <span className="text-[11px] text-slate-700 font-bold block mt-0.5">
+                          Rate: <strong className="text-amber-800 font-black">{loan.interestRate}% / mo</strong> ({formatCurrency(loan.monthlyInterest)}/mo)
                         </span>
                       </div>
 
                       {/* Variable Month Stepper */}
                       <div className="flex flex-col items-end gap-1.5">
-                        <span className="text-[9px] font-black text-amber-400 uppercase tracking-wider">
+                        <span className="text-[10px] font-mono font-black text-slate-700 uppercase tracking-wider">
                           VARIABLE MONTH
                         </span>
-                        <div className="flex items-center gap-1.5 bg-amber-500 text-slate-950 px-2.5 py-1 rounded-xl shadow-md font-black text-xs">
+                        <div className="flex items-center gap-1.5 bg-amber-600 text-white px-2.5 py-1.5 rounded-xl shadow-xs font-mono font-black text-xs">
                           <button
                             type="button"
                             onClick={() => handleMonthIncrement(loan.id, loan.months, -1)}
                             disabled={loan.months <= 1}
-                            className="w-6 h-6 rounded-lg bg-slate-950 text-amber-400 font-black flex items-center justify-center text-sm border border-amber-400/40 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                            className="w-6 h-6 rounded-lg bg-slate-900 text-amber-400 font-mono font-black flex items-center justify-center text-sm border border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                             title="Decrease Month"
                           >
                             -
                           </button>
-                          <span className="px-1 text-slate-950 font-black text-xs whitespace-nowrap">
+                          <span className="px-1 text-white font-mono font-black text-xs whitespace-nowrap">
                             Month {loan.months}
                           </span>
                           <button
                             type="button"
                             onClick={() => handleMonthIncrement(loan.id, loan.months, 1)}
-                            className="w-6 h-6 rounded-lg bg-slate-950 text-amber-400 font-black flex items-center justify-center text-sm border border-amber-400/40 cursor-pointer"
+                            className="w-6 h-6 rounded-lg bg-slate-900 text-amber-400 font-mono font-black flex items-center justify-center text-sm border border-slate-700 cursor-pointer"
                             title="Advance Next Month (+ Interest)"
                           >
                             +
@@ -350,51 +350,51 @@ const Finance = () => {
                     </div>
 
                     {/* Accrued Interest & Repayment Progress Bar Card */}
-                    <div className="bg-[#16203a] p-4 rounded-2xl border border-slate-700/80 space-y-3">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3 font-mono">
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
-                          <span className="font-extrabold text-amber-300 uppercase tracking-wide text-[10px]">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                          <span className="font-mono font-black text-slate-800 uppercase tracking-wide text-[10px]">
                             MONTH {loan.months} INTEREST ACCRUED
                           </span>
                         </div>
-                        <span className="font-black text-amber-400 text-sm">
+                        <span className="font-mono font-black text-amber-700 text-sm sm:text-base">
                           {formatCurrency(loan.totalInterest)}
                         </span>
                       </div>
 
                       {/* Repayment Progress Bar */}
                       <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-[11px] font-extrabold">
-                          <span className="text-emerald-400">
+                        <div className="flex items-center justify-between text-[11px] font-mono font-black">
+                          <span className="text-emerald-700">
                             Returned: {formatCurrency(returned)}
                           </span>
-                          <span className="text-slate-400">
+                          <span className="text-slate-700 font-bold">
                             Total Payable: {formatCurrency(loan.totalAmount)}
                           </span>
                         </div>
 
-                        <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                        <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden p-0.5 border border-slate-300">
                           <div
-                            className="bg-emerald-400 h-full rounded-full transition-all duration-500"
+                            className="bg-emerald-600 h-full rounded-full transition-all duration-500"
                             style={{ width: `${progressPct}%` }}
                           ></div>
                         </div>
 
-                        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300">
+                        <div className="flex items-center justify-between text-[11px] font-mono font-bold text-slate-800">
                           <span>
                             {progressPct}% paid
                           </span>
-                          <span className="text-rose-400 font-extrabold">
+                          <span className="text-rose-700 font-mono font-black">
                             Due: {formatCurrency(due)}
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Bottom Big Action Buttons */}
+                    {/* Bottom Action Buttons */}
                     {due > 0 ? (
-                      <div className="flex items-center gap-2 pt-1">
+                      <div className="flex items-center gap-2 pt-1 font-mono">
                         <button
                           onClick={() => {
                             setSelectedLoan(loan);
@@ -403,29 +403,30 @@ const Finance = () => {
                             setReturnPayMonth(`Month ${loan.months}`);
                             setIsReturnModalOpen(true);
                           }}
-                          className="flex-1 py-3 px-4 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 font-black text-xs rounded-2xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="flex-1 py-3 px-4 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-mono font-black text-xs sm:text-sm rounded-2xl transition-all shadow-md shadow-amber-600/20 flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           <span>💰</span> Record Return Payment
                         </button>
                         <button
                           onClick={() => settleFinanceLoan(loan.id)}
-                          className="py-3 px-3.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 font-bold text-xs rounded-2xl border border-indigo-500/30 transition-all cursor-pointer"
+                          className="py-3 px-3.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-mono font-black text-xs sm:text-sm rounded-2xl border border-slate-300 transition-all cursor-pointer"
                         >
                           Settle
                         </button>
                         <button
                           onClick={() => deleteFinanceLoan(loan.id)}
-                          className="p-3 bg-slate-800 hover:bg-rose-900/40 text-rose-400 rounded-2xl border border-rose-500/30 transition-colors cursor-pointer"
+                          className="p-3 bg-slate-100 hover:bg-rose-100 text-rose-600 rounded-2xl border border-slate-300 transition-colors cursor-pointer"
+                          title="Delete Loan Record"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-2xl text-emerald-400 text-xs font-black">
+                      <div className="flex items-center justify-between bg-emerald-100 border border-emerald-300 p-3.5 rounded-2xl text-emerald-900 text-xs font-mono font-black">
                         <span>🎉 Loan Fully Settled!</span>
                         <button
                           onClick={() => deleteFinanceLoan(loan.id)}
-                          className="text-rose-400 hover:underline text-[11px] font-bold"
+                          className="text-rose-700 hover:underline text-[11px] font-mono font-black cursor-pointer"
                         >
                           Remove Record
                         </button>
