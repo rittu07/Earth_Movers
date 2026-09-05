@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import TransactionTable from '../components/transactions/TransactionTable';
+import StockInTracker from '../components/businesses/StockInTracker';
 import { formatCurrency } from '../utils/formatCurrency';
 import { calculateBusinessMetrics } from '../utils/calculations';
-import { Mountain, PlusCircle } from 'lucide-react';
+import { Mountain, PlusCircle, PackagePlus, FileText } from 'lucide-react';
 
 const SandSupply = () => {
   const { transactions, payments, expenses } = useBusiness();
+  const [activeTab, setActiveTab] = useState('sales'); // sales, stock_in
   const sandTrxs = transactions.filter((t) => t.businessId === 'sand');
 
   const metrics = calculateBusinessMetrics(transactions, payments, expenses, 'sand');
@@ -17,14 +19,22 @@ const SandSupply = () => {
     <div className="space-y-6 animate-in fade-in duration-300">
       <PageHeader
         title="M-Sand & P-Sand Supply"
-        subtitle="Manufactured Sand (M-Sand) & Plastering Sand (P-Sand) crusher supply and delivery"
+        subtitle="Manufactured Sand (M-Sand) & Plastering Sand (P-Sand) crusher supply, stock in and delivery"
         action={
-          <Link
-            to="/transactions/add?business=sand"
-            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-teal-600/30 transition-all"
-          >
-            <PlusCircle className="w-4 h-4" /> + Add Sand Delivery
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab('stock_in')}
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer font-mono"
+            >
+              <PackagePlus className="w-4 h-4 text-teal-400" /> + Add Stock In
+            </button>
+            <Link
+              to="/transactions/add?business=sand"
+              className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-teal-600/30 transition-all font-mono"
+            >
+              <PlusCircle className="w-4 h-4" /> + Add Sand Delivery
+            </Link>
+          </div>
         }
       />
 
@@ -59,13 +69,46 @@ const SandSupply = () => {
         </div>
       </div>
 
-      {/* Transaction Log */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-          M-Sand & P-Sand Supply Log
-        </h3>
-        <TransactionTable transactions={sandTrxs} />
+      {/* Navigation Tabs */}
+      <div className="border-b border-slate-200 flex items-center gap-6 text-xs font-bold font-mono">
+        <button
+          onClick={() => setActiveTab('sales')}
+          className={`pb-3 transition-all relative flex items-center gap-2 cursor-pointer ${
+            activeTab === 'sales'
+              ? 'text-teal-600 border-b-2 border-teal-600 font-black'
+              : 'text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Sand Delivery Log ({sandTrxs.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('stock_in')}
+          className={`pb-3 transition-all relative flex items-center gap-2 cursor-pointer ${
+            activeTab === 'stock_in'
+              ? 'text-teal-600 border-b-2 border-teal-600 font-black'
+              : 'text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <PackagePlus className="w-4 h-4" />
+          <span>Stock In & Crusher Inward</span>
+        </button>
       </div>
+
+      {/* Tab Content */}
+      {activeTab === 'sales' && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider font-mono">
+            M-Sand & P-Sand Supply Log
+          </h3>
+          <TransactionTable transactions={sandTrxs} />
+        </div>
+      )}
+
+      {activeTab === 'stock_in' && (
+        <StockInTracker businessId="sand" businessName="Sand Supply" />
+      )}
     </div>
   );
 };

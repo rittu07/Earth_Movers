@@ -5,7 +5,7 @@ import PageHeader from '../components/layout/PageHeader';
 import TransactionTable from '../components/transactions/TransactionTable';
 import { formatCurrency } from '../utils/formatCurrency';
 import { calculateBusinessMetrics } from '../utils/calculations';
-import { Droplets, PlusCircle, TrendingUp, Users, Clock } from 'lucide-react';
+import { Droplets, PlusCircle } from 'lucide-react';
 
 const WaterSupply = () => {
   const { transactions, payments, expenses } = useBusiness();
@@ -21,7 +21,7 @@ const WaterSupply = () => {
         action={
           <Link
             to="/transactions/add?business=water"
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-blue-600/30 transition-all"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-blue-600/30 transition-all font-mono"
           >
             <PlusCircle className="w-4 h-4" /> + Add Water Delivery
           </Link>
@@ -61,7 +61,7 @@ const WaterSupply = () => {
 
       {/* Transaction Log */}
       <div className="space-y-3">
-        <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+        <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider font-mono">
           Recent Water Deliveries
         </h3>
         <TransactionTable transactions={waterTrxs} />

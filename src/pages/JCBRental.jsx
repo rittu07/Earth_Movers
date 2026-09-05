@@ -5,13 +5,15 @@ import PageHeader from '../components/layout/PageHeader';
 import TransactionTable from '../components/transactions/TransactionTable';
 import JCBServiceTracker from '../components/businesses/JCBServiceTracker';
 import JCBDieselSummary from '../components/businesses/JCBDieselSummary';
+import JCBDocumentTracker from '../components/businesses/JCBDocumentTracker';
 import { formatCurrency } from '../utils/formatCurrency';
 import { calculateBusinessMetrics } from '../utils/calculations';
-import { Truck, PlusCircle, Wrench, Fuel, FileText } from 'lucide-react';
+import { Truck, PlusCircle, Wrench, Fuel, FileText, FileCheck } from 'lucide-react';
 
 const JCBRental = () => {
   const { transactions, payments, expenses } = useBusiness();
-  const [activeTab, setActiveTab] = useState('maintenance'); // maintenance, sales, diesel
+  const [activeTab, setActiveTab] = useState('sales'); // sales, maintenance, diesel, documents
+  const [openMaintModal, setOpenMaintModal] = useState(false);
 
   const jcbTrxs = transactions.filter((t) => t.businessId === 'jcb');
   const metrics = calculateBusinessMetrics(transactions, payments, expenses, 'jcb');
@@ -22,12 +24,23 @@ const JCBRental = () => {
         title="JCB Rental Service"
         subtitle="JCB earthmover rental, excavator service, oil maintenance tracker & hourly monitoring"
         action={
-          <Link
-            to="/transactions/add?business=jcb"
-            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-amber-600/30 transition-all"
-          >
-            <PlusCircle className="w-4 h-4" /> + Add JCB Order
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setActiveTab('maintenance');
+                setOpenMaintModal(true);
+              }}
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer font-mono"
+            >
+              <Wrench className="w-4 h-4 text-amber-500" /> + Add Maintenance
+            </button>
+            <Link
+              to="/transactions/add?business=jcb"
+              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-amber-600/30 transition-all font-mono"
+            >
+              <PlusCircle className="w-4 h-4" /> + Add JCB Order
+            </Link>
+          </div>
         }
       />
 
@@ -65,6 +78,18 @@ const JCBRental = () => {
       {/* Navigation Tabs */}
       <div className="border-b border-slate-200 flex items-center gap-6 text-xs font-bold">
         <button
+          onClick={() => setActiveTab('sales')}
+          className={`pb-3 transition-all relative flex items-center gap-2 cursor-pointer ${
+            activeTab === 'sales'
+              ? 'text-amber-600 border-b-2 border-amber-600'
+              : 'text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>JCB Rental Orders ({jcbTrxs.length})</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('maintenance')}
           className={`pb-3 transition-all relative flex items-center gap-2 cursor-pointer ${
             activeTab === 'maintenance'
@@ -77,15 +102,15 @@ const JCBRental = () => {
         </button>
 
         <button
-          onClick={() => setActiveTab('sales')}
+          onClick={() => setActiveTab('documents')}
           className={`pb-3 transition-all relative flex items-center gap-2 cursor-pointer ${
-            activeTab === 'sales'
+            activeTab === 'documents'
               ? 'text-amber-600 border-b-2 border-amber-600'
               : 'text-slate-500 hover:text-slate-900'
           }`}
         >
-          <FileText className="w-4 h-4" />
-          <span>JCB Rental Orders ({jcbTrxs.length})</span>
+          <FileCheck className="w-4 h-4" />
+          <span>Vehicle Documents & Expiry</span>
         </button>
 
         <button
@@ -102,7 +127,14 @@ const JCBRental = () => {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'maintenance' && <JCBServiceTracker />}
+      {activeTab === 'maintenance' && (
+        <JCBServiceTracker
+          autoOpenAddMaintenance={openMaintModal}
+          onAddMaintenanceClosed={() => setOpenMaintModal(false)}
+        />
+      )}
+
+      {activeTab === 'documents' && <JCBDocumentTracker />}
 
       {activeTab === 'sales' && (
         <div className="space-y-3">
