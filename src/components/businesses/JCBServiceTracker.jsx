@@ -186,7 +186,7 @@ const SERVICE_INTERVALS = {
   'Greasing': 300,
   'Bearing Oil': 300,
   'Transmission Oil': 1000,
-  'General Service': 500
+  'Others': 500
 };
 
 const DEFAULT_OIL_GRADES = {
@@ -197,7 +197,7 @@ const DEFAULT_OIL_GRADES = {
   'Greasing': 'AP-3 Grease',
   'Bearing Oil': '15W-40',
   'Transmission Oil': '80W-90',
-  'General Service': 'Standard Spec'
+  'Others': 'N/A'
 };
 
 const formatDisplayDate = (dateStr) => {
@@ -262,11 +262,18 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
   const [maintCost, setMaintCost] = useState('8500');
   const [maintServiceProvider, setMaintServiceProvider] = useState('');
   const [maintInvoiceName, setMaintInvoiceName] = useState('');
+  const [maintRemarks, setMaintRemarks] = useState('');
 
   // Update default oil grade when service type changes
   const handleServiceTypeChange = (type) => {
     setMaintServiceType(type);
-    setMaintOilGrade(DEFAULT_OIL_GRADES[type] || '15W-40');
+    if (type === 'Others') {
+      setMaintOilGrade('N/A');
+      setMaintQuantity('0');
+    } else {
+      setMaintOilGrade(DEFAULT_OIL_GRADES[type] || '15W-40');
+      if (maintQuantity === '0' || !maintQuantity) setMaintQuantity('20');
+    }
   };
 
   // Auto calculate Next Service Due
@@ -290,13 +297,14 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
     const machine = fleet.find((m) => m.id === targetJcbId) || selectedMachine;
     setMaintJcbId(machine.id);
     setMaintServiceType(presetType);
-    setMaintOilGrade(DEFAULT_OIL_GRADES[presetType] || '15W-40');
+    setMaintOilGrade(presetType === 'Others' ? 'N/A' : (DEFAULT_OIL_GRADES[presetType] || '15W-40'));
     setMaintServiceDate(new Date().toISOString().split('T')[0]);
     setMaintHourMeter(machine ? machine.totalHours.toString() : '4528');
-    setMaintQuantity('20');
+    setMaintQuantity(presetType === 'Others' ? '0' : '20');
     setMaintCost('8500');
     setMaintServiceProvider('');
     setMaintInvoiceName('');
+    setMaintRemarks('');
     setIsAddMaintenanceOpen(true);
   };
 
@@ -307,7 +315,8 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
     const hourMeterNum = Number(maintHourMeter) || 0;
     const costNum = Number(maintCost) || 0;
     const nextDueNum = autoNextDue;
-    const gradeVal = maintOilGrade.trim() || DEFAULT_OIL_GRADES[maintServiceType] || '15W-40';
+    const gradeVal = maintServiceType === 'Others' ? 'N/A' : (maintOilGrade.trim() || DEFAULT_OIL_GRADES[maintServiceType] || '15W-40');
+    const qtyVal = maintServiceType === 'Others' ? '-' : (maintQuantity || '0');
 
     let status = 'OK';
     if (targetMachine.totalHours - hourMeterNum >= calculatedInterval) {
@@ -325,12 +334,14 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
       date: maintServiceDate,
       displayDate: formatDisplayDate(maintServiceDate),
       hourMeter: hourMeterNum,
-      quantity: maintQuantity || '0',
+      quantity: qtyVal,
       unit: maintServiceType.includes('Oil') ? 'L' : 'Pcs',
       cost: costNum,
       serviceProvider: maintServiceProvider.trim() || 'JCB Authorized Service',
       invoiceName: maintInvoiceName || 'service_invoice.pdf',
       nextDue: nextDueNum,
+      remarks: maintRemarks.trim(),
+      notes: maintRemarks.trim() || `${maintServiceType} service record`,
       status: status
     };
 
@@ -1031,41 +1042,43 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                     <option value="Filter">[ Filter ]</option>
                     <option value="Bearing Oil">[ Bearing Oil ]</option>
                     <option value="Transmission Oil">[ Transmission Oil ]</option>
-                    <option value="General Service">[ General Service ]</option>
+                    <option value="Others">[ Others ]</option>
                   </select>
                 </div>
               </div>
 
-              {/* 3. Oil Grade / Spec Field */}
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                <label className="text-slate-700 w-36 font-mono pt-2">Oil Grade / Spec</label>
-                <div className="flex-1 space-y-2">
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. 15W-40 / Tellus 68 / AP-3 Grease"
-                    value={maintOilGrade}
-                    onChange={(e) => setMaintOilGrade(e.target.value)}
-                    className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl font-black text-slate-900 text-sm sm:text-base focus:outline-hidden focus:border-amber-600 focus:bg-white font-mono"
-                  />
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {['15W-40', 'Tellus 68', 'ISO VG 46', 'AP-3 Grease', '80W-90'].map((preset) => (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => setMaintOilGrade(preset)}
-                        className={`px-3 py-1 text-xs font-mono font-black rounded-xl cursor-pointer transition-all border ${
-                          maintOilGrade === preset
-                            ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                            : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
-                        }`}
-                      >
-                        + {preset}
-                      </button>
-                    ))}
+              {/* 3. Oil Grade / Spec Field (Hidden for Others) */}
+              {maintServiceType !== 'Others' && (
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                  <label className="text-slate-700 w-36 font-mono pt-2">Oil Grade / Spec</label>
+                  <div className="flex-1 space-y-2">
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. 15W-40 / Tellus 68 / AP-3 Grease"
+                      value={maintOilGrade}
+                      onChange={(e) => setMaintOilGrade(e.target.value)}
+                      className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl font-black text-slate-900 text-sm sm:text-base focus:outline-hidden focus:border-amber-600 focus:bg-white font-mono"
+                    />
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {['15W-40', 'Tellus 68', 'ISO VG 46', 'AP-3 Grease', '80W-90'].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setMaintOilGrade(preset)}
+                          className={`px-3 py-1 text-xs font-mono font-black rounded-xl cursor-pointer transition-all border ${
+                            maintOilGrade === preset
+                              ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                              : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
+                          }`}
+                        >
+                          + {preset}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* 4. Service Date */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -1096,25 +1109,48 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                 </div>
               </div>
 
-              {/* 6. Quantity */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <label className="text-slate-700 w-36 font-mono">Quantity</label>
-                <div className="flex-1 flex items-center gap-2">
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. 20"
-                    value={maintQuantity}
-                    onChange={(e) => setMaintQuantity(e.target.value)}
-                    className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl font-bold text-slate-900 text-base focus:outline-hidden focus:border-amber-600 focus:bg-white font-mono"
+              {/* 6. Quantity (Hidden for Others) */}
+              {maintServiceType !== 'Others' && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <label className="text-slate-700 w-36 font-mono">Quantity</label>
+                  <div className="flex-1 flex items-center gap-2">
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. 20"
+                      value={maintQuantity}
+                      onChange={(e) => setMaintQuantity(e.target.value)}
+                      className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl font-bold text-slate-900 text-base focus:outline-hidden focus:border-amber-600 focus:bg-white font-mono"
+                    />
+                    <span className="px-4 py-3.5 bg-slate-100 border border-slate-300 rounded-2xl text-slate-800 font-black shrink-0 font-mono text-base">
+                      {maintServiceType.includes('Oil') ? 'L' : 'Pcs'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* 7. Remarks / Description Section */}
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                <label className="text-slate-700 w-36 font-mono pt-2">
+                  Remarks {maintServiceType === 'Others' && '*'}
+                </label>
+                <div className="flex-1">
+                  <textarea
+                    rows={2}
+                    required={maintServiceType === 'Others'}
+                    placeholder={
+                      maintServiceType === 'Others'
+                        ? 'e.g. Bucket teeth replacement, electrical repair, pin Bushing work...'
+                        : 'Optional service notes or remarks...'
+                    }
+                    value={maintRemarks}
+                    onChange={(e) => setMaintRemarks(e.target.value)}
+                    className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl font-bold text-slate-900 text-sm sm:text-base focus:outline-hidden focus:border-amber-600 focus:bg-white"
                   />
-                  <span className="px-4 py-3.5 bg-slate-100 border border-slate-300 rounded-2xl text-slate-800 font-black shrink-0 font-mono text-base">
-                    L
-                  </span>
                 </div>
               </div>
 
-              {/* 7. Cost */}
+              {/* 8. Cost */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <label className="text-slate-700 w-36 font-mono">Cost</label>
                 <div className="flex-1 flex items-center gap-2">
@@ -1225,12 +1261,14 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                   <span className="text-slate-600 font-bold">Status:</span>
                   <span>{renderStatusBadge(viewingRecord.status.toLowerCase())}</span>
                 </div>
-                <div className="flex justify-between font-mono">
-                  <span className="text-slate-600 font-bold">Oil Grade / Spec:</span>
-                  <span className="px-2.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-300 rounded-lg font-black text-xs">
-                    {viewingRecord.oilGrade || '15W-40'}
-                  </span>
-                </div>
+                {viewingRecord.serviceType !== 'Others' && (
+                  <div className="flex justify-between font-mono">
+                    <span className="text-slate-600 font-bold">Oil Grade / Spec:</span>
+                    <span className="px-2.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-300 rounded-lg font-black text-xs">
+                      {viewingRecord.oilGrade || '15W-40'}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between font-mono">
                   <span className="text-slate-600 font-bold">Service Date:</span>
                   <span className="text-slate-900 font-black">{viewingRecord.displayDate || viewingRecord.date}</span>
@@ -1246,10 +1284,18 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
               </div>
 
               <div className="bg-slate-50 p-4 rounded-2xl space-y-2.5 border border-slate-200">
-                <div className="flex justify-between">
-                  <span className="text-slate-600 font-bold">Quantity Used:</span>
-                  <span className="text-slate-900 font-black">{viewingRecord.quantity} {viewingRecord.unit}</span>
-                </div>
+                {viewingRecord.serviceType !== 'Others' && viewingRecord.quantity && viewingRecord.quantity !== '-' && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 font-bold">Quantity Used:</span>
+                    <span className="text-slate-900 font-black">{viewingRecord.quantity} {viewingRecord.unit}</span>
+                  </div>
+                )}
+                {(viewingRecord.remarks || viewingRecord.notes) && (
+                  <div className="flex justify-between items-start gap-2">
+                    <span className="text-slate-600 font-bold shrink-0">Remarks / Notes:</span>
+                    <span className="text-slate-900 font-black text-right">{viewingRecord.remarks || viewingRecord.notes}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-mono">
                   <span className="text-slate-600 font-bold">Cost:</span>
                   <span className="text-amber-700 font-black">{formatCurrency(viewingRecord.cost)}</span>
