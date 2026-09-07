@@ -1234,26 +1234,6 @@ const Finance = () => {
 
               {/* Payment Form */}
               <form id="return-pay-form" onSubmit={handleReturnSubmit} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-4">
-                {/* Tenure & Month Selection */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Variable Month *</label>
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      value={returnPayMonths}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setReturnPayMonths(val);
-                        if (val) setReturnPayMonth(`Month ${val}`);
-                      }}
-                      placeholder={currentSelectedLoanCalculated.months}
-                      className="w-full p-3 bg-white border border-slate-200 rounded-xl font-bold text-lg text-slate-900 focus:outline-hidden focus:border-emerald-500"
-                    />
-                    <span className="text-[10px] text-slate-400 mt-0.5 block">Accrues interest per month</span>
-                  </div>
-
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">Repayment For *</label>
                     <select
@@ -1298,7 +1278,6 @@ const Finance = () => {
                       <option value="Partial Principal Return">Partial Principal Return</option>
                     </select>
                   </div>
-                </div>
 
                 {/* Amount */}
                 <div>

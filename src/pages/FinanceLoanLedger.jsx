@@ -440,67 +440,49 @@ const FinanceLoanLedger = () => {
             </div>
 
             <form onSubmit={handleReturnSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1 text-xs">Variable Month *</label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    value={returnPayMonths}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setReturnPayMonths(val);
-                      if (val) setReturnPayMonth(`Month ${val}`);
-                    }}
-                    className="w-full p-3 bg-white border border-slate-200 rounded-xl font-bold text-base text-slate-900"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1 text-xs">Repayment For *</label>
-                  <select
-                    value={returnPayMonth}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setReturnPayMonth(val);
-                      if (val.startsWith('Month ')) {
-                        const m = parseInt(val.split(' ')[1], 10);
-                        if (m && !isNaN(m)) {
-                          setReturnPayMonths(m.toString());
-                          const mInt = (loanCalculated.monthBreakdown && loanCalculated.monthBreakdown[m - 1])
-                            ? loanCalculated.monthBreakdown[m - 1].interestAccrued
-                            : loanCalculated.monthlyInterest;
-                          setReturnPayAmount(mInt.toString());
-                        }
-                      } else if (val === 'Full Settlement') {
-                        setReturnPayAmount(loanCalculated.dueAmount.toString());
-                      }
-                    }}
-                    required
-                    className="w-full p-3 bg-white border border-slate-200 rounded-xl font-semibold text-slate-900 text-xs"
-                  >
-                    <option value="">-- Select Repayment --</option>
-                    {Array.from(
-                      { length: Math.max(Number(returnPayMonths) || 1, loanCalculated.months || 1) },
-                      (_, i) => {
-                        const monthNum = i + 1;
-                        const settled = isMonthSettled(loanCalculated, monthNum);
-                        if (settled) return null;
-                        const mInt = (loanCalculated.monthBreakdown && loanCalculated.monthBreakdown[i])
-                          ? loanCalculated.monthBreakdown[i].interestAccrued
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 text-xs">Repayment For *</label>
+                <select
+                  value={returnPayMonth}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setReturnPayMonth(val);
+                    if (val.startsWith('Month ')) {
+                      const m = parseInt(val.split(' ')[1], 10);
+                      if (m && !isNaN(m)) {
+                        setReturnPayMonths(m.toString());
+                        const mInt = (loanCalculated.monthBreakdown && loanCalculated.monthBreakdown[m - 1])
+                          ? loanCalculated.monthBreakdown[m - 1].interestAccrued
                           : loanCalculated.monthlyInterest;
-                        return (
-                          <option key={monthNum} value={`Month ${monthNum}`}>
-                            Month {monthNum} Interest ({formatCurrency(mInt)})
-                          </option>
-                        );
+                        setReturnPayAmount(mInt.toString());
                       }
-                    )}
-                    <option value="Full Settlement">Full Remaining Settlement</option>
-                    <option value="Partial Principal Return">Partial Principal Return</option>
-                  </select>
-                </div>
+                    } else if (val === 'Full Settlement') {
+                      setReturnPayAmount(loanCalculated.dueAmount.toString());
+                    }
+                  }}
+                  required
+                  className="w-full p-3 bg-white border border-slate-200 rounded-xl font-semibold text-slate-900 text-xs"
+                >
+                  <option value="">-- Select Repayment --</option>
+                  {Array.from(
+                    { length: Math.max(Number(returnPayMonths) || 1, loanCalculated.months || 1) },
+                    (_, i) => {
+                      const monthNum = i + 1;
+                      const settled = isMonthSettled(loanCalculated, monthNum);
+                      if (settled) return null;
+                      const mInt = (loanCalculated.monthBreakdown && loanCalculated.monthBreakdown[i])
+                        ? loanCalculated.monthBreakdown[i].interestAccrued
+                        : loanCalculated.monthlyInterest;
+                      return (
+                        <option key={monthNum} value={`Month ${monthNum}`}>
+                          Month {monthNum} Interest ({formatCurrency(mInt)})
+                        </option>
+                      );
+                    }
+                  )}
+                  <option value="Full Settlement">Full Remaining Settlement</option>
+                  <option value="Partial Principal Return">Partial Principal Return</option>
+                </select>
               </div>
 
               <div>
