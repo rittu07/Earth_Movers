@@ -12,6 +12,7 @@ import CustomerQuickSearchModal from './components/customers/CustomerQuickSearch
 // Pages
 import Dashboard from './pages/Dashboard';
 import Finance from './pages/Finance';
+import FinanceLoanLedger from './pages/FinanceLoanLedger';
 import Customers from './pages/Customers';
 import AddCustomer from './pages/AddCustomer';
 import CustomerLedger from './pages/CustomerLedger';
@@ -79,6 +80,7 @@ const AppContent = () => {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/finance" element={<Finance />} />
+            <Route path="/finance/ledger/:id" element={<FinanceLoanLedger />} />
 
             <Route path="/customers" element={<Customers />} />
             <Route path="/customers/add" element={<AddCustomer />} />

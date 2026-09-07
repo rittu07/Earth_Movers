@@ -5,7 +5,8 @@ import PageHeader from '../components/layout/PageHeader';
 import TransactionTable from '../components/transactions/TransactionTable';
 import { formatCurrency } from '../utils/formatCurrency';
 import { calculateBusinessMetrics } from '../utils/calculations';
-import { Droplets, PlusCircle } from 'lucide-react';
+import { exportBusinessStatementPdf } from '../utils/pdfGenerator';
+import { Droplets, PlusCircle, Download } from 'lucide-react';
 
 const WaterSupply = () => {
   const { transactions, payments, expenses } = useBusiness();
@@ -13,18 +14,34 @@ const WaterSupply = () => {
 
   const metrics = calculateBusinessMetrics(transactions, payments, expenses, 'water');
 
+  const handleDownloadStatement = () => {
+    exportBusinessStatementPdf({
+      title: 'WATER SUPPLY',
+      transactions: waterTrxs,
+      metrics
+    });
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <PageHeader
         title="Water Supply"
         subtitle="Overview of water tanker loads, commercial deliveries and daily supply"
         action={
-          <Link
-            to="/transactions/add?business=water"
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-blue-600/30 transition-all font-mono"
-          >
-            <PlusCircle className="w-4 h-4" /> + Add Water Delivery
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadStatement}
+              className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            >
+              <Download className="w-4 h-4 text-blue-600" /> Statement PDF
+            </button>
+            <Link
+              to="/transactions/add?business=water"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-blue-600/30 transition-all font-mono"
+            >
+              <PlusCircle className="w-4 h-4" /> + Add Water Delivery
+            </Link>
+          </div>
         }
       />
 

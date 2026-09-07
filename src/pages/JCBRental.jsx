@@ -8,7 +8,8 @@ import JCBDieselSummary from '../components/businesses/JCBDieselSummary';
 import JCBDocumentTracker from '../components/businesses/JCBDocumentTracker';
 import { formatCurrency } from '../utils/formatCurrency';
 import { calculateBusinessMetrics } from '../utils/calculations';
-import { Truck, PlusCircle, Wrench, Fuel, FileText, FileCheck } from 'lucide-react';
+import { exportBusinessStatementPdf } from '../utils/pdfGenerator';
+import { Truck, PlusCircle, Wrench, Fuel, FileText, FileCheck, Download } from 'lucide-react';
 
 const JCBRental = () => {
   const { transactions, payments, expenses } = useBusiness();
@@ -18,6 +19,14 @@ const JCBRental = () => {
   const jcbTrxs = transactions.filter((t) => t.businessId === 'jcb');
   const metrics = calculateBusinessMetrics(transactions, payments, expenses, 'jcb');
 
+  const handleDownloadStatement = () => {
+    exportBusinessStatementPdf({
+      title: 'JCB RENTAL & EARTHMOVING',
+      transactions: jcbTrxs,
+      metrics
+    });
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <PageHeader
@@ -25,6 +34,12 @@ const JCBRental = () => {
         subtitle="JCB earthmover rental, excavator service, oil maintenance tracker & hourly monitoring"
         action={
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadStatement}
+              className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            >
+              <Download className="w-4 h-4 text-amber-600" /> Statement PDF
+            </button>
             <button
               onClick={() => {
                 setActiveTab('maintenance');

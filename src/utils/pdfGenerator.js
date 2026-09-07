@@ -194,3 +194,48 @@ export const exportToPdf = ({
   printWindow.document.write(htmlContent);
   printWindow.document.close();
 };
+
+/**
+ * Business PDF Statement Downloader
+ */
+export const exportBusinessStatementPdf = ({ title, businessName, transactions = [], metrics = {} }) => {
+  const dateStr = new Date().toISOString().split('T')[0];
+  const totalSales = metrics.totalIncome !== undefined
+    ? metrics.totalIncome
+    : transactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  const totalPaid = metrics.totalPaid !== undefined
+    ? metrics.totalPaid
+    : transactions.reduce((sum, t) => sum + (Number(t.paid) || 0), 0);
+  const totalDue = metrics.totalOutstanding !== undefined
+    ? metrics.totalOutstanding
+    : Math.max(0, totalSales - totalPaid);
+
+  exportToPdf({
+    title: `${title || businessName || 'BUSINESS'} STATEMENT`,
+    subtitle: `Total Deliveries / Sales: ${transactions.length} | Total Business: ${formatCurrency(totalSales)}`,
+    filename: `${(title || businessName || 'Business').replace(/\s+/g, '_')}_Statement_${dateStr}.pdf`,
+    columns: [
+      { header: 'Date', key: 'displayDate' },
+      { header: 'Customer Name', key: 'customerName', bold: true },
+      { header: 'Phone', key: 'phone' },
+      { header: 'Service / Item', key: 'itemService' },
+      { header: 'Bill Amount', key: 'formattedAmount', align: 'right', bold: true },
+      { header: 'Amount Paid', key: 'formattedPaid', align: 'right', color: '#15803d', bold: true },
+      { header: 'Remaining Due', key: 'formattedDue', align: 'right', color: '#b91c1c', bold: true }
+    ],
+    data: transactions.map((t) => ({
+      displayDate: t.displayDate || t.date || 'N/A',
+      customerName: t.customerName || 'N/A',
+      phone: t.phone || 'N/A',
+      itemService: t.itemService || t.description || 'Delivery',
+      formattedAmount: formatCurrency(t.amount || 0),
+      formattedPaid: `+${formatCurrency(t.paid || 0)}`,
+      formattedDue: formatCurrency(t.due || 0)
+    })),
+    summary: [
+      { label: 'Total Business Sales', value: formatCurrency(totalSales) },
+      { label: 'Total Amount Received / Paid', value: formatCurrency(totalPaid), color: '#15803d' },
+      { label: 'Net Outstanding Balance Due', value: formatCurrency(totalDue), color: '#b91c1c' }
+    ]
+  });
+};

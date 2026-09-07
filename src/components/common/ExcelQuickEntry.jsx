@@ -51,6 +51,7 @@ const createEmptyTxRow = (defaultBusId = 'bricks') => ({
   rate: '',
   paid: '',
   paymentMethod: 'Cash',
+  reference: '',
   notes: '',
   sourcingType: 'local',
   supplierId: '',
@@ -65,7 +66,10 @@ const createEmptyTxRow = (defaultBusId = 'bricks') => ({
   isNewDriver: false,
   driverAmount: '',
   startTime: '09:00',
-  endTime: '14:00'
+  endTime: '14:00',
+  waterSource: 'Own Borewell (Plant 1)',
+  deliveryPlace: '',
+  isCustomWaterSource: false
 });
 
 const createEmptyExpRow = (defaultBusId = 'jcb') => ({
@@ -132,6 +136,7 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
             } else if (value === 'water') {
               updated.itemService = 'Water Tanker Load';
               updated.unit = 'Loads';
+              updated.waterSource = updated.waterSource || 'Own Borewell (Plant 1)';
             } else if (value === 'jalli') {
               updated.itemService = '20mm Jalli';
               updated.unit = 'Lorry';
@@ -261,6 +266,7 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
         paid,
         due: Math.max(0, totalAmount - paid),
         paymentMethod: r.paymentMethod || 'Cash',
+        reference: r.reference || '',
         date: r.date || getTodayString(),
         notes: r.notes || '',
         isOutsourced: r.sourcingType === 'outsourced',
@@ -274,7 +280,9 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
         driverPhone: r.businessId === 'jcb' ? (r.driverPhone || '') : '',
         driverAmount: r.businessId === 'jcb' ? (Number(r.driverAmount) || 0) : (Number(r.driverAmount) || 0),
         startTime: r.businessId === 'jcb' ? (r.startTime || '') : '',
-        endTime: r.businessId === 'jcb' ? (r.endTime || '') : ''
+        endTime: r.businessId === 'jcb' ? (r.endTime || '') : '',
+        waterSource: r.businessId === 'water' ? (r.waterSource || 'Own Borewell (Plant 1)') : '',
+        deliveryPlace: r.businessId === 'water' ? (r.deliveryPlace || '') : ''
       });
       count++;
     });
@@ -765,6 +773,62 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                         </>
                       )}
                     </div>
+                  ) : row.businessId === 'water' ? (
+                    <div className="sm:col-span-4">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-sm font-black text-blue-950 flex items-center gap-1">
+                          💧 Water Source & Site *
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => handleTxChange(row.id, 'isCustomWaterSource', !row.isCustomWaterSource)}
+                          className="text-xs text-blue-600 font-extrabold hover:underline cursor-pointer"
+                        >
+                          {row.isCustomWaterSource ? 'Select Preset Source' : '+ Custom Source'}
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        {!row.isCustomWaterSource ? (
+                          <select
+                            value={row.waterSource || 'Own Borewell (Plant 1)'}
+                            onChange={(e) => {
+                              if (e.target.value === '__custom__') {
+                                handleTxChange(row.id, 'isCustomWaterSource', true);
+                                handleTxChange(row.id, 'waterSource', '');
+                              } else {
+                                handleTxChange(row.id, 'waterSource', e.target.value);
+                              }
+                            }}
+                            className="w-full p-3.5 bg-blue-50 border-2 border-blue-400 rounded-2xl text-sm font-black text-blue-950 focus:bg-white focus:outline-hidden shadow-2xs cursor-pointer"
+                          >
+                            <option value="Own Borewell (Plant 1)">Own Borewell (Plant 1)</option>
+                            <option value="Own Borewell (Plant 2)">Own Borewell (Plant 2)</option>
+                            <option value="Panchayat Well Sourcing">Panchayat Well Sourcing</option>
+                            <option value="River Water Source">River Water Source</option>
+                            <option value="Quarry Water Sourcing">Quarry Water Sourcing</option>
+                            <option value="Outsourced Tanker Supplier">Outsourced Tanker Supplier</option>
+                            <option value="__custom__">+ Custom Water Source...</option>
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={row.waterSource || ''}
+                            onChange={(e) => handleTxChange(row.id, 'waterSource', e.target.value)}
+                            placeholder="Enter Water Source *"
+                            className="w-full p-3.5 bg-white border-2 border-blue-400 rounded-2xl text-sm font-bold text-slate-900 focus:outline-hidden shadow-2xs"
+                          />
+                        )}
+
+                        <input
+                          type="text"
+                          value={row.deliveryPlace || ''}
+                          onChange={(e) => handleTxChange(row.id, 'deliveryPlace', e.target.value)}
+                          placeholder="Delivery Site / Location"
+                          className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:outline-hidden shadow-2xs"
+                        />
+                      </div>
+                    </div>
                   ) : (
                     /* Item Description (4 cols) for non-bricks */
                     <div className="sm:col-span-4">
@@ -959,22 +1023,38 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                 )}
 
                 {/* Subtotal Footer line */}
-                <div className="flex items-center justify-between text-base pt-2 border-t border-slate-100">
+                <div className="flex flex-wrap items-center justify-between gap-3 text-base pt-2 border-t border-slate-100">
                   <span className="text-slate-700 font-extrabold">
                     Subtotal: <strong className="text-slate-950 font-black text-xl ml-1">₹{totalAmt.toLocaleString('en-IN')}</strong>
                   </span>
-                  <span className="text-slate-700 font-extrabold flex items-center gap-1.5">
-                    Method: 
-                    <select
-                      value={row.paymentMethod}
-                      onChange={(e) => handleTxChange(row.id, 'paymentMethod', e.target.value)}
-                      className="bg-slate-100 border border-slate-300 text-slate-900 text-sm sm:text-base font-extrabold px-3 py-1.5 rounded-xl cursor-pointer focus:outline-hidden shadow-2xs"
-                    >
-                      <option value="Cash">Cash</option>
-                      <option value="UPI">UPI</option>
-                      <option value="Bank Transfer">Bank Transfer</option>
-                    </select>
-                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-slate-700 font-extrabold flex items-center gap-1.5">
+                      Method: 
+                      <select
+                        value={row.paymentMethod}
+                        onChange={(e) => handleTxChange(row.id, 'paymentMethod', e.target.value)}
+                        className="bg-slate-100 border border-slate-300 text-slate-900 text-sm sm:text-base font-extrabold px-3 py-1.5 rounded-xl cursor-pointer focus:outline-hidden shadow-2xs"
+                      >
+                        <option value="Cash">Cash</option>
+                        <option value="UPI">UPI</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                      </select>
+                    </span>
+
+                    <input
+                      type="text"
+                      value={row.reference || ''}
+                      onChange={(e) => handleTxChange(row.id, 'reference', e.target.value)}
+                      placeholder={
+                        row.paymentMethod === 'UPI'
+                          ? 'UPI Ref / UTR (Optional)'
+                          : row.paymentMethod === 'Bank Transfer'
+                          ? 'Bank Txn ID / IMPS (Optional)'
+                          : 'Payment ID / Ref (Optional)'
+                      }
+                      className="p-1.5 px-3 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm font-mono text-slate-800 placeholder:font-sans placeholder:text-slate-400 focus:border-indigo-500 focus:outline-hidden shadow-2xs w-48 sm:w-60"
+                    />
+                  </div>
                 </div>
               </div>
             );

@@ -186,13 +186,29 @@ const PaySupplierModal = ({ isOpen, onClose, preselectedSupplierId = '' }) => {
 
           {/* Reference / Txn ID */}
           <div>
-            <label className="block font-bold text-slate-700 mb-1">Reference / Transaction ID</label>
+            <label className="block font-bold text-slate-700 mb-1">
+              {method === 'UPI'
+                ? 'UPI Reference ID / UTR Number (Optional)'
+                : method === 'Bank Transfer'
+                ? 'Bank Transaction ID / IMPS Ref (Optional)'
+                : method === 'Cheque'
+                ? 'Cheque Number (Optional)'
+                : 'Reference No. (Optional)'}
+            </label>
             <input
               type="text"
-              placeholder="e.g. UPI-9923841029"
               value={reference}
               onChange={(e) => setReference(e.target.value)}
-              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-hidden focus:border-emerald-500"
+              placeholder={
+                method === 'UPI'
+                  ? 'e.g. 423456789012 or GPay Ref ID'
+                  : method === 'Bank Transfer'
+                  ? 'e.g. TXN987654321 or IMPS/NEFT Ref'
+                  : method === 'Cheque'
+                  ? 'e.g. CHQ-987654'
+                  : 'e.g. REF-123456'
+              }
+              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-hidden focus:border-emerald-500 font-mono text-xs"
             />
           </div>
 

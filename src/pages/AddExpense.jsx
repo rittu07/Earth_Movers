@@ -21,11 +21,16 @@ const AddExpense = () => {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('Cash');
+  const [reference, setReference] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    const combinedNotes = reference.trim()
+      ? `Ref: ${reference.trim()}${notes.trim() ? ' - ' + notes.trim() : ''}`
+      : notes.trim();
 
     addExpense({
       businessId,
@@ -34,7 +39,7 @@ const AddExpense = () => {
       amount: Number(amount) || 0,
       method,
       date,
-      notes
+      notes: combinedNotes
     });
 
     navigate('/expenses');
@@ -152,16 +157,39 @@ const AddExpense = () => {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Vendor / Additional Notes
+                  {method === 'UPI'
+                    ? 'UPI Reference ID / UTR Number (Optional)'
+                    : method === 'Bank Transfer'
+                    ? 'Bank Transaction ID / IMPS Ref (Optional)'
+                    : 'Reference No. (Optional)'}
                 </label>
                 <input
                   type="text"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="e.g. Receipt # 4921"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-hidden focus:border-indigo-500"
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
+                  placeholder={
+                    method === 'UPI'
+                      ? 'e.g. 423456789012 or GPay Ref ID'
+                      : method === 'Bank Transfer'
+                      ? 'e.g. TXN987654321 or IMPS/NEFT Ref'
+                      : 'e.g. REF-123456'
+                  }
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-slate-700 focus:outline-hidden focus:border-indigo-500"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Vendor / Additional Notes
+              </label>
+              <input
+                type="text"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="e.g. Receipt # 4921"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-hidden focus:border-indigo-500"
+              />
             </div>
 
             <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">

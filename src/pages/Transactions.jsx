@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import TransactionTable from '../components/transactions/TransactionTable';
-import { PlusCircle, Search, Filter } from 'lucide-react';
+import { PlusCircle, Search, Filter, Download } from 'lucide-react';
 import { getDateRange, isDateInRange } from '../utils/calculations';
+import { exportBusinessStatementPdf } from '../utils/pdfGenerator';
 
 const Transactions = () => {
   const { transactions, businesses } = useBusiness();
@@ -33,18 +34,33 @@ const Transactions = () => {
     return true;
   });
 
+  const handleDownloadStatement = () => {
+    exportBusinessStatementPdf({
+      title: businessFilter !== 'all' ? `${businessFilter.toUpperCase()} TRANSACTIONS` : 'ALL BUSINESS TRANSACTIONS',
+      transactions: filteredTrxs
+    });
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <PageHeader
         title="Transactions"
         subtitle="Track sales, service orders, and material deliveries across all 4 businesses"
         action={
-          <Link
-            to="/transactions/add"
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all"
-          >
-            <PlusCircle className="w-4 h-4" /> + Add Transaction
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadStatement}
+              className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            >
+              <Download className="w-4 h-4 text-indigo-600" /> Statement PDF
+            </button>
+            <Link
+              to="/transactions/add"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all cursor-pointer font-mono"
+            >
+              <PlusCircle className="w-4 h-4" /> + Add Transaction
+            </Link>
+          </div>
         }
       />
 

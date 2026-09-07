@@ -239,12 +239,18 @@ const ReceivePayment = () => {
                 </label>
                 <select
                   value={method}
-                  onChange={(e) => setMethod(e.target.value)}
+                  onChange={(e) => {
+                    const newMethod = e.target.value;
+                    setMethod(newMethod);
+                    if ((newMethod === 'UPI' || newMethod === 'Bank Transfer' || newMethod === 'Cheque') && reference.startsWith('REF-')) {
+                      setReference('');
+                    }
+                  }}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-hidden focus:border-indigo-500"
                 >
                   <option value="Cash">Cash</option>
                   <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
-                  <option value="Bank Transfer">Bank Transfer (NEFT / RTGS)</option>
+                  <option value="Bank Transfer">Bank Transfer (NEFT / RTGS / IMPS)</option>
                   <option value="Cheque">Cheque</option>
                 </select>
               </div>
@@ -253,12 +259,27 @@ const ReceivePayment = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Reference No. / UTR
+                  {method === 'UPI'
+                    ? 'UPI Reference ID / UTR Number (Optional)'
+                    : method === 'Bank Transfer'
+                    ? 'Bank Transaction ID / IMPS Ref (Optional)'
+                    : method === 'Cheque'
+                    ? 'Cheque Number (Optional)'
+                    : 'Reference No. (Optional)'}
                 </label>
                 <input
                   type="text"
                   value={reference}
                   onChange={(e) => setReference(e.target.value)}
+                  placeholder={
+                    method === 'UPI'
+                      ? 'e.g. 423456789012 or GPay Ref ID'
+                      : method === 'Bank Transfer'
+                      ? 'e.g. TXN987654321 or IMPS/NEFT Ref'
+                      : method === 'Cheque'
+                      ? 'e.g. CHQ-987654'
+                      : 'e.g. REF-123456'
+                  }
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-slate-700 focus:outline-hidden focus:border-indigo-500"
                 />
               </div>

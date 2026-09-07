@@ -181,6 +181,7 @@ export const BusinessProvider = ({ children }) => {
       due: dueAmt,
       status: status,
       paymentMethod: trxData.paymentMethod || 'Cash',
+      reference: trxData.reference || '',
       date: trxData.date || todayStr,
       displayDate: displayDateStr,
       notes: trxData.notes || '',
@@ -468,7 +469,8 @@ export const BusinessProvider = ({ children }) => {
     const principal = Number(loanData.principal) || 0;
     const rate = Number(loanData.interestRate) || 0;
     const startDate = loanData.startDate || new Date().toISOString().split('T')[0];
-    const months = Number(loanData.months) || calculateElapsedMonths(startDate);
+    const autoElapsed = calculateElapsedMonths(startDate);
+    const months = Number(loanData.months) || autoElapsed;
     const monthlyInterest = (principal * rate) / 100;
     const totalInterest = monthlyInterest * months;
     const totalAmount = principal + totalInterest;
@@ -481,12 +483,15 @@ export const BusinessProvider = ({ children }) => {
       interestRate: rate,
       startDate,
       months,
+      isManualMonths: false,
       monthlyInterest,
       totalInterest,
       totalAmount,
       returnedAmount: 0,
       dueAmount: totalAmount,
       status: 'Active',
+      paymentMethod: loanData.paymentMethod || 'Cash',
+      reference: loanData.reference || '',
       notes: loanData.notes || '',
       paymentHistory: []
     };
@@ -497,7 +502,7 @@ export const BusinessProvider = ({ children }) => {
     return newLoan;
   };
 
-  const updateFinanceLoanMonths = (loanId, newMonths) => {
+  const updateFinanceLoanMonths = (loanId, newMonths, isManual = true) => {
     const targetMonths = Math.max(1, Number(newMonths) || 1);
     let updatedLoan = null;
     setFinanceLoans((prev) =>
@@ -511,6 +516,7 @@ export const BusinessProvider = ({ children }) => {
           updatedLoan = {
             ...loan,
             months: targetMonths,
+            isManualMonths: isManual,
             monthlyInterest,
             totalInterest,
             totalAmount,
@@ -526,7 +532,37 @@ export const BusinessProvider = ({ children }) => {
     showToast(`Loan tenure updated to ${targetMonths} month(s)!`);
   };
 
-  const recordReturnPayment = (loanId, amount, monthLabel, newMonths) => {
+  const resetFinanceLoanAutoMonths = (loanId) => {
+    let updatedLoan = null;
+    setFinanceLoans((prev) =>
+      prev.map((loan) => {
+        if (loan.id === loanId) {
+          const autoElapsed = calculateElapsedMonths(loan.startDate);
+          const monthlyInterest = (loan.principal * loan.interestRate) / 100;
+          const totalInterest = monthlyInterest * autoElapsed;
+          const totalAmount = loan.principal + totalInterest;
+          const returned = loan.returnedAmount || 0;
+          const newDue = Math.max(0, totalAmount - returned);
+          updatedLoan = {
+            ...loan,
+            months: autoElapsed,
+            isManualMonths: false,
+            monthlyInterest,
+            totalInterest,
+            totalAmount,
+            dueAmount: newDue,
+            status: newDue === 0 ? 'Settled' : (loan.status === 'Settled' && newDue > 0) ? 'Active' : loan.status
+          };
+          return updatedLoan;
+        }
+        return loan;
+      })
+    );
+    if (updatedLoan) persist('financeLoans', updatedLoan, 'update');
+    showToast(`Loan reset to auto-detected tenure!`);
+  };
+
+  const recordReturnPayment = (loanId, amount, monthLabel, newMonths, method = 'Cash', reference = '') => {
     const payAmt = Number(amount) || 0;
     let updatedLoan = null;
     setFinanceLoans((prev) =>
@@ -541,6 +577,8 @@ export const BusinessProvider = ({ children }) => {
           const history = [...(loan.paymentHistory || []), {
             month: monthLabel || `Month ${updatedMonths}`,
             amount: payAmt,
+            method: method || 'Cash',
+            reference: reference || '',
             date: new Date().toISOString().split('T')[0]
           }];
           
@@ -724,6 +762,7 @@ export const BusinessProvider = ({ children }) => {
         addDieselLog,
         addFinanceLoan,
         updateFinanceLoanMonths,
+        resetFinanceLoanAutoMonths,
         recordReturnPayment,
         settleFinanceLoan,
         deleteFinanceLoan,

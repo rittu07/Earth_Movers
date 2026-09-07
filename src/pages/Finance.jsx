@@ -6,8 +6,11 @@ import StatCard from '../components/dashboard/StatCard';
 import BusinessQuickActions from '../components/dashboard/BusinessQuickActions';
 import RecentTransactions from '../components/dashboard/RecentTransactions';
 import QuickActions from '../components/dashboard/QuickActions';
-import { formatCurrency } from '../utils/formatCurrency';
+import { formatCurrency, formatDate } from '../utils/formatCurrency';
 import { getLoanCalculatedDetails, calculateElapsedMonths } from '../utils/loanUtils';
+import { exportToPdf } from '../utils/pdfGenerator';
+import { formatFinanceLoanWhatsApp, formatFinanceReturnPaymentWhatsApp, openWhatsAppChat } from '../utils/whatsapp';
+import WhatsAppModal from '../components/common/WhatsAppModal';
 import {
   Landmark,
   PlusCircle,
@@ -21,8 +24,132 @@ import {
   Plus,
   Minus,
   Info,
-  Calendar
+  Calendar,
+  Download
 } from 'lucide-react';
+
+export const isMonthSettled = (loanCalculated, monthNum) => {
+  if (!loanCalculated) return false;
+  const history = loanCalculated.paymentHistory || [];
+
+  // 1. Explicit check in paymentHistory for Month X
+  const hasMonthRecord = history.some((p) => {
+    if (!p || !p.month) return false;
+    const regex = new RegExp(`\\bMonth\\s*${monthNum}\\b`, 'i');
+    return regex.test(p.month);
+  });
+  if (hasMonthRecord) return true;
+
+  // 2. Check if Full Settlement was recorded
+  const hasFullSettlement = history.some((p) => {
+    if (!p || !p.month) return false;
+    return p.month.toLowerCase().includes('settlement') || p.month.toLowerCase().includes('full');
+  });
+  if (hasFullSettlement) return true;
+
+  // 3. Amount-based check: if total returned amount covers interest up to monthNum
+  const monthlyInterest = loanCalculated.monthlyInterest || 0;
+  const returnedAmount = loanCalculated.returnedAmount || 0;
+  if (monthlyInterest > 0 && returnedAmount >= monthNum * monthlyInterest) {
+    return true;
+  }
+
+  return false;
+};
+
+export const getFirstUnsettledMonth = (loanCalculated) => {
+  if (!loanCalculated) return 1;
+  const totalMonths = loanCalculated.months || 1;
+  for (let m = 1; m <= totalMonths; m++) {
+    if (!isMonthSettled(loanCalculated, m)) {
+      return m;
+    }
+  }
+  return totalMonths;
+};
+
+export const buildLoanLedgerEvents = (loan) => {
+  if (!loan) return [];
+
+  const events = [];
+  const startDateStr = loan.startDate || new Date().toISOString().split('T')[0];
+  const start = new Date(startDateStr);
+
+  // 1. Initial Principal Loan Disbursement
+  events.push({
+    id: `loan-init-${loan.id}`,
+    date: startDateStr,
+    displayDate: formatDate(startDateStr),
+    rawTimestamp: isNaN(start.getTime()) ? 0 : start.getTime(),
+    type: 'Transaction',
+    business: 'Finance Loan',
+    paymentMethod: loan.paymentMethod || 'Cash',
+    reference: loan.reference || '',
+    description: `Principal Loan Given (${formatCurrency(loan.principal)}) @ ${loan.interestRate}%/mo`,
+    billAmount: loan.principal,
+    paidAmount: 0,
+    kind: 'disbursement'
+  });
+
+  // 2. Monthly Interest Accruals (Month 1 to Month N)
+  const totalMonths = loan.months || 1;
+  for (let m = 1; m <= totalMonths; m++) {
+    const cycleDate = new Date(start);
+    if (!isNaN(start.getTime())) {
+      cycleDate.setMonth(cycleDate.getMonth() + (m - 1));
+    }
+    const dateStr = !isNaN(cycleDate.getTime()) ? cycleDate.toISOString().split('T')[0] : startDateStr;
+
+    events.push({
+      id: `loan-interest-${loan.id}-m${m}`,
+      date: dateStr,
+      displayDate: formatDate(dateStr),
+      rawTimestamp: !isNaN(cycleDate.getTime()) ? cycleDate.getTime() + m : m,
+      type: 'Transaction',
+      business: 'Finance Loan',
+      paymentMethod: '-',
+      reference: '',
+      description: `Month ${m} Interest Accrued (${loan.interestRate}%/mo)`,
+      billAmount: loan.monthlyInterest || 0,
+      paidAmount: 0,
+      kind: 'interest',
+      monthNum: m
+    });
+  }
+
+  // 3. Return Payments recorded
+  (loan.paymentHistory || []).forEach((pmt, idx) => {
+    const pmtDateStr = pmt.date || startDateStr;
+    const pmtDate = new Date(pmtDateStr);
+
+    events.push({
+      id: `loan-pmt-${loan.id}-${idx}`,
+      date: pmtDateStr,
+      displayDate: formatDate(pmtDateStr),
+      rawTimestamp: !isNaN(pmtDate.getTime()) ? pmtDate.getTime() + 1000 + idx : Date.now() + idx,
+      type: 'Payment',
+      business: 'Finance Loan',
+      paymentMethod: pmt.method || 'Cash',
+      reference: pmt.reference || '',
+      description: `Return Payment for ${pmt.month || 'Loan'}`,
+      billAmount: 0,
+      paidAmount: Number(pmt.amount) || 0,
+      kind: 'payment'
+    });
+  });
+
+  // Sort chronologically (oldest first) to accurately calculate running balance
+  events.sort((a, b) => a.rawTimestamp - b.rawTimestamp);
+
+  let runningDue = 0;
+  events.forEach((ev) => {
+    runningDue += (ev.billAmount || 0) - (ev.paidAmount || 0);
+    ev.remainingDue = Math.max(0, runningDue);
+  });
+
+  // Return in reverse chronological order (newest first, matching user screenshot!)
+  return events.reverse();
+};
 
 const Finance = () => {
   const {
@@ -30,6 +157,7 @@ const Finance = () => {
     financeLoans = [],
     addFinanceLoan,
     updateFinanceLoanMonths,
+    resetFinanceLoanAutoMonths,
     recordReturnPayment,
     settleFinanceLoan,
     deleteFinanceLoan
@@ -45,8 +173,53 @@ const Finance = () => {
   const [selectedLoan, setSelectedLoan] = useState(null);
   const [returnPayAmount, setReturnPayAmount] = useState('');
   const [returnPayMethod, setReturnPayMethod] = useState('Cash');
+  const [returnPayRef, setReturnPayRef] = useState('');
   const [returnPayMonth, setReturnPayMonth] = useState('');
   const [returnPayMonths, setReturnPayMonths] = useState('');
+
+  // WhatsApp notification state
+  const [sendWhatsApp, setSendWhatsApp] = useState(true);
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+  const [whatsAppPhone, setWhatsAppPhone] = useState('');
+  const [whatsAppCustName, setWhatsAppCustName] = useState('');
+  const [whatsAppText, setWhatsAppText] = useState('');
+
+  // Borrower Ledger Modal State & Filter
+  const [selectedLedgerLoan, setSelectedLedgerLoan] = useState(null);
+  const [ledgerTab, setLedgerTab] = useState('All'); // 'All', 'Transactions', 'Payments'
+
+  // Confirmation Modal State (Settle / Delete)
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    type: null, // 'settle' | 'delete'
+    loan: null
+  });
+
+  const handleRequestSettle = (loan) => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'settle',
+      loan
+    });
+  };
+
+  const handleRequestDelete = (loan) => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'delete',
+      loan
+    });
+  };
+
+  const handleConfirmAction = () => {
+    if (!confirmModal.loan || !confirmModal.type) return;
+    if (confirmModal.type === 'settle') {
+      settleFinanceLoan(confirmModal.loan.id);
+    } else if (confirmModal.type === 'delete') {
+      deleteFinanceLoan(confirmModal.loan.id);
+    }
+    setConfirmModal({ isOpen: false, type: null, loan: null });
+  };
 
   // New Loan Form State
   const [newBorrowerName, setNewBorrowerName] = useState('');
@@ -55,6 +228,8 @@ const Finance = () => {
   const [newRate, setNewRate] = useState('2');
   const [newMonths, setNewMonths] = useState('1');
   const [newStartDate, setNewStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newMethod, setNewMethod] = useState('Cash');
+  const [newReference, setNewReference] = useState('');
   const [newNotes, setNewNotes] = useState('');
 
   // Process loans with dynamic variable month calculations
@@ -87,20 +262,50 @@ const Finance = () => {
     e.preventDefault();
     if (!newBorrowerName.trim()) return;
 
+    const p = Number(newPrincipal) || 0;
+    const r = Number(newRate) || 0;
+    const m = Number(newMonths) || 1;
+    const monthlyInt = (p * r) / 100;
+    const totAmt = p + monthlyInt * m;
+
     addFinanceLoan({
       borrowerName: newBorrowerName,
       phone: newPhone,
-      principal: Number(newPrincipal) || 0,
-      interestRate: Number(newRate) || 0,
-      months: Number(newMonths) || 1,
+      principal: p,
+      interestRate: r,
+      months: m,
       startDate: newStartDate,
+      paymentMethod: newMethod,
+      reference: newReference,
       notes: newNotes
     });
+
+    if (sendWhatsApp && newPhone.trim()) {
+      const waMsg = formatFinanceLoanWhatsApp({
+        borrowerName: newBorrowerName.trim(),
+        principal: p,
+        interestRate: r,
+        monthlyInterest: monthlyInt,
+        months: m,
+        startDate: newStartDate,
+        paymentMethod: newMethod,
+        reference: newReference,
+        totalAmount: totAmt
+      });
+
+      openWhatsAppChat(newPhone.trim(), waMsg);
+      setWhatsAppPhone(newPhone.trim());
+      setWhatsAppCustName(newBorrowerName.trim());
+      setWhatsAppText(waMsg);
+      setIsWhatsAppModalOpen(true);
+    }
 
     // Reset Form & Close Modal
     setNewBorrowerName('');
     setNewPhone('');
     setNewNotes('');
+    setNewMethod('Cash');
+    setNewReference('');
     setIsAddModalOpen(false);
   };
 
@@ -109,22 +314,88 @@ const Finance = () => {
     e.preventDefault();
     if (!selectedLoan || !returnPayAmount) return;
 
+    const payAmt = Number(returnPayAmount) || 0;
     const newMonths = Number(returnPayMonths) || selectedLoan.months;
+
     recordReturnPayment(
       selectedLoan.id,
-      Number(returnPayAmount) || 0,
+      payAmt,
       returnPayMonth || `Month ${newMonths}`,
-      newMonths
+      newMonths,
+      returnPayMethod,
+      returnPayRef
     );
+
+    const currentCalc = getLoanCalculatedDetails(selectedLoan);
+    const updatedTot = currentCalc.principal + currentCalc.monthlyInterest * newMonths;
+    const remDue = Math.max(0, updatedTot - ((currentCalc.returnedAmount || 0) + payAmt));
+
+    if (sendWhatsApp && selectedLoan.phone) {
+      const waMsg = formatFinanceReturnPaymentWhatsApp({
+        borrowerName: selectedLoan.borrowerName,
+        amount: payAmt,
+        repaymentFor: returnPayMonth || `Month ${newMonths}`,
+        paymentMethod: returnPayMethod,
+        reference: returnPayRef,
+        remainingDue: remDue
+      });
+
+      openWhatsAppChat(selectedLoan.phone, waMsg);
+      setWhatsAppPhone(selectedLoan.phone);
+      setWhatsAppCustName(selectedLoan.borrowerName);
+      setWhatsAppText(waMsg);
+      setIsWhatsAppModalOpen(true);
+    }
+
     setIsReturnModalOpen(false);
     setSelectedLoan(null);
     setReturnPayAmount('');
     setReturnPayMonth('');
     setReturnPayMonths('');
+    setReturnPayRef('');
   };
 
   // When selected loan changes for return payment modal, calculate dynamic view
   const currentSelectedLoanCalculated = selectedLoan ? getLoanCalculatedDetails(selectedLoan) : null;
+  const currentSelectedLedgerLoanCalculated = selectedLedgerLoan
+    ? processedLoans.find((l) => l.id === selectedLedgerLoan.id) || getLoanCalculatedDetails(selectedLedgerLoan)
+    : null;
+
+  const handleDownloadFinanceStatement = () => {
+    exportToPdf({
+      title: 'FINANCE LOANS LEDGER STATEMENT',
+      subtitle: `Total Principal: ${formatCurrency(totalPrincipalGiven)} | Active Loans: ${activeLoans.length}`,
+      filename: `Finance_Loans_Statement_${new Date().toISOString().split('T')[0]}.pdf`,
+      columns: [
+        { header: 'ID', key: 'id' },
+        { header: 'Borrower Name', key: 'borrowerName', bold: true },
+        { header: 'Phone', key: 'phone' },
+        { header: 'Principal', key: 'formattedPrincipal', align: 'right', bold: true },
+        { header: 'Rate/mo', key: 'formattedRate', align: 'center' },
+        { header: 'Tenure', key: 'formattedMonths', align: 'center' },
+        { header: 'Total Payable', key: 'formattedPayable', align: 'right', bold: true },
+        { header: 'Returned', key: 'formattedReturned', align: 'right', color: '#15803d' },
+        { header: 'Remaining Due', key: 'formattedDue', align: 'right', color: '#b91c1c', bold: true }
+      ],
+      data: processedLoans.map((l) => ({
+        id: l.id,
+        borrowerName: l.borrowerName,
+        phone: l.phone || 'N/A',
+        formattedPrincipal: formatCurrency(l.principal),
+        formattedRate: `${l.interestRate}%/mo`,
+        formattedMonths: `Month ${l.months}`,
+        formattedPayable: formatCurrency(l.totalAmount),
+        formattedReturned: `+${formatCurrency(l.returnedAmount || 0)}`,
+        formattedDue: formatCurrency(l.dueAmount)
+      })),
+      summary: [
+        { label: 'Total Principal Given', value: formatCurrency(totalPrincipalGiven) },
+        { label: 'Total Monthly Interest', value: formatCurrency(totalMonthlyInterest) },
+        { label: 'Total Returned Paid', value: formatCurrency(totalReturnedAmount), color: '#15803d' },
+        { label: 'Net Remaining Balance Due', value: formatCurrency(totalRemainingDue), color: '#b91c1c' }
+      ]
+    });
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -134,12 +405,20 @@ const Finance = () => {
           title="Finance"
           subtitle="Loan ledger, dynamic monthly interest tracking & variable tenure returns"
           action={
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all cursor-pointer"
-            >
-              <PlusCircle className="w-4 h-4" /> + Give New Loan
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleDownloadFinanceStatement}
+                className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+              >
+                <Download className="w-4 h-4 text-emerald-600" /> Statement PDF
+              </button>
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all cursor-pointer"
+              >
+                <PlusCircle className="w-4 h-4" /> + Give New Loan
+              </button>
+            </div>
           }
         />
       </div>
@@ -269,14 +548,31 @@ const Finance = () => {
                           <span className="bg-amber-600 text-white font-black text-[11px] px-2.5 py-0.5 rounded-full uppercase tracking-wide shadow-2xs">
                             {loan.id}
                           </span>
-                          <h4 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-tight font-mono">
-                            {loan.borrowerName}
-                          </h4>
+                          <Link
+                            to={`/finance/ledger/${loan.id}`}
+                            className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 hover:text-emerald-700 leading-tight font-mono text-left flex items-center gap-2 cursor-pointer group"
+                            title="Click to view full borrower ledger statement & payment history"
+                          >
+                            <span>{loan.borrowerName}</span>
+                            <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 group-hover:bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300 shadow-2xs transition-all">
+                              📋 View Ledger
+                            </span>
+                          </Link>
+                          {loan.autoElapsed > 1 && (
+                            <span className="bg-amber-100 text-amber-900 border border-amber-300 font-mono font-black text-[10px] px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+                              ⚡ Month Extended ({loan.autoElapsed} Mo)
+                            </span>
+                          )}
                         </div>
-                        <p className="text-xs text-slate-600 font-bold mt-1 flex items-center gap-1.5">
+                        <p className="text-xs text-slate-600 font-bold mt-1 flex items-center gap-1.5 flex-wrap">
                           <span>📞 {loan.phone || 'No phone'}</span>
                           <span>•</span>
                           <span>Start: {loan.startDate}</span>
+                          {loan.autoElapsed > 1 && (
+                            <span className="text-amber-800 font-extrabold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-[10px]">
+                              Auto: Month {loan.autoElapsed}
+                            </span>
+                          )}
                         </p>
                       </div>
 
@@ -319,8 +615,8 @@ const Finance = () => {
                         </span>
                       </div>
 
-                      {/* Variable Month Stepper */}
-                      <div className="flex flex-col items-end gap-1.5">
+                      {/* Variable Month Stepper & Auto Detection status */}
+                      <div className="flex flex-col items-end gap-1">
                         <span className="text-[10px] font-mono font-black text-slate-700 uppercase tracking-wider">
                           VARIABLE MONTH
                         </span>
@@ -346,6 +642,20 @@ const Finance = () => {
                             +
                           </button>
                         </div>
+                        {loan.isManualMonths ? (
+                          <button
+                            type="button"
+                            onClick={() => resetFinanceLoanAutoMonths(loan.id)}
+                            className="text-[10px] font-mono font-bold text-amber-800 hover:underline cursor-pointer flex items-center gap-0.5 mt-0.5"
+                            title="Reset to Auto-detected month"
+                          >
+                            ↺ Auto ({loan.autoElapsed} mo)
+                          </button>
+                        ) : loan.autoElapsed > 1 ? (
+                          <span className="text-[10px] font-mono font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 mt-0.5">
+                            ⚡ Auto-Extended ({loan.autoElapsed} mo)
+                          </span>
+                        ) : null}
                       </div>
                     </div>
 
@@ -397,10 +707,15 @@ const Finance = () => {
                       <div className="flex items-center gap-2 pt-1 font-mono">
                         <button
                           onClick={() => {
+                            const calculated = getLoanCalculatedDetails(loan);
+                            const firstUnsettled = getFirstUnsettledMonth(calculated);
+                            const allSettled = isMonthSettled(calculated, firstUnsettled);
                             setSelectedLoan(loan);
-                            setReturnPayAmount((loan.monthlyInterest || 2000).toString());
-                            setReturnPayMonths(loan.months.toString());
-                            setReturnPayMonth(`Month ${loan.months}`);
+                            setReturnPayAmount(
+                              (allSettled ? calculated.dueAmount : calculated.monthlyInterest || 2000).toString()
+                            );
+                            setReturnPayMonths(calculated.months.toString());
+                            setReturnPayMonth(allSettled ? 'Full Settlement' : `Month ${firstUnsettled}`);
                             setIsReturnModalOpen(true);
                           }}
                           className="flex-1 py-3 px-4 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-mono font-black text-xs sm:text-sm rounded-2xl transition-all shadow-md shadow-amber-600/20 flex items-center justify-center gap-1.5 cursor-pointer"
@@ -408,13 +723,13 @@ const Finance = () => {
                           <span>💰</span> Record Return Payment
                         </button>
                         <button
-                          onClick={() => settleFinanceLoan(loan.id)}
+                          onClick={() => handleRequestSettle(loan)}
                           className="py-3 px-3.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-mono font-black text-xs sm:text-sm rounded-2xl border border-slate-300 transition-all cursor-pointer"
                         >
                           Settle
                         </button>
                         <button
-                          onClick={() => deleteFinanceLoan(loan.id)}
+                          onClick={() => handleRequestDelete(loan)}
                           className="p-3 bg-slate-100 hover:bg-rose-100 text-rose-600 rounded-2xl border border-slate-300 transition-colors cursor-pointer"
                           title="Delete Loan Record"
                         >
@@ -425,7 +740,7 @@ const Finance = () => {
                       <div className="flex items-center justify-between bg-emerald-100 border border-emerald-300 p-3.5 rounded-2xl text-emerald-900 text-xs font-mono font-black">
                         <span>🎉 Loan Fully Settled!</span>
                         <button
-                          onClick={() => deleteFinanceLoan(loan.id)}
+                          onClick={() => handleRequestDelete(loan)}
                           className="text-rose-700 hover:underline text-[11px] font-mono font-black cursor-pointer"
                         >
                           Remove Record
@@ -525,9 +840,25 @@ const Finance = () => {
                     return (
                       <tr key={loan.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-3 px-3">
-                          <div className="font-bold text-slate-900 text-sm">{loan.borrowerName}</div>
+                          <Link
+                            to={`/finance/ledger/${loan.id}`}
+                            className="font-bold text-slate-900 text-sm hover:text-emerald-700 hover:underline flex items-center gap-1.5 cursor-pointer text-left group"
+                            title="Click to view full borrower ledger statement & payment history"
+                          >
+                            <span>{loan.borrowerName}</span>
+                            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 group-hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 opacity-90 transition-all">
+                              📋 Ledger
+                            </span>
+                          </Link>
                           <div className="text-[11px] text-slate-400 font-normal">{loan.phone || loan.id}</div>
-                          <div className="text-[10px] text-slate-400">Start: {loan.startDate}</div>
+                          <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                            <span>Start: {loan.startDate}</span>
+                            {loan.autoElapsed > 1 && (
+                              <span className="bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded text-[9px] border border-amber-300">
+                                {loan.autoElapsed} Mo Elapsed
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         <td className="py-3 px-3 text-right font-bold text-slate-900">
@@ -545,27 +876,43 @@ const Finance = () => {
 
                         {/* Variable Month Stepper */}
                         <td className="py-3 px-3 text-center">
-                          <div className="inline-flex items-center gap-1 bg-amber-50/90 border border-amber-200 p-1 rounded-xl">
-                            <button
-                              type="button"
-                              onClick={() => handleMonthIncrement(loan.id, loan.months, -1)}
-                              disabled={loan.months <= 1}
-                              className="w-5 h-5 rounded-lg bg-white text-amber-900 font-extrabold flex items-center justify-center text-xs shadow-2xs border border-amber-200 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                              title="Decrease Month"
-                            >
-                              -
-                            </button>
-                            <span className="text-[11px] font-black text-amber-900 px-1.5 whitespace-nowrap">
-                              Month {loan.months}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleMonthIncrement(loan.id, loan.months, 1)}
-                              className="w-5 h-5 rounded-lg bg-white text-amber-900 font-extrabold flex items-center justify-center text-xs shadow-2xs border border-amber-200 hover:bg-amber-100 cursor-pointer"
-                              title="Advance Next Month (+ Interest)"
-                            >
-                              +
-                            </button>
+                          <div className="inline-flex flex-col items-center gap-1">
+                            <div className="inline-flex items-center gap-1 bg-amber-50/90 border border-amber-200 p-1 rounded-xl">
+                              <button
+                                type="button"
+                                onClick={() => handleMonthIncrement(loan.id, loan.months, -1)}
+                                disabled={loan.months <= 1}
+                                className="w-5 h-5 rounded-lg bg-white text-amber-900 font-extrabold flex items-center justify-center text-xs shadow-2xs border border-amber-200 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                                title="Decrease Month"
+                              >
+                                -
+                              </button>
+                              <span className="text-[11px] font-black text-amber-900 px-1.5 whitespace-nowrap">
+                                Month {loan.months}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleMonthIncrement(loan.id, loan.months, 1)}
+                                className="w-5 h-5 rounded-lg bg-white text-amber-900 font-extrabold flex items-center justify-center text-xs shadow-2xs border border-amber-200 hover:bg-amber-100 cursor-pointer"
+                                title="Advance Next Month (+ Interest)"
+                              >
+                                +
+                              </button>
+                            </div>
+                            {loan.isManualMonths ? (
+                              <button
+                                type="button"
+                                onClick={() => resetFinanceLoanAutoMonths(loan.id)}
+                                className="text-[10px] font-bold text-amber-800 hover:underline cursor-pointer"
+                                title="Reset to Auto-detected month"
+                              >
+                                ↺ Reset Auto ({loan.autoElapsed} mo)
+                              </button>
+                            ) : loan.autoElapsed > 1 ? (
+                              <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 rounded border border-emerald-200">
+                                ⚡ Auto-Extended
+                              </span>
+                            ) : null}
                           </div>
                         </td>
 
@@ -602,10 +949,15 @@ const Finance = () => {
                             <>
                               <button
                                 onClick={() => {
+                                  const calculated = getLoanCalculatedDetails(loan);
+                                  const firstUnsettled = getFirstUnsettledMonth(calculated);
+                                  const allSettled = isMonthSettled(calculated, firstUnsettled);
                                   setSelectedLoan(loan);
-                                  setReturnPayAmount((loan.monthlyInterest || 2000).toString());
-                                  setReturnPayMonths(loan.months.toString());
-                                  setReturnPayMonth(`Month ${loan.months}`);
+                                  setReturnPayAmount(
+                                    (allSettled ? calculated.dueAmount : calculated.monthlyInterest || 2000).toString()
+                                  );
+                                  setReturnPayMonths(calculated.months.toString());
+                                  setReturnPayMonth(allSettled ? 'Full Settlement' : `Month ${firstUnsettled}`);
                                   setIsReturnModalOpen(true);
                                 }}
                                 className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-lg text-[11px] border border-emerald-200 transition-all cursor-pointer"
@@ -614,7 +966,7 @@ const Finance = () => {
                                 + Record Return
                               </button>
                               <button
-                                onClick={() => settleFinanceLoan(loan.id)}
+                                onClick={() => handleRequestSettle(loan)}
                                 className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg text-[11px] border border-indigo-200 transition-all cursor-pointer"
                                 title="Settle Full Loan"
                               >
@@ -623,7 +975,7 @@ const Finance = () => {
                             </>
                           )}
                           <button
-                            onClick={() => deleteFinanceLoan(loan.id)}
+                            onClick={() => handleRequestDelete(loan)}
                             className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
                             title="Delete Record"
                           >
@@ -757,7 +1109,7 @@ const Finance = () => {
                 <div className="bg-white/80 p-2.5 rounded-lg border border-emerald-200 text-xs text-emerald-800 flex items-start gap-2">
                   <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                   <p>
-                    <strong>Variable Month Rule:</strong> Month 1 adds {formatCurrency(((Number(newPrincipal) || 0) * (Number(newRate) || 0)) / 100)} interest. If unpaid in Month 1, Month 2 automatically adds another {formatCurrency(((Number(newPrincipal) || 0) * (Number(newRate) || 0)) / 100)} due (Total {formatCurrency((Number(newPrincipal) || 0) + (((Number(newPrincipal) || 0) * (Number(newRate) || 0)) / 100) * 2)}), and so on.
+                    <strong>Auto Month Extension Rule:</strong> Starts on selected date. Month 1 adds {formatCurrency(((Number(newPrincipal) || 0) * (Number(newRate) || 0)) / 100)} interest. When date enters Month 2, the app automatically detects the month extension and updates total due to {formatCurrency((Number(newPrincipal) || 0) + (((Number(newPrincipal) || 0) * (Number(newRate) || 0)) / 100) * 2)}.
                   </p>
                 </div>
               </div>
@@ -772,6 +1124,51 @@ const Finance = () => {
                     className="w-full p-3 bg-white border border-slate-200 rounded-xl font-medium text-base"
                   />
                 </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Payment Method</label>
+                  <select
+                    value={newMethod}
+                    onChange={(e) => {
+                      const m = e.target.value;
+                      setNewMethod(m);
+                      if ((m === 'UPI' || m === 'Bank Transfer') && newReference.startsWith('REF-')) {
+                        setNewReference('');
+                      }
+                    }}
+                    className="w-full p-3 bg-white border border-slate-200 rounded-xl font-semibold text-base focus:outline-hidden focus:border-emerald-500 cursor-pointer"
+                  >
+                    <option value="Cash">Cash</option>
+                    <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
+                    <option value="Bank Transfer">Bank Transfer (NEFT / RTGS / IMPS)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    {newMethod === 'UPI'
+                      ? 'UPI Reference ID / UTR Number (Optional)'
+                      : newMethod === 'Bank Transfer'
+                      ? 'Bank Transaction ID / IMPS Ref (Optional)'
+                      : 'Reference No. (Optional)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={newReference}
+                    onChange={(e) => setNewReference(e.target.value)}
+                    placeholder={
+                      newMethod === 'UPI'
+                        ? 'e.g. 423456789012 or GPay Ref ID'
+                        : newMethod === 'Bank Transfer'
+                        ? 'e.g. TXN987654321 or IMPS/NEFT Ref'
+                        : 'e.g. REF-123456'
+                    }
+                    className="w-full p-3 bg-white border border-slate-200 rounded-xl font-mono text-base text-slate-900 focus:outline-hidden focus:border-emerald-500"
+                  />
+                </div>
+
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Notes</label>
                   <input
@@ -782,6 +1179,20 @@ const Finance = () => {
                     className="w-full p-3 bg-white border border-slate-200 rounded-xl font-medium text-base"
                   />
                 </div>
+              </div>
+
+              {/* WhatsApp Notification Checkbox */}
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="sendWhatsAppAdd"
+                  checked={sendWhatsApp}
+                  onChange={(e) => setSendWhatsApp(e.target.checked)}
+                  className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                />
+                <label htmlFor="sendWhatsAppAdd" className="text-xs font-bold text-slate-700 cursor-pointer flex items-center gap-1.5">
+                  💬 Send WhatsApp Receipt / Loan Notification
+                </label>
               </div>
             </form>
           </div>
@@ -891,18 +1302,31 @@ const Finance = () => {
                         setReturnPayMonth(val);
                         if (val.startsWith('Month ')) {
                           const m = val.split(' ')[1];
-                          if (m && !isNaN(m)) setReturnPayMonths(m);
+                          if (m && !isNaN(m)) {
+                            setReturnPayMonths(m);
+                            setReturnPayAmount(currentSelectedLoanCalculated.monthlyInterest.toString());
+                          }
+                        } else if (val === 'Full Settlement') {
+                          setReturnPayAmount(currentSelectedLoanCalculated.dueAmount.toString());
                         }
                       }}
                       required
                       className="w-full p-3 bg-white border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-500 text-xs sm:text-sm"
                     >
                       <option value="">-- Select Repayment --</option>
-                      {Array.from({ length: Math.max(Number(returnPayMonths) || 1, currentSelectedLoanCalculated.months || 1) }, (_, i) => (
-                        <option key={i + 1} value={`Month ${i + 1}`}>
-                          Month {i + 1} Interest ({formatCurrency(currentSelectedLoanCalculated.monthlyInterest)})
-                        </option>
-                      ))}
+                      {Array.from(
+                        { length: Math.max(Number(returnPayMonths) || 1, currentSelectedLoanCalculated.months || 1) },
+                        (_, i) => {
+                          const monthNum = i + 1;
+                          const settled = isMonthSettled(currentSelectedLoanCalculated, monthNum);
+                          if (settled) return null; // Settled month interest vanishes!
+                          return (
+                            <option key={monthNum} value={`Month ${monthNum}`}>
+                              Month {monthNum} Interest ({formatCurrency(currentSelectedLoanCalculated.monthlyInterest)})
+                            </option>
+                          );
+                        }
+                      )}
                       <option value="Full Settlement">Full Remaining Settlement</option>
                       <option value="Partial Principal Return">Partial Principal Return</option>
                     </select>
@@ -939,7 +1363,12 @@ const Finance = () => {
                       <button
                         key={method}
                         type="button"
-                        onClick={() => setReturnPayMethod(method)}
+                        onClick={() => {
+                          setReturnPayMethod(method);
+                          if ((method === 'UPI' || method === 'Bank Transfer') && returnPayRef.startsWith('REF-')) {
+                            setReturnPayRef('');
+                          }
+                        }}
                         className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                           returnPayMethod === method
                             ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
@@ -950,6 +1379,30 @@ const Finance = () => {
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* Dynamic Reference Input */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1 text-xs">
+                    {returnPayMethod === 'UPI'
+                      ? 'UPI Reference ID / UTR Number (Optional)'
+                      : returnPayMethod === 'Bank Transfer'
+                      ? 'Bank Transaction ID / IMPS Ref (Optional)'
+                      : 'Reference No. (Optional)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={returnPayRef}
+                    onChange={(e) => setReturnPayRef(e.target.value)}
+                    placeholder={
+                      returnPayMethod === 'UPI'
+                        ? 'e.g. 423456789012 or GPay Ref ID'
+                        : returnPayMethod === 'Bank Transfer'
+                        ? 'e.g. TXN987654321 or IMPS/NEFT Ref'
+                        : 'e.g. REF-123456'
+                    }
+                    className="w-full p-3 bg-white border border-slate-200 rounded-xl font-mono text-xs text-slate-900 focus:outline-hidden focus:border-emerald-500"
+                  />
                 </div>
 
                 {/* Payment History */}
@@ -971,11 +1424,390 @@ const Finance = () => {
                     </div>
                   </div>
                 )}
+
+                {/* WhatsApp Notification Checkbox */}
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="sendWhatsAppReturn"
+                    checked={sendWhatsApp}
+                    onChange={(e) => setSendWhatsApp(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                  />
+                  <label htmlFor="sendWhatsAppReturn" className="text-xs font-bold text-slate-700 cursor-pointer flex items-center gap-1.5">
+                    💬 Send WhatsApp Return Payment Receipt
+                  </label>
+                </div>
               </form>
             </div>
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal (Settle / Delete) */}
+      {confirmModal.isOpen && confirmModal.loan && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-xl ${
+                    confirmModal.type === 'delete'
+                      ? 'bg-rose-100 text-rose-600'
+                      : 'bg-indigo-100 text-indigo-700'
+                  }`}
+                >
+                  {confirmModal.type === 'delete' ? '🗑️' : '🤝'}
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    {confirmModal.type === 'delete' ? 'Delete Loan Record' : 'Settle Loan'}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-bold">
+                    Confirmation required for {confirmModal.loan.borrowerName}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmModal({ isOpen: false, type: null, loan: null })}
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 text-xs font-mono">
+              <div className="flex justify-between text-slate-700 font-bold">
+                <span>BORROWER:</span>
+                <span className="text-slate-900 font-black">{confirmModal.loan.borrowerName}</span>
+              </div>
+              <div className="flex justify-between text-slate-700 font-bold">
+                <span>PRINCIPAL:</span>
+                <span className="text-slate-900 font-mono font-black">{formatCurrency(confirmModal.loan.principal)}</span>
+              </div>
+              <div className="flex justify-between text-slate-700 font-bold">
+                <span>REMAINING DUE:</span>
+                <span className="text-rose-700 font-mono font-black">{formatCurrency(confirmModal.loan.dueAmount)}</span>
+              </div>
+            </div>
+
+            <p className="text-xs font-bold text-slate-600 leading-relaxed">
+              {confirmModal.type === 'delete'
+                ? `Are you sure you want to permanently DELETE the finance loan record for "${confirmModal.loan.borrowerName}"? This action cannot be undone.`
+                : `Are you sure you want to mark this loan for "${confirmModal.loan.borrowerName}" as FULLY SETTLED? Remaining due of ${formatCurrency(confirmModal.loan.dueAmount)} will be cleared.`}
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2 font-mono">
+              <button
+                type="button"
+                onClick={() => setConfirmModal({ isOpen: false, type: null, loan: null })}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-xl text-xs transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAction}
+                className={`px-5 py-2.5 text-white font-black rounded-xl text-xs shadow-md transition-all cursor-pointer ${
+                  confirmModal.type === 'delete'
+                    ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/30'
+                    : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'
+                }`}
+              >
+                {confirmModal.type === 'delete' ? 'Yes, Delete Record' : 'Yes, Settle Loan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Full-Screen Modal: Borrower Ledger & Payment History (Exact Table Format) */}
+      {currentSelectedLedgerLoanCalculated && (() => {
+        const allEvents = buildLoanLedgerEvents(currentSelectedLedgerLoanCalculated);
+        const filteredEvents = allEvents.filter((ev) => {
+          if (ledgerTab === 'Transactions') return ev.type === 'Transaction';
+          if (ledgerTab === 'Payments') return ev.type === 'Payment';
+          return true;
+        });
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
+            <div className="bg-slate-50 rounded-3xl max-w-4xl w-full max-h-[94vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
+              {/* Top Header */}
+              <div className="bg-white border-b border-slate-200 px-5 py-4 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-lg">
+                    📋
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                      {currentSelectedLedgerLoanCalculated.borrowerName}'s Account Ledger
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          currentSelectedLedgerLoanCalculated.dueAmount === 0 ||
+                          currentSelectedLedgerLoanCalculated.status === 'Settled'
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : 'bg-amber-100 text-amber-900 border border-amber-300'
+                        }`}
+                      >
+                        {currentSelectedLedgerLoanCalculated.dueAmount === 0 ? 'Settled' : 'Active Loan'}
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium flex items-center gap-2">
+                      <span>📞 {currentSelectedLedgerLoanCalculated.phone || 'No phone'}</span>
+                      <span>•</span>
+                      <span>Start: {currentSelectedLedgerLoanCalculated.startDate}</span>
+                      <span>•</span>
+                      <span>ID: {currentSelectedLedgerLoanCalculated.id}</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedLedgerLoan(null)}
+                  className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Content Body */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+                {/* KPI Cards Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                    <span className="text-[10px] font-mono font-black text-slate-400 uppercase tracking-wider block">
+                      PRINCIPAL
+                    </span>
+                    <p className="text-base font-mono font-black text-slate-900 mt-1">
+                      {formatCurrency(currentSelectedLedgerLoanCalculated.principal)}
+                    </p>
+                    <span className="text-[10px] text-slate-500 font-bold block mt-0.5">
+                      @ {currentSelectedLedgerLoanCalculated.interestRate}% / mo
+                    </span>
+                  </div>
+
+                  <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                    <span className="text-[10px] font-mono font-black text-slate-400 uppercase tracking-wider block">
+                      TOTAL ACCRUED
+                    </span>
+                    <p className="text-base font-mono font-black text-amber-700 mt-1">
+                      {formatCurrency(currentSelectedLedgerLoanCalculated.totalAmount)}
+                    </p>
+                    <span className="text-[10px] text-amber-800 font-bold block mt-0.5">
+                      {currentSelectedLedgerLoanCalculated.months} Mo Interest ({formatCurrency(currentSelectedLedgerLoanCalculated.totalInterest)})
+                    </span>
+                  </div>
+
+                  <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                    <span className="text-[10px] font-mono font-black text-slate-400 uppercase tracking-wider block">
+                      PAID SO FAR
+                    </span>
+                    <p className="text-base font-mono font-black text-emerald-600 mt-1">
+                      {formatCurrency(currentSelectedLedgerLoanCalculated.returnedAmount || 0)}
+                    </p>
+                    <span className="text-[10px] text-emerald-700 font-bold block mt-0.5">
+                      Total Payments Recorded
+                    </span>
+                  </div>
+
+                  <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                    <span className="text-[10px] font-mono font-black text-slate-400 uppercase tracking-wider block">
+                      REMAINING DUE
+                    </span>
+                    <p className="text-base font-mono font-black text-rose-600 mt-1">
+                      {formatCurrency(currentSelectedLedgerLoanCalculated.dueAmount)}
+                    </p>
+                    <span className="text-[10px] text-rose-700 font-bold block mt-0.5">
+                      {currentSelectedLedgerLoanCalculated.dueAmount === 0 ? 'Fully Paid' : 'Pending Balance'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Filter Tabs & Header Bar */}
+                <div className="flex items-center justify-between gap-2 flex-wrap pt-1 font-sans">
+                  <div className="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl">
+                    {['All', 'Transactions', 'Payments'].map((tab) => (
+                      <button
+                        key={tab}
+                        type="button"
+                        onClick={() => setLedgerTab(tab)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                          ledgerTab === tab
+                            ? 'bg-white text-slate-900 shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        {tab}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="text-xs font-bold text-slate-500">
+                    Showing {filteredEvents.length} Ledger Event(s)
+                  </span>
+                </div>
+
+                {/* EXACT TABLE FORMAT FROM USER SCREENSHOT */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs font-sans">
+                      <thead>
+                        <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-500 font-black uppercase tracking-wider text-[11px]">
+                          <th className="py-3.5 px-4">DATE</th>
+                          <th className="py-3.5 px-4">TYPE</th>
+                          <th className="py-3.5 px-4">PAYMENT METHOD / ID</th>
+                          <th className="py-3.5 px-4">DESCRIPTION</th>
+                          <th className="py-3.5 px-4 text-right">BILL AMOUNT</th>
+                          <th className="py-3.5 px-4 text-right">AMOUNT PAID</th>
+                          <th className="py-3.5 px-4 text-right">REMAINING DUE</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-medium text-slate-900">
+                        {filteredEvents.length === 0 ? (
+                          <tr>
+                            <td colSpan="7" className="py-8 text-center text-slate-400 font-medium">
+                              No ledger transactions found for selected filter.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredEvents.map((ev) => (
+                            <tr key={ev.id} className="hover:bg-slate-50/80 transition-colors">
+                              {/* DATE */}
+                              <td className="py-3.5 px-4 text-slate-600 font-bold whitespace-nowrap text-xs">
+                                {ev.displayDate}
+                              </td>
+
+                              {/* TYPE (Pill Badge) */}
+                              <td className="py-3.5 px-4 whitespace-nowrap">
+                                <span
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                                    ev.type === 'Payment'
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                      : 'bg-blue-50 text-blue-600 border-blue-200'
+                                  }`}
+                                >
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full ${
+                                      ev.type === 'Payment' ? 'bg-emerald-500' : 'bg-blue-500'
+                                    }`}
+                                  ></span>
+                                  {ev.type}
+                                </span>
+                              </td>
+
+                              {/* PAYMENT METHOD & ID */}
+                              <td className="py-3.5 px-4 whitespace-nowrap">
+                                {ev.kind === 'interest' ? (
+                                  <span className="text-slate-400 font-normal">-</span>
+                                ) : (
+                                  <div>
+                                    <span className="font-extrabold text-slate-900 text-xs block">
+                                      {ev.paymentMethod || 'Cash'}
+                                    </span>
+                                    {ev.reference ? (
+                                      <span className="text-[10px] font-mono text-indigo-700 font-bold block">
+                                        Ref: {ev.reference}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[9px] font-mono text-slate-400 block">
+                                        {ev.id}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* DESCRIPTION */}
+                              <td className="py-3.5 px-4 font-bold text-slate-900">
+                                {ev.description}
+                              </td>
+
+                              {/* BILL AMOUNT */}
+                              <td className="py-3.5 px-4 text-right font-black text-slate-900 whitespace-nowrap">
+                                {ev.billAmount > 0 ? formatCurrency(ev.billAmount) : '-'}
+                              </td>
+
+                              {/* AMOUNT PAID */}
+                              <td className="py-3.5 px-4 text-right font-black text-emerald-600 whitespace-nowrap">
+                                +{formatCurrency(ev.paidAmount || 0)}
+                              </td>
+
+                              {/* REMAINING DUE */}
+                              <td className="py-3.5 px-4 text-right font-black text-amber-700 whitespace-nowrap">
+                                {formatCurrency(ev.remainingDue)}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="bg-white border-t border-slate-200 px-5 py-3.5 flex items-center justify-between gap-3 shrink-0">
+                <a
+                  href={`https://wa.me/${(currentSelectedLedgerLoanCalculated.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(
+                    `Hello ${currentSelectedLedgerLoanCalculated.borrowerName}, Loan Statement: Principal ${formatCurrency(
+                      currentSelectedLedgerLoanCalculated.principal
+                    )}, Month ${currentSelectedLedgerLoanCalculated.months} Interest: ${formatCurrency(
+                      currentSelectedLedgerLoanCalculated.totalInterest
+                    )}. Total Returned: ${formatCurrency(
+                      currentSelectedLedgerLoanCalculated.returnedAmount || 0
+                    )}. Remaining Due: ${formatCurrency(currentSelectedLedgerLoanCalculated.dueAmount)}.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold rounded-xl text-xs flex items-center gap-1.5 border border-emerald-200 transition-all"
+                >
+                  💬 WhatsApp Statement
+                </a>
+
+                <div className="flex items-center gap-2">
+                  {currentSelectedLedgerLoanCalculated.dueAmount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const loanToPay = currentSelectedLedgerLoanCalculated;
+                        setSelectedLedgerLoan(null);
+                        const calculated = getLoanCalculatedDetails(loanToPay);
+                        const firstUnsettled = getFirstUnsettledMonth(calculated);
+                        const isAllSettled = isMonthSettled(calculated, firstUnsettled);
+                        setSelectedLoan(loanToPay);
+                        setReturnPayAmount(
+                          (isAllSettled ? calculated.dueAmount : calculated.monthlyInterest || 2000).toString()
+                        );
+                        setReturnPayMonths(calculated.months.toString());
+                        setReturnPayMonth(isAllSettled ? 'Full Settlement' : `Month ${firstUnsettled}`);
+                        setIsReturnModalOpen(true);
+                      }}
+                      className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs shadow-md shadow-amber-600/20 transition-all cursor-pointer"
+                    >
+                      + Record Return
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLedgerLoan(null)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+      {/* WhatsApp Modal Dialog */}
+      <WhatsAppModal
+        isOpen={isWhatsAppModalOpen}
+        onClose={() => setIsWhatsAppModalOpen(false)}
+        phone={whatsAppPhone}
+        customerName={whatsAppCustName}
+        messageText={whatsAppText}
+      />
     </div>
   );
 };

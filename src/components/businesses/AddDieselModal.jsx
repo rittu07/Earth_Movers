@@ -12,6 +12,7 @@ const AddDieselModal = ({ isOpen, onClose, defaultJcb = 'JCB-01 (TN-23-AX-1234)'
   const [totalCost, setTotalCost] = useState('3800');
   const [hourMeterReading, setHourMeterReading] = useState('1257');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [reference, setReference] = useState('');
   const [bunkName, setBunkName] = useState('IOCL Bunk Katpadi');
   const [notes, setNotes] = useState('Tank filled before site work');
 
@@ -34,6 +35,10 @@ const AddDieselModal = ({ isOpen, onClose, defaultJcb = 'JCB-01 (TN-23-AX-1234)'
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    const combinedNotes = reference.trim()
+      ? `Ref: ${reference.trim()}${notes.trim() ? ' - ' + notes.trim() : ''}`
+      : notes;
+
     addDieselLog({
       jcbVehicle,
       date,
@@ -43,7 +48,7 @@ const AddDieselModal = ({ isOpen, onClose, defaultJcb = 'JCB-01 (TN-23-AX-1234)'
       hourMeterReading: Number(hourMeterReading) || 0,
       paymentMethod,
       bunkName,
-      notes
+      notes: combinedNotes
     });
 
     onClose();
@@ -195,6 +200,29 @@ const AddDieselModal = ({ isOpen, onClose, defaultJcb = 'JCB-01 (TN-23-AX-1234)'
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-hidden"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              {paymentMethod === 'UPI'
+                ? 'UPI Reference ID / UTR Number (Optional)'
+                : paymentMethod === 'Bank Transfer'
+                ? 'Bank Transaction ID / IMPS Ref (Optional)'
+                : 'Reference No. (Optional)'}
+            </label>
+            <input
+              type="text"
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+              placeholder={
+                paymentMethod === 'UPI'
+                  ? 'e.g. 423456789012 or GPay Ref ID'
+                  : paymentMethod === 'Bank Transfer'
+                  ? 'e.g. TXN987654321 or IMPS/NEFT Ref'
+                  : 'e.g. REF-123456'
+              }
+              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-700 focus:outline-hidden"
+            />
           </div>
 
           <div>

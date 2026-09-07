@@ -79,6 +79,42 @@ export const formatWelcomeWhatsApp = ({
 };
 
 /**
+ * Format WhatsApp message for New Finance Loan Given
+ */
+export const formatFinanceLoanWhatsApp = ({
+  borrowerName = 'Borrower',
+  principal = 0,
+  interestRate = 0,
+  monthlyInterest = 0,
+  months = 1,
+  startDate = '',
+  paymentMethod = 'Cash',
+  reference = '',
+  totalAmount = 0
+}) => {
+  const methodText = paymentMethod ? `\n💳 Payment Method: ${paymentMethod}` : '';
+  const refText = reference ? ` (Ref: ${reference})` : '';
+
+  return `Hello ${borrowerName} 👋\n\nFinance Loan Record created with ${COMPANY_NAME}.\n📅 Start Date: ${startDate}\n\n💰 Principal Amount: ₹${Number(principal).toLocaleString('en-IN')}\n⚡ Interest Rate: ${interestRate}% / month (₹${Number(monthlyInterest).toLocaleString('en-IN')}/mo)\n⏱ Tenure: Month ${months}${methodText}${refText}\n\n📊 Total Amount Due (Month ${months}): ₹${Number(totalAmount).toLocaleString('en-IN')}\n\nThank you for choosing ${COMPANY_NAME}! 🙏`;
+};
+
+/**
+ * Format WhatsApp message for Finance Loan Return Payment Received
+ */
+export const formatFinanceReturnPaymentWhatsApp = ({
+  borrowerName = 'Borrower',
+  amount = 0,
+  repaymentFor = 'Month 1 Interest',
+  paymentMethod = 'Cash',
+  reference = '',
+  remainingDue = 0
+}) => {
+  const methodText = paymentMethod ? ` (${paymentMethod}${reference ? ` - Ref: ${reference}` : ''})` : '';
+
+  return `Hello ${borrowerName} 👋\n\nLoan Return Payment Received with thanks!\n\n💵 Return Amount Paid: ₹${Number(amount).toLocaleString('en-IN')}${methodText}\n📌 Repayment For: ${repaymentFor}\n⏳ Remaining Balance Due: ₹${Number(remainingDue).toLocaleString('en-IN')}\n\nThank you for doing business with ${COMPANY_NAME}! 🙏`;
+};
+
+/**
  * Clean phone number and generate WhatsApp API URL directly using api.whatsapp.com/send
  * to prevent double HTTP redirect mangling of unicode emojis (👋 🚜 💰 ✅ ⏳)
  */

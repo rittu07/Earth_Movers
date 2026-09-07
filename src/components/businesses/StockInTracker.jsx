@@ -335,7 +335,7 @@ const StockInTracker = ({ businessId = 'bricks', businessName = 'Bricks Supply' 
     <div className="space-y-6 font-sans text-slate-900 animate-in fade-in duration-300">
       
       {/* 1. OVERVIEW CARDS */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono font-black text-slate-700 uppercase tracking-wider">
@@ -382,21 +382,6 @@ const StockInTracker = ({ businessId = 'bricks', businessName = 'Bricks Supply' 
           </p>
           <p className="text-[11px] font-mono font-bold text-blue-800">
             Outsourced & Quarry Inward
-          </p>
-        </div>
-
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-mono font-black text-slate-700 uppercase tracking-wider">
-              Stock Investment
-            </span>
-            <Sparkles className="w-5 h-5 text-amber-600" />
-          </div>
-          <p className="text-2xl font-mono font-black text-amber-700">
-            {formatCurrency(totalInvestmentCost)}
-          </p>
-          <p className="text-[11px] font-mono font-bold text-slate-700">
-            Rejection: {totalDamagedQty} {unitName}
           </p>
         </div>
       </div>

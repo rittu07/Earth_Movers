@@ -2,6 +2,7 @@
  * Calculates the number of months elapsed from a start date to current date.
  * Financial rule: Month 1 starts on day 1 (startDate).
  * Each 1-month cycle entered adds 1 month.
+ * Handles month-end differences (e.g. starting Jan 31 -> Feb 28/29).
  */
 export const calculateElapsedMonths = (startDate) => {
   if (!startDate) return 1;
@@ -9,11 +10,23 @@ export const calculateElapsedMonths = (startDate) => {
   if (isNaN(start.getTime())) return 1;
   const now = new Date();
 
-  let yearDiff = now.getFullYear() - start.getFullYear();
-  let monthDiff = now.getMonth() - start.getMonth();
+  const startYear = start.getFullYear();
+  const startMonth = start.getMonth();
+  const startDateNum = start.getDate();
+
+  const nowYear = now.getFullYear();
+  const nowMonth = now.getMonth();
+  const nowDateNum = now.getDate();
+
+  let yearDiff = nowYear - startYear;
+  let monthDiff = nowMonth - startMonth;
   let months = yearDiff * 12 + monthDiff;
 
-  if (now.getDate() >= start.getDate()) {
+  // Handle months with fewer days than startDateNum (e.g. Jan 31 -> Feb 28)
+  const lastDayOfNowMonth = new Date(nowYear, nowMonth + 1, 0).getDate();
+  const effectiveStartDay = Math.min(startDateNum, lastDayOfNowMonth);
+
+  if (nowDateNum >= effectiveStartDay) {
     months += 1;
   } else {
     if (months < 1) months = 1;
@@ -23,7 +36,7 @@ export const calculateElapsedMonths = (startDate) => {
 
 /**
  * Recalculates dynamic loan values based on variable months, principal, interest rate,
- * start date, and returned payments.
+ * start date, and returned payments. Automatically detects if month is extended.
  */
 export const getLoanCalculatedDetails = (loan) => {
   if (!loan) return null;
@@ -34,10 +47,14 @@ export const getLoanCalculatedDetails = (loan) => {
   
   const autoElapsed = calculateElapsedMonths(loan.startDate);
   
-  // Use explicitly assigned months if present, otherwise auto elapsed
-  const months = (loan.months !== undefined && loan.months !== null && Number(loan.months) > 0)
-    ? Number(loan.months)
-    : autoElapsed;
+  // If loan.isManualMonths is true, use stored loan.months.
+  // Otherwise, auto-detect and update months to Math.max(storedMonths, autoElapsed).
+  const storedMonths = Number(loan.months) || 1;
+  const isManual = Boolean(loan.isManualMonths);
+  const months = isManual ? Math.max(1, storedMonths) : Math.max(storedMonths, autoElapsed);
+
+  const isExtended = autoElapsed > 1;
+  const isAutoUpdated = !isManual && autoElapsed > storedMonths;
 
   const totalInterest = monthlyInterest * months;
   const totalAmount = principal + totalInterest;
@@ -54,6 +71,9 @@ export const getLoanCalculatedDetails = (loan) => {
     monthlyInterest,
     months,
     autoElapsed,
+    isExtended,
+    isAutoUpdated,
+    isManualMonths: isManual,
     totalInterest,
     totalAmount,
     returnedAmount,
@@ -61,3 +81,4 @@ export const getLoanCalculatedDetails = (loan) => {
     status
   };
 };
+

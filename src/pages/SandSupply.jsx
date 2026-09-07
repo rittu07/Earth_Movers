@@ -6,7 +6,8 @@ import TransactionTable from '../components/transactions/TransactionTable';
 import StockInTracker from '../components/businesses/StockInTracker';
 import { formatCurrency } from '../utils/formatCurrency';
 import { calculateBusinessMetrics } from '../utils/calculations';
-import { Mountain, PlusCircle, PackagePlus, FileText } from 'lucide-react';
+import { exportBusinessStatementPdf } from '../utils/pdfGenerator';
+import { Mountain, PlusCircle, PackagePlus, FileText, Download } from 'lucide-react';
 
 const SandSupply = () => {
   const { transactions, payments, expenses } = useBusiness();
@@ -15,6 +16,14 @@ const SandSupply = () => {
 
   const metrics = calculateBusinessMetrics(transactions, payments, expenses, 'sand');
 
+  const handleDownloadStatement = () => {
+    exportBusinessStatementPdf({
+      title: 'M-SAND & P-SAND SUPPLY',
+      transactions: sandTrxs,
+      metrics
+    });
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <PageHeader
@@ -22,6 +31,12 @@ const SandSupply = () => {
         subtitle="Manufactured Sand (M-Sand) & Plastering Sand (P-Sand) crusher supply, stock in and delivery"
         action={
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadStatement}
+              className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            >
+              <Download className="w-4 h-4 text-teal-600" /> Statement PDF
+            </button>
             <button
               onClick={() => setActiveTab('stock_in')}
               className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer font-mono"

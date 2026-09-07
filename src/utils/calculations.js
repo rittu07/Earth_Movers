@@ -102,7 +102,8 @@ export const calculateReportData = (
   payments = [],
   expenses = [],
   businesses = [],
-  dateRange = 'month'
+  dateRange = 'month',
+  financeLoans = []
 ) => {
   const range = getDateRange(dateRange);
   const scopedTransactions = transactions.filter((item) => isDateInRange(item.date, range));
@@ -115,21 +116,47 @@ export const calculateReportData = (
   const outstanding = Math.max(0, totalIncome - totalPaid);
 
   const businessBreakdown = businesses.map((business) => {
-    const revenue = scopedTransactions
-      .filter((item) => item.businessId === business.id)
-      .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const bizTransactions = scopedTransactions.filter((item) => item.businessId === business.id);
+    const revenue = bizTransactions.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const paid = bizTransactions.reduce((sum, item) => sum + Number(item.paid || 0), 0);
     const expense = scopedExpenses
       .filter((item) => item.businessId === business.id)
       .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const profit = revenue - expense;
+    const marginPct = revenue > 0 ? Math.round((profit / revenue) * 100) : (expense > 0 ? -100 : 0);
+
     return {
       business: business.name,
       businessId: business.id,
       revenue,
+      paid,
       expense,
-      profit: revenue - expense,
-      transactions: scopedTransactions.filter((item) => item.businessId === business.id).length
+      profit,
+      marginPct,
+      transactions: bizTransactions.length
     };
   });
+
+  // Include Finance Loans in breakdown
+  const financeRevenue = (financeLoans || []).reduce((sum, l) => sum + Number(l.totalInterest || 0), 0);
+  const financePaid = (financeLoans || []).reduce((sum, l) => sum + Number(l.returnedAmount || 0), 0);
+  const financeExpense = scopedExpenses
+    .filter((item) => item.businessId === 'finance')
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const financeProfit = financeRevenue - financeExpense;
+
+  if (financeLoans && financeLoans.length > 0) {
+    businessBreakdown.push({
+      business: 'Finance Loans',
+      businessId: 'finance',
+      revenue: financeRevenue,
+      paid: financePaid,
+      expense: financeExpense,
+      profit: financeProfit,
+      marginPct: financeRevenue > 0 ? Math.round((financeProfit / financeRevenue) * 100) : 0,
+      transactions: financeLoans.length
+    });
+  }
 
   const chartDays = [];
   for (let index = 6; index >= 0; index -= 1) {
@@ -156,7 +183,13 @@ export const calculateReportData = (
     businessPerformance: businessBreakdown.map((item) => ({
       name: item.business,
       value: item.revenue,
-      color: businesses.find((business) => business.id === item.businessId)?.color || '#64748b'
+      expense: item.expense,
+      profit: item.profit,
+      color: item.businessId === 'bricks' ? '#ea580c' :
+             item.businessId === 'jcb' ? '#d97706' :
+             item.businessId === 'water' ? '#2563eb' :
+             item.businessId === 'jalli' ? '#059669' :
+             item.businessId === 'sand' ? '#0d9488' : '#7c3aed'
     }))
   };
 };
