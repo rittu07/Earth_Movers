@@ -104,14 +104,16 @@ export const formatFinanceLoanWhatsApp = ({
 export const formatFinanceReturnPaymentWhatsApp = ({
   borrowerName = 'Borrower',
   amount = 0,
+  discount = 0,
   repaymentFor = 'Month 1 Interest',
   paymentMethod = 'Cash',
   reference = '',
   remainingDue = 0
 }) => {
   const methodText = paymentMethod ? ` (${paymentMethod}${reference ? ` - Ref: ${reference}` : ''})` : '';
+  const discountText = discount > 0 ? `\n🏷 Discount Waived: ₹${Number(discount).toLocaleString('en-IN')}` : '';
 
-  return `Hello ${borrowerName} 👋\n\nLoan Return Payment Received with thanks!\n\n💵 Return Amount Paid: ₹${Number(amount).toLocaleString('en-IN')}${methodText}\n📌 Repayment For: ${repaymentFor}\n⏳ Remaining Balance Due: ₹${Number(remainingDue).toLocaleString('en-IN')}\n\nThank you for doing business with ${COMPANY_NAME}! 🙏`;
+  return `Hello ${borrowerName} 👋\n\nLoan Return Payment Received with thanks!\n\n💵 Return Amount Paid: ₹${Number(amount).toLocaleString('en-IN')}${methodText}${discountText}\n📌 Repayment For: ${repaymentFor}\n⏳ Remaining Balance Due: ₹${Number(remainingDue).toLocaleString('en-IN')}\n\nThank you for doing business with ${COMPANY_NAME}! 🙏`;
 };
 
 /**

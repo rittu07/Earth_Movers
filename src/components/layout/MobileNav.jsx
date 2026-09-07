@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { X, Home, Building2, TrendingDown, BarChart3, Users, Activity } from 'lucide-react';
+import { X, Home, Building2, Landmark, BarChart3, Activity } from 'lucide-react';
 
 const MobileNav = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
@@ -35,12 +35,12 @@ const MobileNav = ({ isOpen, onClose }) => {
 
 export const MobileBottomBar = () => {
   return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 z-40 px-2 flex items-center justify-around shadow-lg">
+    <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 z-40 px-1 flex items-center justify-around shadow-lg">
       <NavLink
         to="/"
         end
         className={({ isActive }) =>
-          `flex flex-col items-center gap-1 text-xs font-black transition-colors ${
+          `flex flex-col items-center gap-0.5 text-[11px] font-black transition-colors ${
             isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
           }`
         }
@@ -50,9 +50,9 @@ export const MobileBottomBar = () => {
       </NavLink>
 
       <NavLink
-        to="/finance"
+        to="/transactions"
         className={({ isActive }) =>
-          `flex flex-col items-center gap-1 text-xs font-black transition-colors ${
+          `flex flex-col items-center gap-0.5 text-[11px] font-black transition-colors ${
             isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
           }`
         }
@@ -62,21 +62,33 @@ export const MobileBottomBar = () => {
       </NavLink>
 
       <NavLink
+        to="/finance"
+        className={({ isActive }) =>
+          `flex flex-col items-center gap-0.5 text-[11px] font-black transition-colors ${
+            isActive ? 'text-amber-600' : 'text-slate-600 hover:text-slate-900'
+          }`
+        }
+      >
+        <Landmark className="w-5 h-5 text-amber-600 stroke-[2.5]" />
+        <span className="text-amber-700 font-extrabold">Finance</span>
+      </NavLink>
+
+      <NavLink
         to="/expenses"
         className={({ isActive }) =>
-          `flex flex-col items-center gap-1 text-xs font-black transition-colors ${
+          `flex flex-col items-center gap-0.5 text-[11px] font-black transition-colors ${
             isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
           }`
         }
       >
         <Activity className="w-5 h-5" />
-        <span>Recent Activity</span>
+        <span>Activity</span>
       </NavLink>
 
       <NavLink
         to="/reports"
         className={({ isActive }) =>
-          `flex flex-col items-center gap-1 text-xs font-black transition-colors ${
+          `flex flex-col items-center gap-0.5 text-[11px] font-black transition-colors ${
             isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
           }`
         }

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import TransactionTable from '../components/transactions/TransactionTable';
@@ -13,8 +13,17 @@ import { Truck, PlusCircle, Wrench, Fuel, FileText, FileCheck, Download } from '
 
 const JCBRental = () => {
   const { transactions, payments, expenses } = useBusiness();
-  const [activeTab, setActiveTab] = useState('sales'); // sales, maintenance, diesel, documents
+  const [searchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+
+  const [activeTab, setActiveTab] = useState(tabFromUrl || 'sales'); // sales, maintenance, diesel, documents
   const [openMaintModal, setOpenMaintModal] = useState(false);
+
+  useEffect(() => {
+    if (tabFromUrl) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
 
   const jcbTrxs = transactions.filter((t) => t.businessId === 'jcb');
   const metrics = calculateBusinessMetrics(transactions, payments, expenses, 'jcb');

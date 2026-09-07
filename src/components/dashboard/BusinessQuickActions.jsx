@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Boxes, Truck, Droplets, Layers, Mountain, Landmark, PlusCircle, MinusCircle, ArrowRight } from 'lucide-react';
+import { Boxes, Truck, Droplets, Layers, Mountain, Landmark, PlusCircle, MinusCircle, ArrowRight, Wrench } from 'lucide-react';
 
 const businessBlocks = [
   {
@@ -118,23 +118,54 @@ const BusinessQuickActions = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="grid grid-cols-2 gap-2.5 pt-1">
-              <Link
-                to={b.id === 'finance' ? '/finance' : `/transactions/add?business=${b.id}`}
-                className={`py-2.5 px-3 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${btnTrx}`}
-              >
-                <PlusCircle className="w-4 h-4 shrink-0 stroke-[2.5]" />
-                <span>+ {b.id === 'finance' ? 'Loan' : 'Sale'}</span>
-              </Link>
+            {b.id === 'jcb' ? (
+              <div className="grid grid-cols-3 gap-1.5 pt-1">
+                <Link
+                  to="/transactions/add?business=jcb"
+                  className="py-2.5 px-1.5 rounded-2xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap bg-amber-600 hover:bg-amber-700 text-white shadow-md shadow-amber-600/20"
+                  title="Add JCB Sale Order"
+                >
+                  <PlusCircle className="w-3.5 h-3.5 shrink-0 stroke-[2.5]" />
+                  <span>+ Sale</span>
+                </Link>
 
-              <Link
-                to={b.id === 'finance' ? '/expenses/add' : `/expenses/add?business=${b.id}`}
-                className={`py-2.5 px-3 rounded-2xl text-xs sm:text-sm font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${btnExp}`}
-              >
-                <MinusCircle className="w-4 h-4 shrink-0 stroke-[2.5]" />
-                <span>+ Expense</span>
-              </Link>
-            </div>
+                <Link
+                  to="/expenses/add?business=jcb"
+                  className="py-2.5 px-1.5 rounded-2xl text-[11px] sm:text-xs font-extrabold transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap bg-amber-50/80 hover:bg-amber-100 text-amber-950 border-2 border-amber-200/90"
+                  title="Add JCB Expense"
+                >
+                  <MinusCircle className="w-3.5 h-3.5 shrink-0 stroke-[2.5]" />
+                  <span>+ Expense</span>
+                </Link>
+
+                <Link
+                  to="/business/jcb?tab=maintenance"
+                  className="py-2.5 px-1.5 rounded-2xl text-[11px] sm:text-xs font-extrabold transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-800 shadow-sm"
+                  title="Go to JCB Fleet & Oil Maintenance"
+                >
+                  <Wrench className="w-3.5 h-3.5 shrink-0 text-amber-400 stroke-[2.5]" />
+                  <span>Maintenance</span>
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
+                <Link
+                  to={b.id === 'finance' ? '/finance' : `/transactions/add?business=${b.id}`}
+                  className={`py-2.5 px-3 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${btnTrx}`}
+                >
+                  <PlusCircle className="w-4 h-4 shrink-0 stroke-[2.5]" />
+                  <span>+ {b.id === 'finance' ? 'Loan' : 'Sale'}</span>
+                </Link>
+
+                <Link
+                  to={b.id === 'finance' ? '/expenses/add' : `/expenses/add?business=${b.id}`}
+                  className={`py-2.5 px-3 rounded-2xl text-xs sm:text-sm font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${btnExp}`}
+                >
+                  <MinusCircle className="w-4 h-4 shrink-0 stroke-[2.5]" />
+                  <span>+ Expense</span>
+                </Link>
+              </div>
+            )}
           </div>
         );
       })}

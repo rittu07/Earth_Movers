@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import { formatCurrency, formatDate } from '../utils/formatCurrency';
-import { getLoanCalculatedDetails } from '../utils/loanUtils';
+import { getLoanCalculatedDetails, getLoanDueDateInfo } from '../utils/loanUtils';
 import { exportToPdf } from '../utils/pdfGenerator';
 import { isMonthSettled, getFirstUnsettledMonth, buildLoanLedgerEvents } from './Finance';
 import { formatFinanceReturnPaymentWhatsApp, openWhatsAppChat } from '../utils/whatsapp';
@@ -34,6 +34,8 @@ const FinanceLoanLedger = () => {
   const [returnPayRef, setReturnPayRef] = useState('');
   const [returnPayMonth, setReturnPayMonth] = useState('');
   const [returnPayMonths, setReturnPayMonths] = useState('');
+  const [returnPayDate, setReturnPayDate] = useState(new Date().toISOString().split('T')[0]);
+  const [returnPayDiscount, setReturnPayDiscount] = useState('');
 
   // WhatsApp notification state
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
@@ -138,6 +140,8 @@ const FinanceLoanLedger = () => {
     setReturnPayAmount((isAllSettled ? loanCalculated.dueAmount : firstInt || 2000).toString());
     setReturnPayMonths(loanCalculated.months.toString());
     setReturnPayMonth(isAllSettled ? 'Full Settlement' : `Month ${firstUnsettled}`);
+    setReturnPayDate(new Date().toISOString().split('T')[0]);
+    setReturnPayDiscount('');
     setIsReturnModalOpen(true);
   };
 
@@ -147,6 +151,7 @@ const FinanceLoanLedger = () => {
     if (!returnPayAmount) return;
 
     const payAmt = Number(returnPayAmount) || 0;
+    const discAmt = Number(returnPayDiscount) || 0;
     const newMonths = Number(returnPayMonths) || loanCalculated.months;
 
     recordReturnPayment(
@@ -155,16 +160,19 @@ const FinanceLoanLedger = () => {
       returnPayMonth || `Month ${newMonths}`,
       newMonths,
       returnPayMethod,
-      returnPayRef
+      returnPayRef,
+      returnPayDate,
+      discAmt
     );
 
     const updatedTot = loanCalculated.principal + loanCalculated.monthlyInterest * newMonths;
-    const remDue = Math.max(0, updatedTot - ((loanCalculated.returnedAmount || 0) + payAmt));
+    const remDue = Math.max(0, updatedTot - ((loanCalculated.returnedAmount || 0) + payAmt + discAmt));
 
     if (sendWhatsApp && loanCalculated.phone) {
       const waMsg = formatFinanceReturnPaymentWhatsApp({
         borrowerName: loanCalculated.borrowerName,
         amount: payAmt,
+        discount: discAmt,
         repaymentFor: returnPayMonth || `Month ${newMonths}`,
         paymentMethod: returnPayMethod,
         reference: returnPayRef,
@@ -180,6 +188,8 @@ const FinanceLoanLedger = () => {
 
     setIsReturnModalOpen(false);
     setReturnPayRef('');
+    setReturnPayDiscount('');
+    setReturnPayDate(new Date().toISOString().split('T')[0]);
   };
 
   return (
@@ -248,6 +258,28 @@ const FinanceLoanLedger = () => {
             <span className="text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-xs font-bold">
               Interest: {loanCalculated.interestRate}% / mo ({formatCurrency(loanCalculated.monthlyInterest)}/mo)
             </span>
+            <span className="text-slate-300">•</span>
+            {(() => {
+              const dueDateInfo = getLoanDueDateInfo(loanCalculated);
+              if (netRemainingDue === 0 || loanCalculated.status === 'Settled') {
+                return (
+                  <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded border border-emerald-300 text-xs font-bold">
+                    Status: Fully Settled
+                  </span>
+                );
+              }
+              return (
+                <span className={`px-2 py-0.5 rounded border text-xs font-bold ${
+                  dueDateInfo.daysLeft < 0
+                    ? 'bg-rose-100 text-rose-900 border-rose-300 font-black'
+                    : dueDateInfo.daysLeft === 0
+                    ? 'bg-rose-50 text-rose-800 border-rose-300 font-extrabold animate-pulse'
+                    : 'bg-amber-100 text-amber-900 border-amber-300'
+                }`}>
+                  Due: {formatDate(dueDateInfo.dueDateStr)} ({dueDateInfo.daysLeft < 0 ? `${Math.abs(dueDateInfo.daysLeft)}d Overdue` : dueDateInfo.daysLeft === 0 ? 'Due Today' : `${dueDateInfo.daysLeft}d Remaining`})
+                </span>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -441,6 +473,17 @@ const FinanceLoanLedger = () => {
 
             <form onSubmit={handleReturnSubmit} className="space-y-4">
               <div>
+                <label className="block font-bold text-slate-700 mb-1 text-xs">Payment Date *</label>
+                <input
+                  type="date"
+                  required
+                  value={returnPayDate}
+                  onChange={(e) => setReturnPayDate(e.target.value)}
+                  className="w-full p-3 bg-white border border-slate-200 rounded-xl font-semibold text-slate-900 text-xs"
+                />
+              </div>
+
+              <div>
                 <label className="block font-bold text-slate-700 mb-1 text-xs">Repayment For *</label>
                 <select
                   value={returnPayMonth}
@@ -494,6 +537,26 @@ const FinanceLoanLedger = () => {
                   onChange={(e) => setReturnPayAmount(e.target.value)}
                   className="w-full p-3 bg-white border border-slate-200 rounded-xl font-bold text-lg text-slate-900"
                 />
+              </div>
+
+              {/* Discount Input (Rupee Amount) */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 text-xs">
+                  Discount Amount (₹) <span className="text-slate-400 font-normal">(Optional, in ₹ amount not %)</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 200 (Discount in ₹)"
+                  value={returnPayDiscount}
+                  onChange={(e) => setReturnPayDiscount(e.target.value)}
+                  className="w-full p-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-900 text-xs"
+                />
+                {Number(returnPayDiscount) > 0 && (
+                  <p className="text-[11px] font-bold text-emerald-700 mt-1">
+                    💡 Net Credit to Loan: {formatCurrency((Number(returnPayAmount) || 0) + (Number(returnPayDiscount) || 0))} (Paid {formatCurrency(Number(returnPayAmount) || 0)} + Discount {formatCurrency(Number(returnPayDiscount) || 0)})
+                  </p>
+                )}
               </div>
 
               <div>

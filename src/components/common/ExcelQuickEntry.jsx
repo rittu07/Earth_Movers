@@ -1138,25 +1138,25 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
       </div>
 
       {/* Action Footer */}
-      <div className="flex items-center justify-between gap-3 pt-3">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pt-3 w-full max-w-full overflow-hidden">
         <button
           type="button"
           onClick={activeTab === 'transaction' ? addTxRow : addExpRow}
-          className="px-5 py-3 bg-white hover:bg-slate-50 text-slate-900 font-black rounded-2xl border-2 border-slate-300 text-sm sm:text-base flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
+          className="px-3.5 sm:px-5 py-2.5 sm:py-3 bg-white hover:bg-slate-50 text-slate-900 font-black rounded-2xl border-2 border-slate-300 text-xs sm:text-base flex items-center gap-1.5 sm:gap-2 shadow-2xs transition-all cursor-pointer shrink-0"
         >
-          <Plus className="w-5 h-5 text-indigo-600 stroke-[3]" /> + Add Line
+          <Plus className="w-4 sm:w-5 h-4 sm:h-5 text-indigo-600 stroke-[3]" /> + Add Line
         </button>
 
         {activeTab === 'transaction' ? (
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-xs sm:text-sm font-black text-slate-800 bg-emerald-50 px-4 py-3 rounded-2xl border border-emerald-300 cursor-pointer hover:bg-emerald-100/80 transition-colors shadow-2xs">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
+            <label className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-black text-slate-800 bg-emerald-50 px-2.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl border border-emerald-300 cursor-pointer hover:bg-emerald-100/80 transition-colors shadow-2xs shrink-0">
               <input
                 type="checkbox"
                 checked={sendWhatsApp}
                 onChange={(e) => setSendWhatsApp(e.target.checked)}
-                className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 accent-emerald-600"
+                className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-emerald-600 rounded focus:ring-emerald-500 accent-emerald-600"
               />
-              <MessageSquare className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
+              <MessageSquare className="w-4 sm:w-4.5 h-4 sm:h-4.5 text-emerald-600 shrink-0" />
               <span className="hidden sm:inline">Send Receipt on WhatsApp 📲</span>
               <span className="sm:hidden">WhatsApp</span>
             </label>
@@ -1164,18 +1164,22 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
             <button
               type="button"
               onClick={handleSaveTransactions}
-              className="px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-md text-sm sm:text-base flex items-center gap-2 transition-all cursor-pointer"
+              className="px-3.5 sm:px-6 py-2.5 sm:py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-md text-xs sm:text-base flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0"
             >
-              <Save className="w-5 h-5" /> Save Transactions
+              <Save className="w-4 sm:w-5 h-4 sm:h-5" />
+              <span className="hidden md:inline">Save Transactions</span>
+              <span className="md:hidden">Save</span>
             </button>
           </div>
         ) : (
           <button
             type="button"
             onClick={handleSaveExpenses}
-            className="px-7 py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-2xl shadow-md text-sm sm:text-base flex items-center gap-2 transition-all cursor-pointer"
+            className="px-4 sm:px-7 py-2.5 sm:py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-2xl shadow-md text-xs sm:text-base flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0"
           >
-            <Save className="w-5 h-5" /> Save Expenses
+            <Save className="w-4 sm:w-5 h-4 sm:h-5" />
+            <span className="hidden md:inline">Save Expenses</span>
+            <span className="md:hidden">Save</span>
           </button>
         )}
       </div>

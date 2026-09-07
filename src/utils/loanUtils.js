@@ -4,11 +4,12 @@
  * Each 1-month cycle entered adds 1 month.
  * Handles month-end differences (e.g. starting Jan 31 -> Feb 28/29).
  */
-export const calculateElapsedMonths = (startDate) => {
+export const calculateElapsedMonths = (startDate, asOfDate = null) => {
   if (!startDate) return 1;
   const start = new Date(startDate);
   if (isNaN(start.getTime())) return 1;
-  const now = new Date();
+  const refDate = asOfDate ? new Date(asOfDate) : new Date();
+  const now = isNaN(refDate.getTime()) ? new Date() : refDate;
 
   const startYear = start.getFullYear();
   const startMonth = start.getMonth();
@@ -59,7 +60,7 @@ export const getLoanCalculatedDetails = (loan) => {
   const isAutoUpdated = !isManual && autoElapsed > storedMonths;
 
   const paymentHistory = loan.paymentHistory || [];
-  const returnedAmount = Number(loan.returnedAmount) || paymentHistory.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const returnedAmount = Number(loan.returnedAmount) || paymentHistory.reduce((sum, p) => sum + (Number(p.amount) || 0) + (Number(p.discount) || 0), 0);
 
   // Month-by-Month Compounding Calculation
   let runningBalance = principal;
@@ -67,7 +68,9 @@ export const getLoanCalculatedDetails = (loan) => {
 
   // Track payments chronologically
   const sortedPayments = [...paymentHistory].map((p, idx) => ({
-    amount: Number(p.amount) || 0,
+    amount: (Number(p.amount) || 0) + (Number(p.discount) || 0),
+    cashAmount: Number(p.amount) || 0,
+    discountAmount: Number(p.discount) || 0,
     date: p.date || startDateStr,
     month: p.month || '',
     id: idx
@@ -86,16 +89,20 @@ export const getLoanCalculatedDetails = (loan) => {
     // Start-of-month balance is runningBalance
     const startBal = runningBalance;
 
-    // Interest accrued for month m on start-of-month balance
-    const monthInt = Math.round((startBal * rate) / 100);
+    // Interest accrued for month m on start-of-month balance (0 if settled)
+    const monthInt = startBal > 0 ? Math.round((startBal * rate) / 100) : 0;
     totalInterest += monthInt;
 
     const grossBal = startBal + monthInt;
 
-    // Find payments made on or before cycleEndDateStr that haven't been applied yet
+    // Find payments made on or before cycleEndDateStr that haven't been applied yet,
+    // or payments explicitly tagged for Month m
     let monthPaid = 0;
     for (let p of unappliedPayments) {
-      if (p.amount > 0 && p.date <= cycleEndDateStr) {
+      const isExplicitMonthMatch = p.month && new RegExp(`\\bMonth\\s*${m}\\b`, 'i').test(p.month);
+      const isDateMatch = p.date <= cycleEndDateStr;
+
+      if (p.amount > 0 && (isExplicitMonthMatch || isDateMatch)) {
         const payToApply = Math.min(p.amount, Math.max(0, grossBal - monthPaid));
         monthPaid += payToApply;
         p.amount -= payToApply;
@@ -143,4 +150,56 @@ export const getLoanCalculatedDetails = (loan) => {
     isCompound: true
   };
 };
+
+/**
+ * Calculates due date and days remaining to due date for current active/unsettled month.
+ */
+export const getLoanDueDateInfo = (loanCalculated) => {
+  if (!loanCalculated) {
+    return { dueDateStr: '-', daysLeft: 0, isSettled: false };
+  }
+
+  if (loanCalculated.dueAmount === 0 || loanCalculated.status === 'Settled') {
+    return { dueDateStr: 'Settled', daysLeft: 0, isSettled: true };
+  }
+
+  const startDateStr = loanCalculated.startDate || new Date().toISOString().split('T')[0];
+  const start = new Date(startDateStr);
+  if (isNaN(start.getTime())) {
+    return { dueDateStr: '-', daysLeft: 0, isSettled: false };
+  }
+
+  const totalMonths = loanCalculated.months || 1;
+  const monthBreakdown = loanCalculated.monthBreakdown || [];
+  let targetMonthNum = 1;
+  for (let m = 1; m <= totalMonths; m++) {
+    const mb = monthBreakdown[m - 1];
+    if (!mb || mb.endBalance > 0) {
+      targetMonthNum = m;
+      break;
+    }
+    targetMonthNum = m;
+  }
+
+  const targetDueDate = new Date(start);
+  targetDueDate.setMonth(targetDueDate.getMonth() + targetMonthNum);
+  const targetDueDateStr = targetDueDate.toISOString().split('T')[0];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const due = new Date(targetDueDate);
+  due.setHours(0, 0, 0, 0);
+
+  const diffMs = due.getTime() - today.getTime();
+  const daysLeft = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+  return {
+    dueDateStr: targetDueDateStr,
+    daysLeft,
+    targetMonthNum,
+    isSettled: false
+  };
+};
+
 

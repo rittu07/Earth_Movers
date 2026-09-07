@@ -535,8 +535,10 @@ export const BusinessProvider = ({ children }) => {
     showToast(`Loan reset to auto-detected tenure!`);
   };
 
-  const recordReturnPayment = (loanId, amount, monthLabel, newMonths, method = 'Cash', reference = '') => {
+  const recordReturnPayment = (loanId, amount, monthLabel, newMonths, method = 'Cash', reference = '', date = '', discount = 0) => {
     const payAmt = Number(amount) || 0;
+    const discAmt = Number(discount) || 0;
+    const pmtDate = date || new Date().toISOString().split('T')[0];
     let updatedLoan = null;
     setFinanceLoans((prev) =>
       prev.map((loan) => {
@@ -545,9 +547,10 @@ export const BusinessProvider = ({ children }) => {
           const history = [...(loan.paymentHistory || []), {
             month: monthLabel || `Month ${updatedMonths}`,
             amount: payAmt,
+            discount: discAmt,
             method: method || 'Cash',
             reference: reference || '',
-            date: new Date().toISOString().split('T')[0]
+            date: pmtDate
           }];
           
           updatedLoan = getLoanCalculatedDetails({
@@ -561,7 +564,7 @@ export const BusinessProvider = ({ children }) => {
       })
     );
     if (updatedLoan) persist('financeLoans', updatedLoan, 'update');
-    showToast(`Return payment of ₹${payAmt.toLocaleString('en-IN')} recorded!`);
+    showToast(`Return payment of ₹${payAmt.toLocaleString('en-IN')}${discAmt > 0 ? ` (Discount: ₹${discAmt.toLocaleString('en-IN')})` : ''} recorded!`);
   };
 
   const settleFinanceLoan = (loanId) => {

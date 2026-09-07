@@ -3,11 +3,10 @@ import { Link } from 'react-router-dom';
 import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import StatCard from '../components/dashboard/StatCard';
-import BusinessQuickActions from '../components/dashboard/BusinessQuickActions';
 import RecentTransactions from '../components/dashboard/RecentTransactions';
 import QuickActions from '../components/dashboard/QuickActions';
 import { formatCurrency, formatDate } from '../utils/formatCurrency';
-import { getLoanCalculatedDetails, calculateElapsedMonths } from '../utils/loanUtils';
+import { getLoanCalculatedDetails, calculateElapsedMonths, getLoanDueDateInfo } from '../utils/loanUtils';
 import { exportToPdf } from '../utils/pdfGenerator';
 import { formatFinanceLoanWhatsApp, formatFinanceReturnPaymentWhatsApp, openWhatsAppChat } from '../utils/whatsapp';
 import WhatsAppModal from '../components/common/WhatsAppModal';
@@ -179,6 +178,8 @@ const Finance = () => {
   const [returnPayRef, setReturnPayRef] = useState('');
   const [returnPayMonth, setReturnPayMonth] = useState('');
   const [returnPayMonths, setReturnPayMonths] = useState('');
+  const [returnPayDate, setReturnPayDate] = useState(new Date().toISOString().split('T')[0]);
+  const [returnPayDiscount, setReturnPayDiscount] = useState('');
 
   // WhatsApp notification state
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
@@ -320,6 +321,7 @@ const Finance = () => {
     if (!selectedLoan || !returnPayAmount) return;
 
     const payAmt = Number(returnPayAmount) || 0;
+    const discAmt = Number(returnPayDiscount) || 0;
     const newMonths = Number(returnPayMonths) || selectedLoan.months;
 
     recordReturnPayment(
@@ -328,17 +330,20 @@ const Finance = () => {
       returnPayMonth || `Month ${newMonths}`,
       newMonths,
       returnPayMethod,
-      returnPayRef
+      returnPayRef,
+      returnPayDate,
+      discAmt
     );
 
     const currentCalc = getLoanCalculatedDetails(selectedLoan);
     const updatedTot = currentCalc.principal + currentCalc.monthlyInterest * newMonths;
-    const remDue = Math.max(0, updatedTot - ((currentCalc.returnedAmount || 0) + payAmt));
+    const remDue = Math.max(0, updatedTot - ((currentCalc.returnedAmount || 0) + payAmt + discAmt));
 
     if (sendWhatsApp && selectedLoan.phone) {
       const waMsg = formatFinanceReturnPaymentWhatsApp({
         borrowerName: selectedLoan.borrowerName,
         amount: payAmt,
+        discount: discAmt,
         repaymentFor: returnPayMonth || `Month ${newMonths}`,
         paymentMethod: returnPayMethod,
         reference: returnPayRef,
@@ -355,9 +360,11 @@ const Finance = () => {
     setIsReturnModalOpen(false);
     setSelectedLoan(null);
     setReturnPayAmount('');
+    setReturnPayDiscount('');
     setReturnPayMonth('');
     setReturnPayMonths('');
     setReturnPayRef('');
+    setReturnPayDate(new Date().toISOString().split('T')[0]);
   };
 
   // When selected loan changes for return payment modal, calculate dynamic view
@@ -427,54 +434,54 @@ const Finance = () => {
           }
         />
 
-        {/* 4 Summary KPI Cards Grid (Matching Water Supply layout) */}
-        <div className="grid grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">
+        {/* 4 Summary KPI Cards Grid (Desktop View) */}
+        <div className="grid grid-cols-4 gap-4 font-sans">
+          <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-sm">
+            <span className="text-xs font-black text-slate-600 uppercase tracking-wider block">
               TOTAL OUTSTANDING
             </span>
-            <p className="text-xl font-extrabold text-amber-600 mt-1">
+            <p className="text-2xl font-black text-amber-700 mt-1 tracking-tight">
               {formatCurrency(totalRemainingDue)}
             </p>
-            <span className="text-[10px] text-slate-400 font-bold block mt-0.5">
+            <span className="text-xs text-slate-500 font-extrabold block mt-1">
               Net Pending Balance
             </span>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">
+          <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-sm">
+            <span className="text-xs font-black text-slate-600 uppercase tracking-wider block">
               UPCOMING PEOPLE DUE
             </span>
-            <p className="text-xl font-extrabold text-rose-600 mt-1">
+            <p className="text-2xl font-black text-rose-700 mt-1 tracking-tight">
               {upcomingDueBorrowers.length} Borrower(s)
             </p>
-            <span className="text-[10px] text-rose-700 font-extrabold block mt-0.5 truncate">
+            <span className="text-xs text-rose-700 font-black block mt-1 truncate">
               {upcomingDueBorrowers.length > 0
                 ? upcomingDueBorrowers.map((b) => b.borrowerName).slice(0, 3).join(', ')
                 : 'All Loans Cleared'}
             </span>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">
+          <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-sm">
+            <span className="text-xs font-black text-slate-600 uppercase tracking-wider block">
               ACTIVE LOANS
             </span>
-            <p className="text-xl font-extrabold text-slate-900 mt-1">
+            <p className="text-2xl font-black text-slate-900 mt-1 tracking-tight">
               {activeLoans.length} Active
             </p>
-            <span className="text-[10px] text-slate-500 font-bold block mt-0.5">
+            <span className="text-xs text-slate-600 font-extrabold block mt-1">
               Principal {formatCurrency(totalPrincipalGiven)}
             </span>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">
+          <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-sm">
+            <span className="text-xs font-black text-slate-600 uppercase tracking-wider block">
               TOTAL RETURNED PAID
             </span>
-            <p className="text-xl font-extrabold text-emerald-600 mt-1">
+            <p className="text-2xl font-black text-emerald-700 mt-1 tracking-tight">
               {formatCurrency(totalReturnedAmount)}
             </p>
-            <span className="text-[10px] text-emerald-700 font-bold block mt-0.5">
+            <span className="text-xs text-emerald-800 font-black block mt-1">
               Interest Accrued: {formatCurrency(totalInterestAccrued)}
             </span>
           </div>
@@ -482,12 +489,12 @@ const Finance = () => {
       </div>
 
       {/* Mobile Finance View Section (Ultra Mobile Optimized) */}
-      <div className="md:hidden space-y-5">
+      <div className="md:hidden space-y-5 font-sans">
         {/* Mobile Page Header */}
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">Finance</h2>
-            <p className="text-[11px] font-bold text-slate-500">Compounding Interest Loan Tracker</p>
+            <p className="text-xs font-bold text-slate-500">Compounding Interest Loan Tracker</p>
           </div>
           <button
             onClick={() => setIsAddModalOpen(true)}
@@ -497,45 +504,40 @@ const Finance = () => {
           </button>
         </div>
 
-        {/* Business Section Cards */}
-        <div className="space-y-3">
-          <BusinessQuickActions />
-        </div>
-
-        {/* 4 Summary KPI Cards (White Light Mode Grid) */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span className="text-[10px] font-mono font-black text-slate-500 uppercase tracking-widest block">
+        {/* 4 Summary KPI Cards (Bold Light Mode Grid) */}
+        <div className="grid grid-cols-2 gap-3 font-sans">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <span className="text-xs font-black text-slate-700 uppercase tracking-wider block">
               OUTSTANDING DUE
             </span>
-            <p className="text-lg font-mono font-black text-amber-600 mt-1">
+            <p className="text-xl sm:text-2xl font-black text-amber-700 mt-1 tracking-tight">
               {formatCurrency(totalRemainingDue)}
             </p>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span className="text-[10px] font-mono font-black text-slate-500 uppercase tracking-widest block">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <span className="text-xs font-black text-slate-700 uppercase tracking-wider block">
               UPCOMING DUE
             </span>
-            <p className="text-lg font-mono font-black text-rose-600 mt-1">
+            <p className="text-xl sm:text-2xl font-black text-rose-700 mt-1 tracking-tight">
               {upcomingDueBorrowers.length} People
             </p>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span className="text-[10px] font-mono font-black text-slate-500 uppercase tracking-widest block">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <span className="text-xs font-black text-slate-700 uppercase tracking-wider block">
               ACTIVE LOANS
             </span>
-            <p className="text-lg font-mono font-black text-emerald-700 mt-1">
+            <p className="text-xl sm:text-2xl font-black text-emerald-800 mt-1 tracking-tight">
               {activeLoans.length} Active
             </p>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span className="text-[10px] font-mono font-black text-slate-500 uppercase tracking-widest block">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <span className="text-xs font-black text-slate-700 uppercase tracking-wider block">
               TOTAL RETURNED
             </span>
-            <p className="text-lg font-mono font-black text-emerald-700 mt-1">
+            <p className="text-xl sm:text-2xl font-black text-emerald-800 mt-1 tracking-tight">
               {formatCurrency(totalReturnedAmount)}
             </p>
           </div>
@@ -543,13 +545,10 @@ const Finance = () => {
 
         {/* Mobile Finance Loan Records Section */}
         <div className="space-y-3.5">
-          <div className="flex items-center justify-between font-mono">
+          <div className="flex items-center justify-between font-sans">
             <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
               FINANCE LOAN RECORDS
             </h3>
-            <span className="text-[10px] font-black text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
-              ⚡ Variable Interest
-            </span>
           </div>
 
           {/* Search & Filter bar for mobile */}
@@ -597,132 +596,37 @@ const Finance = () => {
                 return (
                   <div
                     key={loan.id}
-                    className="bg-white text-slate-900 rounded-3xl p-5 border border-slate-200 shadow-md space-y-4 font-sans"
+                    className="bg-white text-slate-900 rounded-2xl p-4 border border-slate-200 shadow-sm space-y-3 font-sans"
                   >
-                    {/* Card Top: Tag + Borrower Name + Status Badge */}
-                    <div className="flex items-start justify-between gap-2 font-mono">
+                    {/* Clean Card Top: Name & Phone on Left, Total Payable on Right */}
+                    <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="bg-amber-600 text-white font-black text-[11px] px-2.5 py-0.5 rounded-full uppercase tracking-wide shadow-2xs">
-                            {loan.id}
-                          </span>
-                          <Link
-                            to={`/finance/ledger/${loan.id}`}
-                            className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 hover:text-emerald-700 leading-tight font-mono text-left flex items-center gap-2 cursor-pointer group"
-                            title="Click to view full borrower ledger statement & payment history"
-                          >
-                            <span>{loan.borrowerName}</span>
-                            <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 group-hover:bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300 shadow-2xs transition-all">
-                              📋 View Ledger
-                            </span>
-                          </Link>
-                          {loan.autoElapsed > 1 && (
-                            <span className="bg-amber-100 text-amber-900 border border-amber-300 font-mono font-black text-[10px] px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
-                              ⚡ Month Extended ({loan.autoElapsed} Mo)
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-600 font-bold mt-1 flex items-center gap-1.5 flex-wrap">
-                          <span>📞 {loan.phone || 'No phone'}</span>
-                          <span>•</span>
-                          <span>Start: {loan.startDate}</span>
-                          {loan.autoElapsed > 1 && (
-                            <span className="text-amber-800 font-extrabold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-[10px]">
-                              Auto: Month {loan.autoElapsed}
-                            </span>
-                          )}
-                        </p>
+                        <Link
+                          to={`/finance/ledger/${loan.id}`}
+                          className="text-lg font-black text-slate-900 hover:text-emerald-700 leading-tight block text-left"
+                        >
+                          {loan.borrowerName}
+                        </Link>
+                        <a
+                          href={`tel:${loan.phone}`}
+                          className="text-xs text-slate-500 font-semibold block mt-0.5"
+                        >
+                          📞 {loan.phone || 'No phone'}
+                        </a>
                       </div>
 
-                      <span
-                        className={`px-3 py-1 rounded-full text-[11px] font-mono font-black shrink-0 shadow-2xs ${
-                          due === 0 || loan.status === 'Settled'
-                            ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                            : 'bg-amber-100 text-amber-900 border border-amber-300'
-                        }`}
-                      >
-                        {due === 0 ? 'Settled' : 'Active'}
-                      </span>
-                    </div>
-
-                    {/* WhatsApp Action Button */}
-                    <a
-                      href={`https://wa.me/${(loan.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(
-                        `Hello ${loan.borrowerName}, Loan Statement: Principal ${formatCurrency(loan.principal)}, Month ${loan.months} Interest (${loan.interestRate}%/mo): ${formatCurrency(loan.totalInterest)}. Remaining Due: ${formatCurrency(loan.dueAmount)}.`
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-mono font-black text-xs sm:text-sm rounded-2xl flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
-                    >
-                      <span className="text-base">💬</span> Send WhatsApp Statement 📊
-                    </a>
-
-                    {/* Primary KPI Box: Principal & Variable Month Stepper */}
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 font-mono">
-                      <div>
-                        <span className="text-[10px] font-mono font-black text-slate-700 uppercase tracking-widest block">
-                          TOTAL PRINCIPAL
+                      <div className="text-right shrink-0">
+                        <span className="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider block">
+                          TOTAL PAYABLE
                         </span>
-                        <div className="flex items-baseline gap-1 mt-0.5">
-                          <span className="text-2xl sm:text-3xl font-mono font-black text-amber-700">
-                            {formatCurrency(loan.principal)}
-                          </span>
-                        </div>
-                        <span className="text-[11px] text-slate-700 font-bold block mt-0.5">
-                          Rate: <strong className="text-amber-800 font-black">{loan.interestRate}% / mo</strong> ({formatCurrency(loan.monthlyInterest)}/mo)
+                        <span className="text-lg font-black text-emerald-600 block">
+                          {formatCurrency(loan.totalAmount)}
                         </span>
-                      </div>
-
-                      <div>
-                        <span className="text-[10px] font-mono font-black text-slate-700 uppercase tracking-wider block">
-                          TENURE
-                        </span>
-                        <span className="text-sm font-mono font-black text-amber-800 bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-xl block mt-0.5">
-                          Month {loan.months}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Accrued Interest & Repayment Progress Bar Card */}
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3 font-mono">
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
-                          <span className="font-mono font-black text-slate-800 uppercase tracking-wide text-[10px]">
-                            MONTH {loan.months} INTEREST ACCRUED
-                          </span>
-                        </div>
-                        <span className="font-mono font-black text-amber-700 text-sm sm:text-base">
-                          {formatCurrency(loan.totalInterest)}
-                        </span>
-                      </div>
-
-                      {/* Repayment Progress Bar */}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-[11px] font-mono font-black">
-                          <span className="text-emerald-700">
-                            Returned: {formatCurrency(returned)}
-                          </span>
-                          <span className="text-slate-700 font-bold">
-                            Total Payable: {formatCurrency(loan.totalAmount)}
-                          </span>
-                        </div>
-
-                        <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden p-0.5 border border-slate-300">
-                          <div
-                            className="bg-emerald-600 h-full rounded-full transition-all duration-500"
-                            style={{ width: `${progressPct}%` }}
-                          ></div>
-                        </div>
-
-                        <div className="flex items-center justify-between text-[11px] font-mono font-bold text-slate-800">
-                          <span>
-                            {progressPct}% paid
-                          </span>
-                          <span className="text-rose-700 font-mono font-black">
+                        {due > 0 && (
+                          <span className="text-xs font-extrabold text-rose-600 block">
                             Due: {formatCurrency(due)}
                           </span>
-                        </div>
+                        )}
                       </div>
                     </div>
 
@@ -741,34 +645,36 @@ const Finance = () => {
                             setReturnPayAmount(
                               (allSettled ? calculated.dueAmount : firstInt || 2000).toString()
                             );
+                            setReturnPayDiscount('');
                             setReturnPayMonths(calculated.months.toString());
                             setReturnPayMonth(allSettled ? 'Full Settlement' : `Month ${firstUnsettled}`);
+                            setReturnPayDate(new Date().toISOString().split('T')[0]);
                             setIsReturnModalOpen(true);
                           }}
-                          className="flex-1 py-3 px-4 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-mono font-black text-xs sm:text-sm rounded-2xl transition-all shadow-md shadow-amber-600/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="flex-1 py-2.5 px-3 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-mono font-black text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          <span>💰</span> Record Return Payment
+                          <span>💰</span> Record Return
                         </button>
                         <button
                           onClick={() => handleRequestSettle(loan)}
-                          className="py-3 px-3.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-mono font-black text-xs sm:text-sm rounded-2xl border border-slate-300 transition-all cursor-pointer"
+                          className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-mono font-black text-xs rounded-xl border border-slate-300 transition-all cursor-pointer"
                         >
                           Settle
                         </button>
                         <button
                           onClick={() => handleRequestDelete(loan)}
-                          className="p-3 bg-slate-100 hover:bg-rose-100 text-rose-600 rounded-2xl border border-slate-300 transition-colors cursor-pointer"
+                          className="p-2.5 bg-slate-100 hover:bg-rose-100 text-rose-600 rounded-xl border border-slate-300 transition-colors cursor-pointer"
                           title="Delete Loan Record"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between bg-emerald-100 border border-emerald-300 p-3.5 rounded-2xl text-emerald-900 text-xs font-mono font-black">
-                        <span>🎉 Loan Fully Settled!</span>
+                      <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-emerald-900 text-xs font-bold">
+                        <span>🎉 Fully Settled!</span>
                         <button
                           onClick={() => handleRequestDelete(loan)}
-                          className="text-rose-700 hover:underline text-[11px] font-mono font-black cursor-pointer"
+                          className="text-rose-700 hover:underline text-[11px] font-bold cursor-pointer"
                         >
                           Remove Record
                         </button>
@@ -843,6 +749,7 @@ const Finance = () => {
                   <th className="py-3 px-3">Person / Borrower</th>
                   <th className="py-3 px-3 text-right">Principal Amount</th>
                   <th className="py-3 px-3 text-center">Interest Rate</th>
+                  <th className="py-3 px-3 text-center">Days to Due Date</th>
                   <th className="py-3 px-3 text-right">Total Payable</th>
                   <th className="py-3 px-3 text-right">Returned Paid</th>
                   <th className="py-3 px-3 text-right">Remaining Due</th>
@@ -852,7 +759,7 @@ const Finance = () => {
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                 {filteredLoans.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="py-8 text-center text-slate-400 font-medium">
+                    <td colSpan="8" className="py-8 text-center text-slate-400 font-medium">
                       No finance loan records found.
                     </td>
                   </tr>
@@ -866,51 +773,78 @@ const Finance = () => {
                         <td className="py-3 px-3">
                           <Link
                             to={`/finance/ledger/${loan.id}`}
-                            className="font-bold text-slate-900 text-sm hover:text-emerald-700 hover:underline flex items-center gap-1.5 cursor-pointer text-left group"
+                            className="font-black text-slate-900 text-base sm:text-lg hover:text-emerald-700 hover:underline flex items-center gap-1.5 cursor-pointer text-left group"
                             title="Click to view full borrower ledger statement & payment history"
                           >
                             <span>{loan.borrowerName}</span>
-                            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 group-hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 opacity-90 transition-all">
-                              📋 Ledger
-                            </span>
                           </Link>
-                          <div className="text-[11px] text-slate-400 font-normal">{loan.phone || loan.id}</div>
-                          <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                          <div className="text-xs text-slate-500 font-medium">{loan.phone || loan.id}</div>
+                          <div className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
                             <span>Start: {loan.startDate}</span>
                             {loan.autoElapsed > 1 && (
-                              <span className="bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded text-[9px] border border-amber-300">
+                              <span className="bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded text-[10px] border border-amber-300">
                                 {loan.autoElapsed} Mo Elapsed
                               </span>
                             )}
                           </div>
                         </td>
 
-                        <td className="py-3 px-3 text-right font-bold text-slate-900">
+                        <td className="py-3 px-3 text-right font-black text-slate-900 text-sm sm:text-base">
                           {formatCurrency(loan.principal)}
                         </td>
 
                         <td className="py-3 px-3 text-center">
-                          <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200 font-bold">
+                          <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200 font-bold text-xs sm:text-sm">
                             {loan.interestRate}% / mo
                           </span>
-                          <span className="block text-[10px] text-amber-700 font-medium mt-0.5">
+                          <span className="block text-xs text-amber-700 font-medium mt-0.5">
                             ({formatCurrency(loan.monthlyInterest)}/mo)
                           </span>
                         </td>
 
+                        {/* Days Remaining to Due Date Column */}
+                        <td className="py-3 px-3 text-center font-bold">
+                          {(() => {
+                            const dueDateInfo = getLoanDueDateInfo(loan);
+                            if (due === 0 || loan.status === 'Settled') {
+                              return (
+                                <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold text-[11px]">
+                                  Settled
+                                </span>
+                              );
+                            }
+                            return (
+                              <>
+                                <span className={`px-2 py-0.5 rounded border text-[11px] font-bold ${
+                                  dueDateInfo.daysLeft < 0
+                                    ? 'bg-rose-100 text-rose-900 border-rose-300 font-black'
+                                    : dueDateInfo.daysLeft === 0
+                                    ? 'bg-rose-50 text-rose-800 border-rose-300 font-extrabold animate-pulse'
+                                    : 'bg-amber-50 text-amber-900 border-amber-300'
+                                }`}>
+                                  {dueDateInfo.daysLeft < 0
+                                    ? `${Math.abs(dueDateInfo.daysLeft)}d Overdue`
+                                    : dueDateInfo.daysLeft === 0
+                                    ? 'Due Today'
+                                    : `${dueDateInfo.daysLeft}d Remaining`}
+                                </span>
+                                <span className="block text-[10px] text-slate-500 font-medium mt-0.5">
+                                  Due: {formatDate(dueDateInfo.dueDateStr)}
+                                </span>
+                              </>
+                            );
+                          })()}
+                        </td>
 
-
-
-
-                        <td className="py-3 px-3 text-right font-bold text-slate-900">
+                        <td className="py-3 px-3 text-right font-black text-emerald-600 text-sm sm:text-base">
                           {formatCurrency(loan.totalAmount)}
                         </td>
 
-                        <td className="py-3 px-3 text-right font-bold text-emerald-600">
+                        <td className="py-3 px-3 text-right font-black text-emerald-600 text-sm sm:text-base">
                           {formatCurrency(returned)}
                         </td>
 
-                        <td className="py-3 px-3 text-right font-bold text-rose-600">
+                        <td className="py-3 px-3 text-right font-black text-rose-600 text-sm sm:text-base">
                           {formatCurrency(due)}
                         </td>
 
@@ -1167,7 +1101,7 @@ const Finance = () => {
           <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => { setIsReturnModalOpen(false); setSelectedLoan(null); setReturnPayMonth(''); }}
+                onClick={() => { setIsReturnModalOpen(false); setSelectedLoan(null); setReturnPayMonth(''); setReturnPayDate(new Date().toISOString().split('T')[0]); }}
                 className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -1235,6 +1169,17 @@ const Finance = () => {
               {/* Payment Form */}
               <form id="return-pay-form" onSubmit={handleReturnSubmit} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-4">
                   <div>
+                    <label className="block font-bold text-slate-700 mb-1 text-xs sm:text-sm">Payment Date *</label>
+                    <input
+                      type="date"
+                      required
+                      value={returnPayDate}
+                      onChange={(e) => setReturnPayDate(e.target.value)}
+                      className="w-full p-3 bg-white border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-500 text-xs sm:text-sm"
+                    />
+                  </div>
+
+                  <div>
                     <label className="block font-bold text-slate-700 mb-1">Repayment For *</label>
                     <select
                       value={returnPayMonth}
@@ -1301,6 +1246,26 @@ const Finance = () => {
                   />
                 </div>
 
+                {/* Discount Input (Rupee Amount) */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1 text-xs">
+                    Discount Amount (₹) <span className="text-slate-400 font-normal">(Optional, in ₹ amount not %)</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 200 (Discount in ₹)"
+                    value={returnPayDiscount}
+                    onChange={(e) => setReturnPayDiscount(e.target.value)}
+                    className="w-full p-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:border-emerald-500 text-sm"
+                  />
+                  {Number(returnPayDiscount) > 0 && (
+                    <p className="text-[11px] font-bold text-emerald-700 mt-1">
+                      💡 Net Credit to Loan: {formatCurrency((Number(returnPayAmount) || 0) + (Number(returnPayDiscount) || 0))} (Paid {formatCurrency(Number(returnPayAmount) || 0)} + Discount {formatCurrency(Number(returnPayDiscount) || 0)})
+                    </p>
+                  )}
+                </div>
+
                 {/* Payment Method */}
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Payment Method</label>
@@ -1362,9 +1327,13 @@ const Finance = () => {
                             <span className="text-[10px] font-bold text-amber-800 bg-amber-50 rounded-md px-1.5 py-0.5 border border-amber-200">
                               {p.month}
                             </span>
-                            <span className="text-xs text-slate-500">{p.method || 'Cash'}</span>
+                            <span className="text-xs text-slate-500">
+                              {p.method || 'Cash'}
+                              {p.discount ? ` • Discount: ${formatCurrency(p.discount)}` : ''}
+                              {p.date ? ` • ${formatDate(p.date)}` : ''}
+                            </span>
                           </div>
-                          <span className="font-bold text-emerald-600">{formatCurrency(p.amount)}</span>
+                          <span className="font-bold text-emerald-600">{formatCurrency((Number(p.amount) || 0) + (Number(p.discount) || 0))}</span>
                         </div>
                       ))}
                     </div>
