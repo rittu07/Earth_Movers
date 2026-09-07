@@ -132,7 +132,10 @@ const FinanceLoanLedger = () => {
   const handleOpenReturnModal = () => {
     const firstUnsettled = getFirstUnsettledMonth(loanCalculated);
     const isAllSettled = isMonthSettled(loanCalculated, firstUnsettled);
-    setReturnPayAmount((isAllSettled ? loanCalculated.dueAmount : loanCalculated.monthlyInterest || 2000).toString());
+    const firstInt = (loanCalculated.monthBreakdown && loanCalculated.monthBreakdown[firstUnsettled - 1])
+      ? loanCalculated.monthBreakdown[firstUnsettled - 1].interestAccrued
+      : loanCalculated.monthlyInterest;
+    setReturnPayAmount((isAllSettled ? loanCalculated.dueAmount : firstInt || 2000).toString());
     setReturnPayMonths(loanCalculated.months.toString());
     setReturnPayMonth(isAllSettled ? 'Full Settlement' : `Month ${firstUnsettled}`);
     setIsReturnModalOpen(true);
@@ -462,10 +465,13 @@ const FinanceLoanLedger = () => {
                       const val = e.target.value;
                       setReturnPayMonth(val);
                       if (val.startsWith('Month ')) {
-                        const m = val.split(' ')[1];
+                        const m = parseInt(val.split(' ')[1], 10);
                         if (m && !isNaN(m)) {
-                          setReturnPayMonths(m);
-                          setReturnPayAmount(loanCalculated.monthlyInterest.toString());
+                          setReturnPayMonths(m.toString());
+                          const mInt = (loanCalculated.monthBreakdown && loanCalculated.monthBreakdown[m - 1])
+                            ? loanCalculated.monthBreakdown[m - 1].interestAccrued
+                            : loanCalculated.monthlyInterest;
+                          setReturnPayAmount(mInt.toString());
                         }
                       } else if (val === 'Full Settlement') {
                         setReturnPayAmount(loanCalculated.dueAmount.toString());
@@ -481,9 +487,12 @@ const FinanceLoanLedger = () => {
                         const monthNum = i + 1;
                         const settled = isMonthSettled(loanCalculated, monthNum);
                         if (settled) return null;
+                        const mInt = (loanCalculated.monthBreakdown && loanCalculated.monthBreakdown[i])
+                          ? loanCalculated.monthBreakdown[i].interestAccrued
+                          : loanCalculated.monthlyInterest;
                         return (
                           <option key={monthNum} value={`Month ${monthNum}`}>
-                            Month {monthNum} Interest ({formatCurrency(loanCalculated.monthlyInterest)})
+                            Month {monthNum} Interest ({formatCurrency(mInt)})
                           </option>
                         );
                       }

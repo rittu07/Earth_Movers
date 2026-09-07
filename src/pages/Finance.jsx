@@ -93,12 +93,15 @@ export const buildLoanLedgerEvents = (loan) => {
 
   // 2. Monthly Interest Accruals (Month 1 to Month N)
   const totalMonths = loan.months || 1;
+  const monthBreakdown = loan.monthBreakdown || [];
+
   for (let m = 1; m <= totalMonths; m++) {
     const cycleDate = new Date(start);
     if (!isNaN(start.getTime())) {
       cycleDate.setMonth(cycleDate.getMonth() + (m - 1));
     }
     const dateStr = !isNaN(cycleDate.getTime()) ? cycleDate.toISOString().split('T')[0] : startDateStr;
+    const mInterest = monthBreakdown[m - 1] ? monthBreakdown[m - 1].interestAccrued : (loan.monthlyInterest || 0);
 
     events.push({
       id: `loan-interest-${loan.id}-m${m}`,
@@ -109,8 +112,8 @@ export const buildLoanLedgerEvents = (loan) => {
       business: 'Finance Loan',
       paymentMethod: '-',
       reference: '',
-      description: `Month ${m} Interest Accrued (${loan.interestRate}%/mo)`,
-      billAmount: loan.monthlyInterest || 0,
+      description: `Month ${m} Interest Accrued (${loan.interestRate}%/mo Compounding)`,
+      billAmount: mInterest,
       paidAmount: 0,
       kind: 'interest',
       monthNum: m
@@ -246,10 +249,12 @@ const Finance = () => {
 
   // Summary Metrics
   const activeLoans = processedLoans.filter((l) => l.status === 'Active');
+  const upcomingDueBorrowers = activeLoans.filter((l) => l.dueAmount > 0);
   const totalPrincipalGiven = processedLoans.reduce((sum, l) => sum + l.principal, 0);
   const totalMonthlyInterest = activeLoans.reduce((sum, l) => sum + l.monthlyInterest, 0);
   const totalReturnedAmount = processedLoans.reduce((sum, l) => sum + l.returnedAmount, 0);
   const totalRemainingDue = processedLoans.reduce((sum, l) => sum + l.dueAmount, 0);
+  const totalInterestAccrued = processedLoans.reduce((sum, l) => sum + (l.totalInterest || 0), 0);
 
   // Quick Month Increment / Decrement
   const handleMonthIncrement = (loanId, currentMonths, delta) => {
@@ -264,9 +269,9 @@ const Finance = () => {
 
     const p = Number(newPrincipal) || 0;
     const r = Number(newRate) || 0;
-    const m = Number(newMonths) || 1;
+    const m = 1;
     const monthlyInt = (p * r) / 100;
-    const totAmt = p + monthlyInt * m;
+    const totAmt = p + monthlyInt;
 
     addFinanceLoan({
       borrowerName: newBorrowerName,
@@ -399,11 +404,11 @@ const Finance = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Page Header (Hidden in Mobile View) */}
-      <div className="hidden md:block">
+      {/* Page Header & Top Summary KPI Cards (Desktop View) */}
+      <div className="hidden md:block space-y-5">
         <PageHeader
           title="Finance"
-          subtitle="Loan ledger, dynamic monthly interest tracking & variable tenure returns"
+          subtitle="Loan ledger, dynamic compounding monthly interest tracking & variable tenure returns"
           action={
             <div className="flex items-center gap-2">
               <button
@@ -421,6 +426,59 @@ const Finance = () => {
             </div>
           }
         />
+
+        {/* 4 Summary KPI Cards Grid (Matching Water Supply layout) */}
+        <div className="grid grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">
+              TOTAL OUTSTANDING
+            </span>
+            <p className="text-xl font-extrabold text-amber-600 mt-1">
+              {formatCurrency(totalRemainingDue)}
+            </p>
+            <span className="text-[10px] text-slate-400 font-bold block mt-0.5">
+              Net Pending Balance
+            </span>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">
+              UPCOMING PEOPLE DUE
+            </span>
+            <p className="text-xl font-extrabold text-rose-600 mt-1">
+              {upcomingDueBorrowers.length} Borrower(s)
+            </p>
+            <span className="text-[10px] text-rose-700 font-extrabold block mt-0.5 truncate">
+              {upcomingDueBorrowers.length > 0
+                ? upcomingDueBorrowers.map((b) => b.borrowerName).slice(0, 3).join(', ')
+                : 'All Loans Cleared'}
+            </span>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">
+              ACTIVE LOANS
+            </span>
+            <p className="text-xl font-extrabold text-slate-900 mt-1">
+              {activeLoans.length} Active
+            </p>
+            <span className="text-[10px] text-slate-500 font-bold block mt-0.5">
+              Principal {formatCurrency(totalPrincipalGiven)}
+            </span>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">
+              TOTAL RETURNED PAID
+            </span>
+            <p className="text-xl font-extrabold text-emerald-600 mt-1">
+              {formatCurrency(totalReturnedAmount)}
+            </p>
+            <span className="text-[10px] text-emerald-700 font-bold block mt-0.5">
+              Interest Accrued: {formatCurrency(totalInterestAccrued)}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Mobile Finance View Section (Ultra Mobile Optimized) */}
@@ -429,7 +487,7 @@ const Finance = () => {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">Finance</h2>
-            <p className="text-[11px] font-bold text-slate-500">Variable Month Loan Tracker</p>
+            <p className="text-[11px] font-bold text-slate-500">Compounding Interest Loan Tracker</p>
           </div>
           <button
             onClick={() => setIsAddModalOpen(true)}
@@ -448,10 +506,19 @@ const Finance = () => {
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
             <span className="text-[10px] font-mono font-black text-slate-500 uppercase tracking-widest block">
-              TOTAL PRINCIPAL
+              OUTSTANDING DUE
             </span>
-            <p className="text-lg font-mono font-black text-slate-900 mt-1">
-              {formatCurrency(totalPrincipalGiven)}
+            <p className="text-lg font-mono font-black text-amber-600 mt-1">
+              {formatCurrency(totalRemainingDue)}
+            </p>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <span className="text-[10px] font-mono font-black text-slate-500 uppercase tracking-widest block">
+              UPCOMING DUE
+            </span>
+            <p className="text-lg font-mono font-black text-rose-600 mt-1">
+              {upcomingDueBorrowers.length} People
             </p>
           </div>
 
@@ -461,15 +528,6 @@ const Finance = () => {
             </span>
             <p className="text-lg font-mono font-black text-emerald-700 mt-1">
               {activeLoans.length} Active
-            </p>
-          </div>
-
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span className="text-[10px] font-mono font-black text-slate-500 uppercase tracking-widest block">
-              REMAINING DUE
-            </span>
-            <p className="text-lg font-mono font-black text-rose-700 mt-1">
-              {formatCurrency(totalRemainingDue)}
             </p>
           </div>
 
@@ -615,47 +673,13 @@ const Finance = () => {
                         </span>
                       </div>
 
-                      {/* Variable Month Stepper & Auto Detection status */}
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="text-[10px] font-mono font-black text-slate-700 uppercase tracking-wider">
-                          VARIABLE MONTH
+                      <div>
+                        <span className="text-[10px] font-mono font-black text-slate-700 uppercase tracking-wider block">
+                          TENURE
                         </span>
-                        <div className="flex items-center gap-1.5 bg-amber-600 text-white px-2.5 py-1.5 rounded-xl shadow-xs font-mono font-black text-xs">
-                          <button
-                            type="button"
-                            onClick={() => handleMonthIncrement(loan.id, loan.months, -1)}
-                            disabled={loan.months <= 1}
-                            className="w-6 h-6 rounded-lg bg-slate-900 text-amber-400 font-mono font-black flex items-center justify-center text-sm border border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                            title="Decrease Month"
-                          >
-                            -
-                          </button>
-                          <span className="px-1 text-white font-mono font-black text-xs whitespace-nowrap">
-                            Month {loan.months}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleMonthIncrement(loan.id, loan.months, 1)}
-                            className="w-6 h-6 rounded-lg bg-slate-900 text-amber-400 font-mono font-black flex items-center justify-center text-sm border border-slate-700 cursor-pointer"
-                            title="Advance Next Month (+ Interest)"
-                          >
-                            +
-                          </button>
-                        </div>
-                        {loan.isManualMonths ? (
-                          <button
-                            type="button"
-                            onClick={() => resetFinanceLoanAutoMonths(loan.id)}
-                            className="text-[10px] font-mono font-bold text-amber-800 hover:underline cursor-pointer flex items-center gap-0.5 mt-0.5"
-                            title="Reset to Auto-detected month"
-                          >
-                            ↺ Auto ({loan.autoElapsed} mo)
-                          </button>
-                        ) : loan.autoElapsed > 1 ? (
-                          <span className="text-[10px] font-mono font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 mt-0.5">
-                            ⚡ Auto-Extended ({loan.autoElapsed} mo)
-                          </span>
-                        ) : null}
+                        <span className="text-sm font-mono font-black text-amber-800 bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-xl block mt-0.5">
+                          Month {loan.months}
+                        </span>
                       </div>
                     </div>
 
@@ -710,9 +734,12 @@ const Finance = () => {
                             const calculated = getLoanCalculatedDetails(loan);
                             const firstUnsettled = getFirstUnsettledMonth(calculated);
                             const allSettled = isMonthSettled(calculated, firstUnsettled);
+                            const firstInt = (calculated.monthBreakdown && calculated.monthBreakdown[firstUnsettled - 1])
+                              ? calculated.monthBreakdown[firstUnsettled - 1].interestAccrued
+                              : calculated.monthlyInterest;
                             setSelectedLoan(loan);
                             setReturnPayAmount(
-                              (allSettled ? calculated.dueAmount : calculated.monthlyInterest || 2000).toString()
+                              (allSettled ? calculated.dueAmount : firstInt || 2000).toString()
                             );
                             setReturnPayMonths(calculated.months.toString());
                             setReturnPayMonth(allSettled ? 'Full Settlement' : `Month ${firstUnsettled}`);
@@ -816,19 +843,16 @@ const Finance = () => {
                   <th className="py-3 px-3">Person / Borrower</th>
                   <th className="py-3 px-3 text-right">Principal Amount</th>
                   <th className="py-3 px-3 text-center">Interest Rate</th>
-                  <th className="py-3 px-3 text-center">Variable Month</th>
-                  <th className="py-3 px-3 text-right">Accrued Interest</th>
                   <th className="py-3 px-3 text-right">Total Payable</th>
                   <th className="py-3 px-3 text-right">Returned Paid</th>
                   <th className="py-3 px-3 text-right">Remaining Due</th>
-                  <th className="py-3 px-3 text-center">Status</th>
                   <th className="py-3 px-3 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                 {filteredLoans.length === 0 ? (
                   <tr>
-                    <td colSpan="10" className="py-8 text-center text-slate-400 font-medium">
+                    <td colSpan="7" className="py-8 text-center text-slate-400 font-medium">
                       No finance loan records found.
                     </td>
                   </tr>
@@ -874,51 +898,9 @@ const Finance = () => {
                           </span>
                         </td>
 
-                        {/* Variable Month Stepper */}
-                        <td className="py-3 px-3 text-center">
-                          <div className="inline-flex flex-col items-center gap-1">
-                            <div className="inline-flex items-center gap-1 bg-amber-50/90 border border-amber-200 p-1 rounded-xl">
-                              <button
-                                type="button"
-                                onClick={() => handleMonthIncrement(loan.id, loan.months, -1)}
-                                disabled={loan.months <= 1}
-                                className="w-5 h-5 rounded-lg bg-white text-amber-900 font-extrabold flex items-center justify-center text-xs shadow-2xs border border-amber-200 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                                title="Decrease Month"
-                              >
-                                -
-                              </button>
-                              <span className="text-[11px] font-black text-amber-900 px-1.5 whitespace-nowrap">
-                                Month {loan.months}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleMonthIncrement(loan.id, loan.months, 1)}
-                                className="w-5 h-5 rounded-lg bg-white text-amber-900 font-extrabold flex items-center justify-center text-xs shadow-2xs border border-amber-200 hover:bg-amber-100 cursor-pointer"
-                                title="Advance Next Month (+ Interest)"
-                              >
-                                +
-                              </button>
-                            </div>
-                            {loan.isManualMonths ? (
-                              <button
-                                type="button"
-                                onClick={() => resetFinanceLoanAutoMonths(loan.id)}
-                                className="text-[10px] font-bold text-amber-800 hover:underline cursor-pointer"
-                                title="Reset to Auto-detected month"
-                              >
-                                ↺ Reset Auto ({loan.autoElapsed} mo)
-                              </button>
-                            ) : loan.autoElapsed > 1 ? (
-                              <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 rounded border border-emerald-200">
-                                ⚡ Auto-Extended
-                              </span>
-                            ) : null}
-                          </div>
-                        </td>
 
-                        <td className="py-3 px-3 text-right font-bold text-amber-600">
-                          {formatCurrency(loan.totalInterest)}
-                        </td>
+
+
 
                         <td className="py-3 px-3 text-right font-bold text-slate-900">
                           {formatCurrency(loan.totalAmount)}
@@ -932,17 +914,7 @@ const Finance = () => {
                           {formatCurrency(due)}
                         </td>
 
-                        <td className="py-3 px-3 text-center">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                              loan.status === 'Settled' || due === 0
-                                ? 'bg-slate-100 text-slate-600'
-                                : 'bg-emerald-100 text-emerald-800'
-                            }`}
-                          >
-                            {due === 0 ? 'Settled' : loan.status}
-                          </span>
-                        </td>
+
 
                         <td className="py-3 px-3 text-center space-x-1 whitespace-nowrap">
                           {due > 0 && (
@@ -952,9 +924,12 @@ const Finance = () => {
                                   const calculated = getLoanCalculatedDetails(loan);
                                   const firstUnsettled = getFirstUnsettledMonth(calculated);
                                   const allSettled = isMonthSettled(calculated, firstUnsettled);
+                                  const firstInt = (calculated.monthBreakdown && calculated.monthBreakdown[firstUnsettled - 1])
+                                    ? calculated.monthBreakdown[firstUnsettled - 1].interestAccrued
+                                    : calculated.monthlyInterest;
                                   setSelectedLoan(loan);
                                   setReturnPayAmount(
-                                    (allSettled ? calculated.dueAmount : calculated.monthlyInterest || 2000).toString()
+                                    (allSettled ? calculated.dueAmount : firstInt || 2000).toString()
                                   );
                                   setReturnPayMonths(calculated.months.toString());
                                   setReturnPayMonth(allSettled ? 'Full Settlement' : `Month ${firstUnsettled}`);
@@ -1046,7 +1021,7 @@ const Finance = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Principal (₹) *</label>
                   <input
@@ -1071,22 +1046,9 @@ const Finance = () => {
                     className="w-full p-3 bg-white border border-slate-200 rounded-xl font-bold text-amber-600 focus:outline-hidden focus:border-emerald-500 text-base"
                   />
                 </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Start Month</label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    placeholder="1"
-                    value={newMonths}
-                    onChange={(e) => setNewMonths(e.target.value)}
-                    className="w-full p-3 bg-white border border-slate-200 rounded-xl font-medium focus:outline-hidden focus:border-emerald-500 text-base"
-                  />
-                </div>
               </div>
 
-              {/* Auto calculation & variable month explanation */}
+              {/* Auto calculation explanation */}
               <div className="bg-emerald-50/90 p-4 rounded-xl border border-emerald-200 space-y-2.5">
                 <div className="flex justify-between font-bold text-emerald-900 text-sm">
                   <span>Monthly Interest (Each Month):</span>
@@ -1097,19 +1059,18 @@ const Finance = () => {
                   </span>
                 </div>
                 <div className="flex justify-between font-extrabold text-emerald-950 text-base pt-2 border-t border-emerald-200/80">
-                  <span>Month {newMonths || 1} Total Due:</span>
+                  <span>Month 1 Total Due:</span>
                   <span>
                     {formatCurrency(
                       (Number(newPrincipal) || 0) +
-                        (((Number(newPrincipal) || 0) * (Number(newRate) || 0)) / 100) *
-                          (Number(newMonths) || 1)
+                        (((Number(newPrincipal) || 0) * (Number(newRate) || 0)) / 100)
                     )}
                   </span>
                 </div>
                 <div className="bg-white/80 p-2.5 rounded-lg border border-emerald-200 text-xs text-emerald-800 flex items-start gap-2">
                   <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                   <p>
-                    <strong>Auto Month Extension Rule:</strong> Starts on selected date. Month 1 adds {formatCurrency(((Number(newPrincipal) || 0) * (Number(newRate) || 0)) / 100)} interest. When date enters Month 2, the app automatically detects the month extension and updates total due to {formatCurrency((Number(newPrincipal) || 0) + (((Number(newPrincipal) || 0) * (Number(newRate) || 0)) / 100) * 2)}.
+                    <strong>Auto Month Extension Rule:</strong> Starts on selected date. Month 1 adds {formatCurrency(((Number(newPrincipal) || 0) * (Number(newRate) || 0)) / 100)} interest. When date enters Month 2, the app automatically detects the month extension and compounds total due.
                   </p>
                 </div>
               </div>
@@ -1301,10 +1262,13 @@ const Finance = () => {
                         const val = e.target.value;
                         setReturnPayMonth(val);
                         if (val.startsWith('Month ')) {
-                          const m = val.split(' ')[1];
+                          const m = parseInt(val.split(' ')[1], 10);
                           if (m && !isNaN(m)) {
-                            setReturnPayMonths(m);
-                            setReturnPayAmount(currentSelectedLoanCalculated.monthlyInterest.toString());
+                            setReturnPayMonths(m.toString());
+                            const mInt = (currentSelectedLoanCalculated.monthBreakdown && currentSelectedLoanCalculated.monthBreakdown[m - 1])
+                              ? currentSelectedLoanCalculated.monthBreakdown[m - 1].interestAccrued
+                              : currentSelectedLoanCalculated.monthlyInterest;
+                            setReturnPayAmount(mInt.toString());
                           }
                         } else if (val === 'Full Settlement') {
                           setReturnPayAmount(currentSelectedLoanCalculated.dueAmount.toString());
@@ -1320,9 +1284,12 @@ const Finance = () => {
                           const monthNum = i + 1;
                           const settled = isMonthSettled(currentSelectedLoanCalculated, monthNum);
                           if (settled) return null; // Settled month interest vanishes!
+                          const mInt = (currentSelectedLoanCalculated.monthBreakdown && currentSelectedLoanCalculated.monthBreakdown[i])
+                            ? currentSelectedLoanCalculated.monthBreakdown[i].interestAccrued
+                            : currentSelectedLoanCalculated.monthlyInterest;
                           return (
                             <option key={monthNum} value={`Month ${monthNum}`}>
-                              Month {monthNum} Interest ({formatCurrency(currentSelectedLoanCalculated.monthlyInterest)})
+                              Month {monthNum} Interest ({formatCurrency(mInt)})
                             </option>
                           );
                         }

@@ -5,7 +5,7 @@ import {
 } from '../data/mockData';
 import { formatDate } from '../utils/formatCurrency';
 import { calculateSummaryMetrics } from '../utils/calculations';
-import { calculateElapsedMonths } from '../utils/loanUtils';
+import { calculateElapsedMonths, getLoanCalculatedDetails } from '../utils/loanUtils';
 import { getAllLocal, putLocal, putManyLocal } from '../db/localDb';
 import { queueEntity, startSync, syncNow } from '../db/syncQueue';
 
@@ -471,11 +471,8 @@ export const BusinessProvider = ({ children }) => {
     const startDate = loanData.startDate || new Date().toISOString().split('T')[0];
     const autoElapsed = calculateElapsedMonths(startDate);
     const months = Number(loanData.months) || autoElapsed;
-    const monthlyInterest = (principal * rate) / 100;
-    const totalInterest = monthlyInterest * months;
-    const totalAmount = principal + totalInterest;
 
-    const newLoan = {
+    const rawLoan = {
       id: loanId,
       borrowerName: loanData.borrowerName,
       phone: loanData.phone || '',
@@ -484,17 +481,13 @@ export const BusinessProvider = ({ children }) => {
       startDate,
       months,
       isManualMonths: false,
-      monthlyInterest,
-      totalInterest,
-      totalAmount,
-      returnedAmount: 0,
-      dueAmount: totalAmount,
-      status: 'Active',
       paymentMethod: loanData.paymentMethod || 'Cash',
       reference: loanData.reference || '',
       notes: loanData.notes || '',
       paymentHistory: []
     };
+
+    const newLoan = getLoanCalculatedDetails(rawLoan);
 
     setFinanceLoans((prev) => [newLoan, ...prev]);
     persist('financeLoans', newLoan);
@@ -508,21 +501,11 @@ export const BusinessProvider = ({ children }) => {
     setFinanceLoans((prev) =>
       prev.map((loan) => {
         if (loan.id === loanId) {
-          const monthlyInterest = (loan.principal * loan.interestRate) / 100;
-          const totalInterest = monthlyInterest * targetMonths;
-          const totalAmount = loan.principal + totalInterest;
-          const returned = loan.returnedAmount || 0;
-          const newDue = Math.max(0, totalAmount - returned);
-          updatedLoan = {
+          updatedLoan = getLoanCalculatedDetails({
             ...loan,
             months: targetMonths,
-            isManualMonths: isManual,
-            monthlyInterest,
-            totalInterest,
-            totalAmount,
-            dueAmount: newDue,
-            status: newDue === 0 ? 'Settled' : (loan.status === 'Settled' && newDue > 0) ? 'Active' : loan.status
-          };
+            isManualMonths: isManual
+          });
           return updatedLoan;
         }
         return loan;
@@ -538,21 +521,11 @@ export const BusinessProvider = ({ children }) => {
       prev.map((loan) => {
         if (loan.id === loanId) {
           const autoElapsed = calculateElapsedMonths(loan.startDate);
-          const monthlyInterest = (loan.principal * loan.interestRate) / 100;
-          const totalInterest = monthlyInterest * autoElapsed;
-          const totalAmount = loan.principal + totalInterest;
-          const returned = loan.returnedAmount || 0;
-          const newDue = Math.max(0, totalAmount - returned);
-          updatedLoan = {
+          updatedLoan = getLoanCalculatedDetails({
             ...loan,
             months: autoElapsed,
-            isManualMonths: false,
-            monthlyInterest,
-            totalInterest,
-            totalAmount,
-            dueAmount: newDue,
-            status: newDue === 0 ? 'Settled' : (loan.status === 'Settled' && newDue > 0) ? 'Active' : loan.status
-          };
+            isManualMonths: false
+          });
           return updatedLoan;
         }
         return loan;
@@ -569,11 +542,6 @@ export const BusinessProvider = ({ children }) => {
       prev.map((loan) => {
         if (loan.id === loanId) {
           const updatedMonths = Number(newMonths) || loan.months || calculateElapsedMonths(loan.startDate);
-          const monthlyInterest = (loan.principal * loan.interestRate) / 100;
-          const totalInterest = monthlyInterest * updatedMonths;
-          const totalAmount = loan.principal + totalInterest;
-          const newReturned = (loan.returnedAmount || 0) + payAmt;
-          const newDue = Math.max(0, totalAmount - newReturned);
           const history = [...(loan.paymentHistory || []), {
             month: monthLabel || `Month ${updatedMonths}`,
             amount: payAmt,
@@ -582,17 +550,11 @@ export const BusinessProvider = ({ children }) => {
             date: new Date().toISOString().split('T')[0]
           }];
           
-          updatedLoan = {
+          updatedLoan = getLoanCalculatedDetails({
             ...loan,
-            returnedAmount: newReturned,
-            dueAmount: newDue,
             months: updatedMonths,
-            monthlyInterest,
-            totalInterest,
-            totalAmount,
-            status: newDue === 0 ? 'Settled' : loan.status,
             paymentHistory: history
-          };
+          });
           return updatedLoan;
         }
         return loan;
