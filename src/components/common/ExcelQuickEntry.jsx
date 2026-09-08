@@ -979,46 +979,6 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                         />
                       </div>
                     </div>
-
-                    {/* Start Time to End Time Calculator Bar */}
-                    <div className="pt-3 border-t border-amber-200/90 grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-center">
-                      <div className="sm:col-span-4 text-xs font-black text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
-                        ⏱️ Running Hours (Start → End Time):
-                      </div>
-
-                      <div className="sm:col-span-3">
-                        <label className="block text-[11px] font-extrabold text-amber-900 uppercase mb-1">
-                          Start Time
-                        </label>
-                        <input
-                          type="time"
-                          value={row.startTime || '09:00'}
-                          onChange={(e) => handleTxChange(row.id, 'startTime', e.target.value)}
-                          className="w-full p-2.5 bg-white border border-amber-400 rounded-xl text-sm font-extrabold text-slate-900 focus:outline-hidden shadow-2xs"
-                        />
-                      </div>
-
-                      <div className="sm:col-span-3">
-                        <label className="block text-[11px] font-extrabold text-amber-900 uppercase mb-1">
-                          End Time
-                        </label>
-                        <input
-                          type="time"
-                          value={row.endTime || '14:00'}
-                          onChange={(e) => handleTxChange(row.id, 'endTime', e.target.value)}
-                          className="w-full p-2.5 bg-white border border-amber-400 rounded-xl text-sm font-extrabold text-slate-900 focus:outline-hidden shadow-2xs"
-                        />
-                      </div>
-
-                      <div className="sm:col-span-2 text-right">
-                        <span className="block text-[11px] font-extrabold text-amber-900 uppercase mb-1">
-                          Total Hours (Qty)
-                        </span>
-                        <span className="inline-block px-3.5 py-1.5 bg-amber-600 text-white font-black text-sm rounded-xl shadow-xs">
-                          {row.quantity} Hrs
-                        </span>
-                      </div>
-                    </div>
                   </div>
                 )}
 
