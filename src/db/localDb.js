@@ -1,5 +1,5 @@
 const DB_NAME = 'earth-movers-local';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_NAMES = [
   'customers',
   'transactions',
@@ -8,6 +8,7 @@ const STORE_NAMES = [
   'dieselLogs',
   'suppliers',
   'financeLoans',
+  'staff',
   'syncQueue',
   'meta'
 ];

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import {
   initialBusinesses,
   initialJcbVehicles,
+  initialStaff,
 } from '../data/mockData';
 import { formatDate } from '../utils/formatCurrency';
 import { calculateSummaryMetrics } from '../utils/calculations';
@@ -24,6 +25,7 @@ export const BusinessProvider = ({ children }) => {
   const [jcbMonthlyHours, setJcbMonthlyHours] = useState([]);
   const [driverMonthlyReports, setDriverMonthlyReports] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
+  const [staff, setStaff] = useState([]);
 
   // Global Customer Search Modal state
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -41,7 +43,8 @@ export const BusinessProvider = ({ children }) => {
       ['expenses', setExpenses],
       ['dieselLogs', setDieselLogs],
       ['suppliers', setSuppliers],
-      ['financeLoans', setFinanceLoans]
+      ['financeLoans', setFinanceLoans],
+      ['staff', setStaff]
     ];
     await Promise.all(stores.map(async ([store, setter]) => setter(await getAllLocal(store))));
   };
@@ -49,7 +52,7 @@ export const BusinessProvider = ({ children }) => {
   const persist = (store, entity, operation = 'create') => {
     putLocal(store, entity).catch(() => {});
     queueEntity(
-      store === 'dieselLogs' ? 'dieselLog' : store === 'financeLoans' ? 'financeLoan' : store.slice(0, -1),
+      store === 'dieselLogs' ? 'dieselLog' : store === 'financeLoans' ? 'financeLoan' : store === 'staff' ? 'staff' : store.slice(0, -1),
       entity,
       operation
     ).then(() => syncNow((result) => {
@@ -65,7 +68,8 @@ export const BusinessProvider = ({ children }) => {
       ['expenses', setExpenses, []],
       ['dieselLogs', setDieselLogs, []],
       ['suppliers', setSuppliers, []],
-      ['financeLoans', setFinanceLoans, []]
+      ['financeLoans', setFinanceLoans, []],
+      ['staff', setStaff, initialStaff]
     ];
     Promise.all(stores.map(async ([store, setter, seed]) => {
       const local = await getAllLocal(store);
@@ -877,6 +881,143 @@ export const BusinessProvider = ({ children }) => {
     return items;
   };
 
+  // Staff operations
+  const addStaff = (staffData) => {
+    const newId = `staff-${Date.now()}`;
+    const newStaff = {
+      id: newId,
+      name: staffData.name,
+      phone: staffData.phone || '',
+      role: staffData.role || 'JCB Driver',
+      monthlySalary: Number(staffData.monthlySalary) || 0,
+      bataRate: Number(staffData.bataRate) || 0,
+      bataUnit: staffData.bataUnit || 'Per Hour',
+      advanceAmount: Number(staffData.advanceAmount) || 0,
+      monthlyDeduction: Number(staffData.monthlyDeduction) || 0,
+      advanceRemaining: staffData.advanceRemaining !== undefined
+        ? Number(staffData.advanceRemaining)
+        : Number(staffData.advanceAmount) || 0,
+      joiningDate: staffData.joiningDate || new Date().toISOString().split('T')[0],
+      status: 'Active',
+      notes: staffData.notes || ''
+    };
+    setStaff((prev) => [newStaff, ...prev]);
+    persist('staff', newStaff);
+    showToast(`Staff member "${newStaff.name}" added successfully!`);
+    return newStaff;
+  };
+
+  const updateStaff = (id, updatedFields) => {
+    setStaff((prev) =>
+      prev.map((s) => {
+        if (s.id === id) {
+          const updated = {
+            ...s,
+            ...updatedFields,
+            monthlySalary: updatedFields.monthlySalary !== undefined ? Number(updatedFields.monthlySalary) : s.monthlySalary,
+            bataRate: updatedFields.bataRate !== undefined ? Number(updatedFields.bataRate) : s.bataRate,
+            advanceAmount: updatedFields.advanceAmount !== undefined ? Number(updatedFields.advanceAmount) : s.advanceAmount,
+            monthlyDeduction: updatedFields.monthlyDeduction !== undefined ? Number(updatedFields.monthlyDeduction) : s.monthlyDeduction,
+            advanceRemaining: updatedFields.advanceRemaining !== undefined ? Number(updatedFields.advanceRemaining) : s.advanceRemaining
+          };
+          persist('staff', updated, 'update');
+          return updated;
+        }
+        return s;
+      })
+    );
+    showToast('Staff member updated successfully!');
+  };
+
+  const deleteStaff = (id) => {
+    setStaff((prev) => prev.filter((s) => s.id !== id));
+    persist('staff', { id, deletedAt: new Date().toISOString() }, 'update');
+    showToast('Staff member removed.');
+  };
+
+  const payStaffSalary = (payoutData) => {
+    const staffObj = staff.find((s) => s.id === payoutData.staffId || s.name === payoutData.staffName);
+    if (!staffObj) return;
+
+    const baseSalary = Number(payoutData.monthlySalary !== undefined ? payoutData.monthlySalary : staffObj.monthlySalary) || 0;
+    const advanceDeduction = Number(payoutData.monthlyDeduction !== undefined ? payoutData.monthlyDeduction : staffObj.monthlyDeduction) || 0;
+    const netSalaryPaid = Math.max(0, baseSalary - advanceDeduction);
+    const bataAmount = Number(payoutData.bataAmount) || 0;
+    const totalPayout = netSalaryPaid + bataAmount;
+    const payDate = payoutData.date || new Date().toISOString().split('T')[0];
+
+    // Deduct from remaining advance
+    const updatedAdvanceRemaining = Math.max(0, (staffObj.advanceRemaining || 0) - advanceDeduction);
+    updateStaff(staffObj.id, { advanceRemaining: updatedAdvanceRemaining });
+
+    // Record as business expense
+    const expId = `EXP-${Math.floor(300 + Math.random() * 700)}`;
+    const newExp = {
+      id: expId,
+      date: payDate,
+      displayDate: formatDate(payDate),
+      category: 'Staff Salary / Bata',
+      businessId: 'jcb',
+      businessName: 'General / Fleet Operations',
+      description: `Salary & Bata Payout: ${staffObj.name} (${staffObj.role})`,
+      amount: totalPayout,
+      method: payoutData.paymentMethod || 'Cash',
+      notes: `Base Salary: ₹${baseSalary}, Advance Deducted: ₹${advanceDeduction}, Net Salary: ₹${netSalaryPaid}, Bata: ₹${bataAmount}. ${payoutData.notes || ''}`
+    };
+    setExpenses((prev) => [newExp, ...prev]);
+    persist('expenses', newExp);
+
+    showToast(`Paid ₹${totalPayout.toLocaleString('en-IN')} to ${staffObj.name} (Advance balance: ₹${updatedAdvanceRemaining.toLocaleString('en-IN')})`);
+  };
+
+  const addStaffAdvance = (staffId, amount, notes = '') => {
+    const staffObj = staff.find((s) => s.id === staffId);
+    if (!staffObj) return;
+
+    const addAmt = Number(amount) || 0;
+    const newAdvanceTotal = (staffObj.advanceAmount || 0) + addAmt;
+    const newAdvanceRem = (staffObj.advanceRemaining || 0) + addAmt;
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    updateStaff(staffId, {
+      advanceAmount: newAdvanceTotal,
+      advanceRemaining: newAdvanceRem
+    });
+
+    // Record as advance expense
+    const expId = `EXP-${Math.floor(300 + Math.random() * 700)}`;
+    const newExp = {
+      id: expId,
+      date: todayStr,
+      displayDate: formatDate(todayStr),
+      category: 'Staff Advance / Loan',
+      businessId: 'jcb',
+      businessName: 'General / Fleet Operations',
+      description: `Advance Loan Paid to Staff: ${staffObj.name} (${staffObj.role})`,
+      amount: addAmt,
+      method: 'Cash',
+      notes: `Upfront Advance given. ${notes}`
+    };
+    setExpenses((prev) => [newExp, ...prev]);
+    persist('expenses', newExp);
+
+    showToast(`Recorded ₹${addAmt.toLocaleString('en-IN')} advance for ${staffObj.name}`);
+  };
+
+  const getStaffById = (id) => staff.find((s) => s.id === id);
+
+  const getStaffLedger = (staffId) => {
+    const staffObj = staff.find((s) => s.id === staffId || (s.name && s.name.toLowerCase() === staffId.toLowerCase()));
+    if (!staffObj) return [];
+    const nameLower = staffObj.name.toLowerCase();
+
+    const staffExps = expenses.filter(
+      (e) => e.description && e.description.toLowerCase().includes(nameLower)
+    );
+
+    return staffExps.sort((a, b) => new Date(b.date) - new Date(a.date));
+  };
+
   // Computed Overview Metrics
   const overviewMetrics = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -910,6 +1051,14 @@ export const BusinessProvider = ({ children }) => {
         jcbMonthlyHours,
         driverMonthlyReports,
         suppliers,
+        staff,
+        addStaff,
+        updateStaff,
+        deleteStaff,
+        payStaffSalary,
+        addStaffAdvance,
+        getStaffById,
+        getStaffLedger,
         addSupplier,
         addSupplierPayment,
         addDieselLog,

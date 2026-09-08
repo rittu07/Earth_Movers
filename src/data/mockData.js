@@ -633,3 +633,52 @@ export const initialSuppliers = [
     location: 'Gudiyattam Road'
   }
 ];
+
+export const initialStaff = [
+  {
+    id: 'staff-1',
+    name: 'Perumal',
+    phone: '9876543210',
+    role: 'JCB Driver',
+    monthlySalary: 25000,
+    bataRate: 100,
+    bataUnit: 'Per Hour',
+    advanceAmount: 100000,
+    monthlyDeduction: 10000,
+    advanceRemaining: 90000,
+    joiningDate: '2026-01-01',
+    status: 'Active',
+    notes: 'Senior JCB 3CX Operator'
+  },
+  {
+    id: 'staff-2',
+    name: 'Murugan',
+    phone: '9876543211',
+    role: 'Lorry Driver',
+    monthlySalary: 22000,
+    bataRate: 300,
+    bataUnit: 'Per Trip',
+    advanceAmount: 50000,
+    monthlyDeduction: 5000,
+    advanceRemaining: 40000,
+    joiningDate: '2026-02-15',
+    status: 'Active',
+    notes: 'Tipper & Lorry driver for bricks & sand'
+  },
+  {
+    id: 'staff-3',
+    name: 'Raman',
+    phone: '9876543212',
+    role: 'Manager',
+    monthlySalary: 35000,
+    bataRate: 0,
+    bataUnit: 'Per Day',
+    advanceAmount: 0,
+    monthlyDeduction: 0,
+    advanceRemaining: 0,
+    joiningDate: '2025-06-01',
+    status: 'Active',
+    notes: 'Site supervisor & manager'
+  }
+];
+

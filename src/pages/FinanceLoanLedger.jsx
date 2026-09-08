@@ -165,8 +165,8 @@ const FinanceLoanLedger = () => {
       discAmt
     );
 
-    const updatedTot = loanCalculated.principal + loanCalculated.monthlyInterest * newMonths;
-    const remDue = Math.max(0, updatedTot - ((loanCalculated.returnedAmount || 0) + payAmt + discAmt));
+    const isFullSettlement = returnPayMonth === 'Full Settlement' || (payAmt + discAmt) >= loanCalculated.dueAmount;
+    const remDue = isFullSettlement ? 0 : Math.max(0, loanCalculated.dueAmount - (payAmt + discAmt));
 
     if (sendWhatsApp && loanCalculated.phone) {
       const waMsg = formatFinanceReturnPaymentWhatsApp({

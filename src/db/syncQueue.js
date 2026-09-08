@@ -60,7 +60,8 @@ const storeForEntity = {
   expense: 'expenses',
   dieselLog: 'dieselLogs',
   supplier: 'suppliers',
-  financeLoan: 'financeLoans'
+  financeLoan: 'financeLoans',
+  staff: 'staff'
 };
 
 const pullRemoteChanges = async () => {

@@ -34,7 +34,7 @@ export const formatTransactionWhatsApp = ({
   const dateText = date ? `\n📅 Date: ${date}` : '';
   const timeText = (startTime && endTime) ? `\n⏱ Running Hours: ${startTime} to ${endTime} (${quantity} hrs)` : '';
   const jcbText = jcbVehicle ? `\n🚜 JCB Machine: ${jcbVehicle}` : '';
-  const driverText = driverName ? `\n👤 Driver: ${driverName}${driverPhone ? ` (${driverPhone})` : ''}${Number(driverAmount) > 0 ? ` [Bata: ₹${driverAmount}]` : ''}` : '';
+  const driverText = driverName ? `\n👤 Driver: ${driverName}${Number(driverAmount) > 0 ? ` [Bata: ₹${driverAmount}]` : ''}` : '';
   const siteText = deliveryPlace ? `\n📍 Site: ${deliveryPlace}` : '';
 
   return `Hello ${customerName} 👋\n\nYour transaction with ${COMPANY_NAME} has been recorded.\n${dateText}\n\n${serviceTitle}: ${quantity} ${unit}${rateText}${timeText}${jcbText}${driverText}${siteText}\n\n💰 Total Bill: ₹${Number(amount).toLocaleString('en-IN')}\n✅ Paid Amount: ₹${Number(paid).toLocaleString('en-IN')}\n⏳ Remaining Due: ₹${Number(due).toLocaleString('en-IN')}\n\nThank you for doing business with ${COMPANY_NAME}! 🙏`;
@@ -113,7 +113,9 @@ export const formatFinanceReturnPaymentWhatsApp = ({
   const methodText = paymentMethod ? ` (${paymentMethod}${reference ? ` - Ref: ${reference}` : ''})` : '';
   const discountText = discount > 0 ? `\n🏷 Discount Waived: ₹${Number(discount).toLocaleString('en-IN')}` : '';
 
-  return `Hello ${borrowerName} 👋\n\nLoan Return Payment Received with thanks!\n\n💵 Return Amount Paid: ₹${Number(amount).toLocaleString('en-IN')}${methodText}${discountText}\n📌 Repayment For: ${repaymentFor}\n⏳ Remaining Balance Due: ₹${Number(remainingDue).toLocaleString('en-IN')}\n\nThank you for doing business with ${COMPANY_NAME}! 🙏`;
+  const dueText = Number(remainingDue) <= 0 ? '₹0 (Fully Settled)' : `₹${Number(remainingDue).toLocaleString('en-IN')}`;
+
+  return `Hello ${borrowerName} 👋\n\nLoan Return Payment Received with thanks!\n\n💵 Return Amount Paid: ₹${Number(amount).toLocaleString('en-IN')}${methodText}${discountText}\n📌 Repayment For: ${repaymentFor}\n⏳ Remaining Balance Due: ${dueText}\n\nThank you for doing business with ${COMPANY_NAME}! 🙏`;
 };
 
 /**

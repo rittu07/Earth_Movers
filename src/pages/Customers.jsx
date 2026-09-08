@@ -4,6 +4,7 @@ import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import CustomerTable from '../components/customers/CustomerTable';
 import SupplierSection from '../components/suppliers/SupplierSection';
+import StaffSection from '../components/staff/StaffSection';
 import { formatCurrency } from '../utils/formatCurrency';
 import { exportToPdf } from '../utils/pdfGenerator';
 import { Search, PlusCircle, Download } from 'lucide-react';
@@ -184,6 +185,9 @@ const Customers = () => {
 
       {/* Suppliers Section (Rendered right after Customer Details) */}
       <SupplierSection />
+
+      {/* Staff & Drivers Section (Rendered right after Suppliers Section) */}
+      <StaffSection />
     </div>
   );
 };
