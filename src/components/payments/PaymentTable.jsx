@@ -1,12 +1,23 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useBusiness } from '../../context/BusinessContext';
+import EditPaymentModal from '../common/EditPaymentModal';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { openWhatsAppChat } from '../../utils/whatsapp';
-import { Eye, CreditCard, Phone, ChevronDown, MessageSquare } from 'lucide-react';
+import { Eye, CreditCard, Phone, ChevronDown, MessageSquare, Pencil, Trash2 } from 'lucide-react';
 
 const PaymentTable = ({ payments }) => {
+  const { deletePayment } = useBusiness();
   const [expandedId, setExpandedId] = useState(null);
+  const [editingPayment, setEditingPayment] = useState(null);
   const navigate = useNavigate();
+
+  const handleDelete = (id, e) => {
+    if (e) e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this payment record? This will update customer outstanding balance.')) {
+      deletePayment(id);
+    }
+  };
 
   return (
     <div>
@@ -112,15 +123,26 @@ const PaymentTable = ({ payments }) => {
                       </div>
                     </div>
 
-                    {/* Notes */}
-                    {(pay.notes || pay.relatedTransaction) && (
-                      <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Notes & Related</span>
-                        <p className="text-[11px] text-slate-700 font-medium mt-0.5">
-                          {pay.notes || pay.relatedTransaction}
-                        </p>
-                      </div>
-                    )}
+                    {/* Action Bar (Edit / Delete) */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingPayment(pay);
+                        }}
+                        className="flex-1 py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs rounded-xl border border-amber-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Pencil className="w-3.5 h-3.5" /> Edit Payment
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDelete(pay.id, e)}
+                        className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Delete
+                      </button>
+                    </div>
 
                     {/* Full Customer Ledger Link */}
                     <button
@@ -152,14 +174,13 @@ const PaymentTable = ({ payments }) => {
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">Amount Received</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Payment Method</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Reference No.</th>
-              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Notes / Related</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-center">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium">
             {payments.length === 0 ? (
               <tr>
-                <td colSpan="8" className="py-10 text-center text-slate-400 font-bold text-sm">
+                <td colSpan="7" className="py-10 text-center text-slate-400 font-bold text-sm">
                   No payment records found matching criteria.
                 </td>
               </tr>
@@ -201,18 +222,34 @@ const PaymentTable = ({ payments }) => {
                     {pay.reference || '-'}
                   </td>
 
-                  <td className="py-4 px-4 text-slate-800 font-medium text-sm max-w-xs truncate">
-                    {pay.notes || pay.relatedTransaction || 'General Settlement'}
-                  </td>
-
                   <td className="py-4 px-4 text-center whitespace-nowrap">
-                    <Link
-                      to={`/customers/${pay.customerId}`}
-                      className="p-2 text-indigo-600 hover:text-indigo-800 rounded-xl hover:bg-indigo-50 transition-colors"
-                      title="View Customer Ledger"
-                    >
-                      <Eye className="w-5 h-5" />
-                    </Link>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setEditingPayment(pay)}
+                        className="p-2 inline-flex items-center text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-xl transition-colors cursor-pointer"
+                        title="Edit Payment"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => handleDelete(pay.id, e)}
+                        className="p-2 inline-flex items-center text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                        title="Delete Payment"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+
+                      <Link
+                        to={`/customers/${pay.customerId}`}
+                        className="p-2 text-indigo-600 hover:text-indigo-800 rounded-xl hover:bg-indigo-50 transition-colors"
+                        title="View Customer Ledger"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -220,6 +257,13 @@ const PaymentTable = ({ payments }) => {
           </tbody>
         </table>
       </div>
+
+      {/* Edit Modal */}
+      <EditPaymentModal
+        isOpen={Boolean(editingPayment)}
+        onClose={() => setEditingPayment(null)}
+        payment={editingPayment}
+      />
     </div>
   );
 };

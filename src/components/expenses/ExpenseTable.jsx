@@ -1,9 +1,20 @@
 import React, { useState } from 'react';
+import { useBusiness } from '../../context/BusinessContext';
+import EditExpenseModal from '../common/EditExpenseModal';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { Tag, Calendar, CreditCard, ChevronDown } from 'lucide-react';
+import { Tag, Calendar, CreditCard, ChevronDown, Pencil, Trash2 } from 'lucide-react';
 
 const ExpenseTable = ({ expenses }) => {
+  const { deleteExpense } = useBusiness();
   const [expandedId, setExpandedId] = useState(null);
+  const [editingExpense, setEditingExpense] = useState(null);
+
+  const handleDelete = (id, e) => {
+    if (e) e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this expense record?')) {
+      deleteExpense(id);
+    }
+  };
 
   return (
     <div>
@@ -88,6 +99,27 @@ const ExpenseTable = ({ expenses }) => {
                         {exp.method || 'Cash'}
                       </span>
                     </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingExpense(exp);
+                        }}
+                        className="flex-1 py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs rounded-xl border border-amber-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Pencil className="w-3.5 h-3.5" /> Edit Expense
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDelete(exp.id, e)}
+                        className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Delete
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -107,12 +139,13 @@ const ExpenseTable = ({ expenses }) => {
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Description</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">Amount</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Payment Method</th>
+              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-center">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium">
             {expenses.length === 0 ? (
               <tr>
-                <td colSpan="6" className="py-10 text-center text-slate-400 font-bold text-sm">
+                <td colSpan="7" className="py-10 text-center text-slate-400 font-bold text-sm">
                   No expense entries recorded for this filter.
                 </td>
               </tr>
@@ -149,12 +182,41 @@ const ExpenseTable = ({ expenses }) => {
                       {exp.method}
                     </span>
                   </td>
+
+                  <td className="py-4 px-4 text-center whitespace-nowrap">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setEditingExpense(exp)}
+                        className="p-2 inline-flex items-center text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-xl transition-colors cursor-pointer"
+                        title="Edit Expense"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => handleDelete(exp.id, e)}
+                        className="p-2 inline-flex items-center text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                        title="Delete Expense"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Edit Modal */}
+      <EditExpenseModal
+        isOpen={Boolean(editingExpense)}
+        onClose={() => setEditingExpense(null)}
+        expense={editingExpense}
+      />
     </div>
   );
 };

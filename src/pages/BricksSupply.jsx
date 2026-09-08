@@ -85,28 +85,28 @@ const BricksSupply = () => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="border-b border-slate-200 flex items-center gap-6 text-xs font-bold font-mono">
+      <div className="border-b border-slate-200 flex items-center gap-2 sm:gap-6 text-xs font-bold font-mono overflow-x-auto whitespace-nowrap scrollbar-none pb-0.5 -mx-1 px-1">
         <button
           onClick={() => setActiveTab('sales')}
-          className={`pb-3 transition-all relative flex items-center gap-2 cursor-pointer ${
+          className={`pb-2.5 sm:pb-3 transition-all relative flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
             activeTab === 'sales'
               ? 'text-orange-600 border-b-2 border-orange-600 font-black'
               : 'text-slate-500 hover:text-slate-900'
           }`}
         >
-          <FileText className="w-4 h-4" />
+          <FileText className="w-4 h-4 shrink-0" />
           <span>Bricks Dispatch Orders ({bricksTrxs.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('stock_in')}
-          className={`pb-3 transition-all relative flex items-center gap-2 cursor-pointer ${
+          className={`pb-2.5 sm:pb-3 transition-all relative flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
             activeTab === 'stock_in'
               ? 'text-orange-600 border-b-2 border-orange-600 font-black'
               : 'text-slate-500 hover:text-slate-900'
           }`}
         >
-          <PackagePlus className="w-4 h-4" />
+          <PackagePlus className="w-4 h-4 shrink-0" />
           <span>Stock In & Production History</span>
         </button>
       </div>

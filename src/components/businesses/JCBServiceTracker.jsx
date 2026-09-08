@@ -450,23 +450,23 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
   const renderStatusBadge = (statusType, labelOverride) => {
     if (statusType === 'overdue' || statusType === 'Overdue') {
       return (
-        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-800 border border-rose-300 tracking-wider shadow-xs">
-          <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-pulse" />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-black bg-rose-100 text-rose-800 border border-rose-300 tracking-wider shadow-xs whitespace-nowrap">
+          <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-rose-600 animate-pulse shrink-0" />
           {labelOverride || 'OVERDUE'}
         </span>
       );
     }
     if (statusType === 'due' || statusType === 'Due Soon' || statusType === 'DUE') {
       return (
-        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 tracking-wider shadow-xs">
-          <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 tracking-wider shadow-xs whitespace-nowrap">
+          <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-amber-500 shrink-0" />
           {labelOverride || 'DUE'}
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-900 border border-emerald-300 tracking-wider shadow-xs">
-        <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-black bg-emerald-100 text-emerald-900 border border-emerald-300 tracking-wider shadow-xs whitespace-nowrap">
+        <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-600 shrink-0" />
         {labelOverride || 'OK'}
       </span>
     );
@@ -548,11 +548,30 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 font-sans text-slate-900">
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300 font-sans text-slate-900">
       
-      {/* Fleet Selector Buttons Top Bar */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 overflow-x-auto pb-1.5 scrollbar-none flex-1">
+      {/* Fleet Selector Buttons & Action Buttons Container */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Actions Bar: Full width on mobile, inline right on desktop */}
+        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 sm:order-2">
+          <button
+            onClick={() => openAddMaintenanceModal()}
+            className="flex-1 sm:flex-initial px-3.5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md shadow-amber-600/20 transition-all cursor-pointer font-mono whitespace-nowrap"
+          >
+            <Wrench className="w-4 h-4 text-white shrink-0" />
+            <span>+ Add Maintenance</span>
+          </button>
+          <button
+            onClick={() => setIsAddJcbOpen(true)}
+            className="flex-1 sm:flex-initial px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer font-mono whitespace-nowrap"
+          >
+            <PlusCircle className="w-4 h-4 shrink-0" />
+            <span>+ Add JCB</span>
+          </button>
+        </div>
+
+        {/* Scrollable Machine Buttons Row */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none flex-1 sm:order-1 -mx-1 px-1">
           {fleet.map((m) => {
             const isSelected = m.id === selectedJcbId;
             const engRes = evaluateServiceStatus(m, 'Engine Oil');
@@ -563,65 +582,50 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
               <button
                 key={m.id}
                 onClick={() => handleSelectMachine(m.id)}
-                className={`px-4 py-2.5 rounded-2xl text-sm font-black transition-all flex items-center gap-2 shrink-0 cursor-pointer border ${
+                className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 sm:gap-2 shrink-0 cursor-pointer border ${
                   isSelected
-                    ? 'bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-600/30 scale-102'
+                    ? 'bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-600/30'
                     : 'bg-white text-slate-800 border-slate-300 hover:border-slate-400 hover:bg-slate-50'
                 }`}
               >
-                <Truck className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-amber-600'}`} />
+                <Truck className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isSelected ? 'text-white' : 'text-amber-600'}`} />
                 <span className="font-mono">{m.code}</span>
                 {isOverdue && (
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" title="Service Overdue!" />
+                  <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-rose-500 animate-ping" title="Service Overdue!" />
                 )}
               </button>
             );
           })}
         </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => openAddMaintenanceModal()}
-            className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-2xl text-sm flex items-center gap-1.5 shadow-md shadow-amber-600/20 transition-all cursor-pointer font-mono"
-          >
-            <Wrench className="w-4.5 h-4.5 text-white" /> + Add Maintenance
-          </button>
-          <button
-            onClick={() => setIsAddJcbOpen(true)}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl text-sm flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer font-mono"
-          >
-            <PlusCircle className="w-4.5 h-4.5" /> + Add JCB
-          </button>
-        </div>
       </div>
 
       {/* 1. SERVICE MONITOR (Fleet Matrix Table) */}
-      <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-5">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-          <div className="flex items-center gap-3">
-            <Activity className="w-6 h-6 text-amber-600" />
-            <h3 className="text-xl sm:text-2xl font-black tracking-wider text-slate-900 uppercase font-mono">
+      <div className="bg-white text-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-7 border border-slate-200 shadow-xs space-y-4 sm:space-y-5">
+        <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2.5 border-b border-slate-200 pb-3 sm:pb-4">
+          <div className="flex items-center gap-2.5">
+            <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 shrink-0" />
+            <h3 className="text-lg sm:text-2xl font-black tracking-wider text-slate-900 uppercase font-mono">
               SERVICE MONITOR
             </h3>
           </div>
-          <span className="text-xs sm:text-sm font-black text-slate-700 uppercase tracking-widest bg-slate-100 px-4 py-1.5 rounded-full border border-slate-300">
+          <span className="text-[10px] sm:text-xs font-black text-slate-700 uppercase tracking-widest bg-slate-100 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full border border-slate-300 self-start xs:self-auto whitespace-nowrap">
             FLEET OVERVIEW ({fleet.length} JCBS)
           </span>
         </div>
 
         {/* Matrix Grid Table */}
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+        <div className="overflow-x-auto rounded-xl sm:rounded-2xl border border-slate-200 bg-white scrollbar-thin">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-100 text-slate-800 font-mono uppercase font-black text-xs sm:text-sm border-b border-slate-200">
-                <th className="py-4 px-6 border-r border-slate-200">JCB</th>
-                <th className="py-4 px-6 border-r border-slate-200">ENGINE OIL</th>
-                <th className="py-4 px-6 border-r border-slate-200">HYDRAULIC</th>
-                <th className="py-4 px-6 border-r border-slate-200">FILTERS</th>
-                <th className="py-4 px-6">GREASING</th>
+                <th className="py-2.5 px-3 sm:py-4 sm:px-6 border-r border-slate-200 whitespace-nowrap">JCB</th>
+                <th className="py-2.5 px-3 sm:py-4 sm:px-6 border-r border-slate-200 whitespace-nowrap">ENGINE OIL</th>
+                <th className="py-2.5 px-3 sm:py-4 sm:px-6 border-r border-slate-200 whitespace-nowrap">HYDRAULIC</th>
+                <th className="py-2.5 px-3 sm:py-4 sm:px-6 border-r border-slate-200 whitespace-nowrap">FILTERS</th>
+                <th className="py-2.5 px-3 sm:py-4 sm:px-6 whitespace-nowrap">GREASING</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 font-mono text-sm sm:text-base">
+            <tbody className="divide-y divide-slate-200 font-mono text-xs sm:text-base">
               {fleet.map((m) => {
                 const engStatus = evaluateServiceStatus(m, 'Engine Oil');
                 const hydStatus = evaluateServiceStatus(m, 'Hydraulic');
@@ -637,20 +641,22 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                       isSelected ? 'bg-amber-100/70 border-l-4 border-l-amber-600' : 'hover:bg-slate-50'
                     }`}
                   >
-                    <td className="py-4 px-6 font-black text-amber-700 border-r border-slate-200 flex items-center gap-2.5">
-                      <Truck className="w-4.5 h-4.5 text-amber-600 shrink-0" />
-                      <span>{m.code}</span>
+                    <td className="py-2.5 px-3 sm:py-4 sm:px-6 font-black text-amber-700 border-r border-slate-200 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <Truck className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 text-amber-600 shrink-0" />
+                        <span>{m.code}</span>
+                      </div>
                     </td>
-                    <td className="py-4 px-6 border-r border-slate-200">
+                    <td className="py-2.5 px-3 sm:py-4 sm:px-6 border-r border-slate-200 whitespace-nowrap">
                       {renderStatusBadge(engStatus.type)}
                     </td>
-                    <td className="py-4 px-6 border-r border-slate-200">
+                    <td className="py-2.5 px-3 sm:py-4 sm:px-6 border-r border-slate-200 whitespace-nowrap">
                       {renderStatusBadge(hydStatus.type)}
                     </td>
-                    <td className="py-4 px-6 border-r border-slate-200">
+                    <td className="py-2.5 px-3 sm:py-4 sm:px-6 border-r border-slate-200 whitespace-nowrap">
                       {renderStatusBadge(fltStatus.type)}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-3 sm:py-4 sm:px-6 whitespace-nowrap">
                       {renderStatusBadge(grsStatus.type)}
                     </td>
                   </tr>
@@ -662,31 +668,31 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
       </div>
 
       {/* 2. SELECTED JCB MACHINE DETAILED SERVICE MONITOR */}
-      <div id="jcb-machine-detail" className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-6 scroll-mt-6">
+      <div id="jcb-machine-detail" className="bg-white text-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-7 border border-slate-200 shadow-xs space-y-4 sm:space-y-6 scroll-mt-6">
         
         {/* Machine Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-3">
-              <span className="bg-amber-600 text-white font-black text-sm px-4 py-1.5 rounded-full uppercase tracking-wider shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4 sm:pb-5">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5">
+              <span className="bg-amber-600 text-white font-black text-xs sm:text-sm px-3.5 py-1 rounded-full uppercase tracking-wider shadow-xs">
                 {selectedMachine.code}
               </span>
-              <h2 className="text-3xl sm:text-4xl font-mono font-black tracking-tight text-slate-900">
+              <h2 className="text-2xl sm:text-4xl font-mono font-black tracking-tight text-slate-900">
                 {selectedMachine.regNo}
               </h2>
             </div>
-            <p className="text-sm text-slate-600 font-semibold">
+            <p className="text-xs sm:text-sm text-slate-600 font-semibold">
               Real-time service intervals, oil grade specs & hour meter log
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => {
                 const phone = prompt('Enter WhatsApp Phone Number:', '9876543210');
                 if (phone) handleSendWhatsAppAlert(phone);
               }}
-              className="py-3 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-2xl flex items-center gap-2 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+              className="w-full sm:w-auto justify-center py-2.5 px-4 sm:py-3 sm:px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm rounded-xl sm:rounded-2xl flex items-center gap-2 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
             >
               💬 Send WhatsApp 📲
             </button>
@@ -694,16 +700,16 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
         </div>
 
         {/* Current Hour Meter Card */}
-        <div className="bg-slate-50 p-5 sm:p-6 rounded-2xl border border-slate-200 flex items-center justify-between gap-4">
+        <div className="bg-slate-50 p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-slate-200 flex flex-col xs:flex-row xs:items-center justify-between gap-3">
           <div>
             <span className="text-xs sm:text-sm font-mono font-black text-slate-600 uppercase tracking-wider block">
               CURRENT HOUR METER
             </span>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-4xl sm:text-5xl font-mono font-black text-amber-600 tracking-tight">
+            <div className="flex items-baseline gap-2 mt-0.5 sm:mt-1">
+              <span className="text-3xl sm:text-5xl font-mono font-black text-amber-600 tracking-tight">
                 {selectedMachine.totalHours?.toLocaleString()}
               </span>
-              <span className="text-base font-bold text-slate-700">hrs</span>
+              <span className="text-sm sm:text-base font-bold text-slate-700">hrs</span>
             </div>
           </div>
 
@@ -712,39 +718,39 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
               setUpdatedHours(selectedMachine.totalHours.toString());
               setIsMeterUpdateOpen(true);
             }}
-            className="px-5 py-3 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-2xl text-sm flex items-center gap-2 shadow-md shadow-amber-600/20 transition-all cursor-pointer shrink-0"
+            className="w-full xs:w-auto justify-center px-4 py-2.5 sm:px-5 sm:py-3 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl sm:rounded-2xl text-xs sm:text-sm flex items-center gap-2 shadow-md shadow-amber-600/20 transition-all cursor-pointer shrink-0"
           >
             Update Meter ⏱️
           </button>
         </div>
 
         {/* NEXT SERVICES PROGRESS SECTION */}
-        <div className="space-y-5">
-          <h4 className="text-sm sm:text-base font-mono font-black text-slate-800 uppercase tracking-widest flex items-center gap-2.5">
-            <Wrench className="w-5 h-5 text-amber-600" />
+        <div className="space-y-4 sm:space-y-5">
+          <h4 className="text-xs sm:text-base font-mono font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+            <Wrench className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
             NEXT SERVICES
           </h4>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
             
             {/* 1. Engine Oil */}
-            <div className="bg-slate-50 p-5 sm:p-6 rounded-2xl border border-slate-200 space-y-4 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-sm sm:text-base font-mono font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                  <Droplet className="w-5 h-5 text-amber-600" /> ENGINE OIL
+            <div className="bg-slate-50 p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-slate-200 space-y-3 sm:space-y-4 shadow-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs sm:text-base font-mono font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5 sm:gap-2">
+                  <Droplet className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 shrink-0" /> ENGINE OIL
                 </span>
                 {renderStatusBadge(engCard.statusType, engCard.isOverdue ? 'OVERDUE' : engCard.isDueSoon ? 'DUE' : `${engCard.hrsRemaining} hrs remaining`)}
               </div>
 
               {/* Progress Bar */}
-              <div className="space-y-2">
-                <div className="w-full bg-slate-200 h-4 rounded-full overflow-hidden p-0.5 border border-slate-300">
+              <div className="space-y-1.5 sm:space-y-2">
+                <div className="w-full bg-slate-200 h-3.5 sm:h-4 rounded-full overflow-hidden p-0.5 border border-slate-300">
                   <div
                     className={`h-full ${engCard.barColor} rounded-full transition-all duration-500`}
                     style={{ width: `${engCard.progressPct}%` }}
                   />
                 </div>
-                <div className="flex justify-between text-xs sm:text-sm font-mono font-black text-slate-700 pt-1">
+                <div className="flex justify-between text-xs font-mono font-black text-slate-700 pt-0.5">
                   <span>Due: {engCard.dueMeter?.toLocaleString()} hrs</span>
                   <span className="text-amber-700">Current: {engCard.curr?.toLocaleString()} hrs</span>
                 </div>
@@ -752,29 +758,29 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
 
               <button
                 onClick={() => openAddMaintenanceModal(selectedMachine.id, 'Engine Oil')}
-                className={`w-full py-3 px-5 text-sm rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer font-mono ${engCard.buttonStyle}`}
+                className={`w-full py-2.5 sm:py-3 px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer font-mono ${engCard.buttonStyle}`}
               >
                 [Schedule Service]
               </button>
             </div>
 
             {/* 2. Hydraulic Oil */}
-            <div className="bg-slate-50 p-5 sm:p-6 rounded-2xl border border-slate-200 space-y-4 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-sm sm:text-base font-mono font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                  <Droplet className="w-5 h-5 text-blue-600" /> HYDRAULIC OIL
+            <div className="bg-slate-50 p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-slate-200 space-y-3 sm:space-y-4 shadow-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs sm:text-base font-mono font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5 sm:gap-2">
+                  <Droplet className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 shrink-0" /> HYDRAULIC OIL
                 </span>
                 {renderStatusBadge(hydCard.statusType, hydCard.isOverdue ? 'OVERDUE' : hydCard.isDueSoon ? 'DUE' : `${hydCard.hrsRemaining} hrs remaining`)}
               </div>
 
-              <div className="space-y-2">
-                <div className="w-full bg-slate-200 h-4 rounded-full overflow-hidden p-0.5 border border-slate-300">
+              <div className="space-y-1.5 sm:space-y-2">
+                <div className="w-full bg-slate-200 h-3.5 sm:h-4 rounded-full overflow-hidden p-0.5 border border-slate-300">
                   <div
                     className={`h-full ${hydCard.barColor} rounded-full transition-all duration-500`}
                     style={{ width: `${hydCard.progressPct}%` }}
                   />
                 </div>
-                <div className="flex justify-between text-xs sm:text-sm font-mono font-black text-slate-700 pt-1">
+                <div className="flex justify-between text-xs font-mono font-black text-slate-700 pt-0.5">
                   <span>Due: {hydCard.dueMeter?.toLocaleString()} hrs</span>
                   <span className="text-amber-700">Current: {hydCard.curr?.toLocaleString()} hrs</span>
                 </div>
@@ -782,29 +788,29 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
 
               <button
                 onClick={() => openAddMaintenanceModal(selectedMachine.id, 'Hydraulic Oil')}
-                className={`w-full py-3 px-5 text-sm rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer font-mono ${hydCard.buttonStyle}`}
+                className={`w-full py-2.5 sm:py-3 px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer font-mono ${hydCard.buttonStyle}`}
               >
                 [Schedule Service]
               </button>
             </div>
 
             {/* 3. Air Filter */}
-            <div className="bg-slate-50 p-5 sm:p-6 rounded-2xl border border-slate-200 space-y-4 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-sm sm:text-base font-mono font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                  <Filter className="w-5 h-5 text-emerald-600" /> AIR FILTER
+            <div className="bg-slate-50 p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-slate-200 space-y-3 sm:space-y-4 shadow-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs sm:text-base font-mono font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5 sm:gap-2">
+                  <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 shrink-0" /> AIR FILTER
                 </span>
                 {renderStatusBadge(fltCard.statusType, fltCard.isOverdue ? 'OVERDUE' : fltCard.isDueSoon ? 'DUE' : `${fltCard.hrsRemaining} hrs remaining`)}
               </div>
 
-              <div className="space-y-2">
-                <div className="w-full bg-slate-200 h-4 rounded-full overflow-hidden p-0.5 border border-slate-300">
+              <div className="space-y-1.5 sm:space-y-2">
+                <div className="w-full bg-slate-200 h-3.5 sm:h-4 rounded-full overflow-hidden p-0.5 border border-slate-300">
                   <div
                     className={`h-full ${fltCard.barColor} rounded-full transition-all duration-500`}
                     style={{ width: `${fltCard.progressPct}%` }}
                   />
                 </div>
-                <div className="flex justify-between text-xs sm:text-sm font-mono font-black text-slate-700 pt-1">
+                <div className="flex justify-between text-xs font-mono font-black text-slate-700 pt-0.5">
                   <span>Due: {fltCard.dueMeter?.toLocaleString()} hrs</span>
                   <span className="text-amber-700">Current: {fltCard.curr?.toLocaleString()} hrs</span>
                 </div>
@@ -812,29 +818,29 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
 
               <button
                 onClick={() => openAddMaintenanceModal(selectedMachine.id, 'Air Filter')}
-                className={`w-full py-3 px-5 text-sm rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer font-mono ${fltCard.buttonStyle}`}
+                className={`w-full py-2.5 sm:py-3 px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer font-mono ${fltCard.buttonStyle}`}
               >
                 [Schedule Service]
               </button>
             </div>
 
             {/* 4. Greasing */}
-            <div className="bg-slate-50 p-5 sm:p-6 rounded-2xl border border-slate-200 space-y-4 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-sm sm:text-base font-mono font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                  <Wrench className="w-5 h-5 text-amber-600" /> GREASING
+            <div className="bg-slate-50 p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-slate-200 space-y-3 sm:space-y-4 shadow-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs sm:text-base font-mono font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5 sm:gap-2">
+                  <Wrench className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 shrink-0" /> GREASING
                 </span>
                 {renderStatusBadge(grsCard.statusType, grsCard.isOverdue ? 'OVERDUE' : grsCard.isDueSoon ? 'DUE' : `${grsCard.hrsRemaining} hrs remaining`)}
               </div>
 
-              <div className="space-y-2">
-                <div className="w-full bg-slate-200 h-4 rounded-full overflow-hidden p-0.5 border border-slate-300">
+              <div className="space-y-1.5 sm:space-y-2">
+                <div className="w-full bg-slate-200 h-3.5 sm:h-4 rounded-full overflow-hidden p-0.5 border border-slate-300">
                   <div
                     className={`h-full ${grsCard.barColor} rounded-full transition-all duration-500`}
                     style={{ width: `${grsCard.progressPct}%` }}
                   />
                 </div>
-                <div className="flex justify-between text-xs sm:text-sm font-mono font-black text-slate-700 pt-1">
+                <div className="flex justify-between text-xs font-mono font-black text-slate-700 pt-0.5">
                   <span>Due: {grsCard.dueMeter?.toLocaleString()} hrs</span>
                   <span className="text-amber-700">Current: {grsCard.curr?.toLocaleString()} hrs</span>
                 </div>
@@ -842,7 +848,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
 
               <button
                 onClick={() => openAddMaintenanceModal(selectedMachine.id, 'Greasing')}
-                className={`w-full py-3 px-5 text-sm rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer font-mono ${grsCard.buttonStyle}`}
+                className={`w-full py-2.5 sm:py-3 px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer font-mono ${grsCard.buttonStyle}`}
               >
                 [Schedule Service]
               </button>
@@ -852,48 +858,48 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
         </div>
 
         {/* SERVICE HISTORY TABLE FOR SELECTED MACHINE (Includes Oil Grade) */}
-        <div className="space-y-3.5 pt-3">
+        <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm sm:text-base font-mono font-black text-slate-800 uppercase tracking-widest flex items-center gap-2.5">
-              <History className="w-5 h-5 text-amber-600" />
+            <h4 className="text-xs sm:text-base font-mono font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+              <History className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 shrink-0" />
               SERVICE HISTORY
             </h4>
-            <span className="text-xs sm:text-sm font-mono font-bold text-slate-600">
+            <span className="text-xs font-mono font-bold text-slate-600">
               {selectedMachine.code} Machine Log
             </span>
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+          <div className="overflow-x-auto rounded-xl sm:rounded-2xl border border-slate-200 bg-white scrollbar-thin">
             <table className="w-full text-left border-collapse font-mono">
               <thead>
                 <tr className="bg-slate-100 text-slate-800 uppercase font-black text-xs sm:text-sm border-b border-slate-200">
-                  <th className="py-3.5 px-5">Date</th>
-                  <th className="py-3.5 px-5">Service</th>
-                  <th className="py-3.5 px-5">Oil Grade / Spec</th>
-                  <th className="py-3.5 px-5">Hours</th>
-                  <th className="py-3.5 px-5 text-right">Cost</th>
+                  <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 whitespace-nowrap">Date</th>
+                  <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 whitespace-nowrap">Service</th>
+                  <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 whitespace-nowrap">Oil Grade / Spec</th>
+                  <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 whitespace-nowrap">Hours</th>
+                  <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right whitespace-nowrap">Cost</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-bold text-xs sm:text-sm">
                 {selectedMachine.serviceHistory && selectedMachine.serviceHistory.length > 0 ? (
                   selectedMachine.serviceHistory.map((log, idx) => (
                     <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                      <td className="py-3.5 px-5 text-slate-700">{log.date}</td>
-                      <td className="py-3.5 px-5 text-slate-900 font-black">{log.type}</td>
-                      <td className="py-3.5 px-5">
-                        <span className="px-2.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-300 rounded-lg text-xs font-black">
+                      <td className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-slate-700 whitespace-nowrap">{log.date}</td>
+                      <td className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-slate-900 font-black whitespace-nowrap">{log.type}</td>
+                      <td className="py-2.5 px-3 sm:py-3.5 sm:px-5 whitespace-nowrap">
+                        <span className="px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-300 rounded-lg text-xs font-black">
                           {log.oilGrade || '15W-40'}
                         </span>
                       </td>
-                      <td className="py-3.5 px-5 text-amber-700 font-black">{log.meter?.toLocaleString()}</td>
-                      <td className="py-3.5 px-5 text-right text-emerald-700 font-black">
+                      <td className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-amber-700 font-black whitespace-nowrap">{log.meter?.toLocaleString()}</td>
+                      <td className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right text-emerald-700 font-black whitespace-nowrap">
                         {formatCurrency(log.cost || 8500)}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="py-7 text-center text-slate-500 text-sm">
+                    <td colSpan={5} className="py-6 text-center text-slate-500 text-xs sm:text-sm">
                       No recorded service history for {selectedMachine.code} yet.
                     </td>
                   </tr>
@@ -906,58 +912,58 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
       </div>
 
       {/* 3. MAINTENANCE RECORDS & INVOICES TABLE CARD */}
-      <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-5">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+      <div className="bg-white text-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-7 border border-slate-200 shadow-xs space-y-4 sm:space-y-5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-200 pb-4 sm:pb-5">
           <div>
-            <h3 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2.5">
-              <Wrench className="w-6 h-6 text-amber-600" />
+            <h3 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+              <Wrench className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 shrink-0" />
               Maintenance Records & Invoices
             </h3>
-            <p className="text-sm text-slate-600 font-semibold mt-1">
+            <p className="text-xs sm:text-sm text-slate-600 font-semibold mt-0.5 sm:mt-1">
               Complete archive of equipment maintenance logs, oil grade specifications & invoice records
             </p>
           </div>
 
           <button
             onClick={() => openAddMaintenanceModal()}
-            className="px-5 py-3 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-black text-sm rounded-2xl flex items-center gap-2 shadow-md shadow-amber-600/20 transition-all cursor-pointer shrink-0 font-mono"
+            className="w-full sm:w-auto justify-center px-4 py-2.5 sm:px-5 sm:py-3 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-black text-xs sm:text-sm rounded-xl sm:rounded-2xl flex items-center gap-2 shadow-md shadow-amber-600/20 transition-all cursor-pointer shrink-0 font-mono"
           >
-            <PlusCircle className="w-4.5 h-4.5" /> [ + Add Service ]
+            <PlusCircle className="w-4 h-4 shrink-0" /> [ + Add Service ]
           </button>
         </div>
 
         {/* Maintenance Logs Table */}
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+        <div className="overflow-x-auto rounded-xl sm:rounded-2xl border border-slate-200 bg-white scrollbar-thin">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-100 text-slate-800 uppercase font-black tracking-wider text-xs sm:text-sm border-b border-slate-200 font-mono">
-                <th className="py-4 px-5">JCB</th>
-                <th className="py-4 px-5">Service Type</th>
-                <th className="py-4 px-5">Oil Grade</th>
-                <th className="py-4 px-5">Date</th>
-                <th className="py-4 px-5">Hour Meter</th>
-                <th className="py-4 px-5">Status</th>
-                <th className="py-4 px-5 text-right">Action</th>
+                <th className="py-2.5 px-3 sm:py-4 sm:px-5 whitespace-nowrap">JCB</th>
+                <th className="py-2.5 px-3 sm:py-4 sm:px-5 whitespace-nowrap">Service Type</th>
+                <th className="py-2.5 px-3 sm:py-4 sm:px-5 whitespace-nowrap">Oil Grade</th>
+                <th className="py-2.5 px-3 sm:py-4 sm:px-5 whitespace-nowrap">Date</th>
+                <th className="py-2.5 px-3 sm:py-4 sm:px-5 whitespace-nowrap">Hour Meter</th>
+                <th className="py-2.5 px-3 sm:py-4 sm:px-5 whitespace-nowrap">Status</th>
+                <th className="py-2.5 px-3 sm:py-4 sm:px-5 text-right whitespace-nowrap">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-bold text-xs sm:text-sm">
+            <tbody className="divide-y divide-slate-100 font-bold text-xs sm:text-sm font-mono">
               {maintenanceRecords.length > 0 ? (
                 maintenanceRecords.map((rec) => (
                   <tr key={rec.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-4 px-5 font-black text-amber-700 font-mono">{rec.jcbCode}</td>
-                    <td className="py-4 px-5 text-slate-900 font-black">{rec.serviceType}</td>
-                    <td className="py-4 px-5 font-mono">
-                      <span className="px-2.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-300 rounded-lg text-xs font-black">
+                    <td className="py-2.5 px-3 sm:py-4 sm:px-5 font-black text-amber-700 whitespace-nowrap">{rec.jcbCode}</td>
+                    <td className="py-2.5 px-3 sm:py-4 sm:px-5 text-slate-900 font-black whitespace-nowrap">{rec.serviceType}</td>
+                    <td className="py-2.5 px-3 sm:py-4 sm:px-5 whitespace-nowrap">
+                      <span className="px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-300 rounded-lg text-xs font-black">
                         {rec.oilGrade || '15W-40'}
                       </span>
                     </td>
-                    <td className="py-4 px-5 text-slate-700 font-mono">{rec.displayDate || formatDisplayDate(rec.date)}</td>
-                    <td className="py-4 px-5 font-mono font-black text-slate-800">{rec.hourMeter?.toLocaleString()}</td>
-                    <td className="py-4 px-5">{renderStatusBadge(rec.status.toLowerCase())}</td>
-                    <td className="py-4 px-5 text-right">
+                    <td className="py-2.5 px-3 sm:py-4 sm:px-5 text-slate-700 whitespace-nowrap">{rec.displayDate || formatDisplayDate(rec.date)}</td>
+                    <td className="py-2.5 px-3 sm:py-4 sm:px-5 font-black text-slate-800 whitespace-nowrap">{rec.hourMeter?.toLocaleString()}</td>
+                    <td className="py-2.5 px-3 sm:py-4 sm:px-5 whitespace-nowrap">{renderStatusBadge(rec.status.toLowerCase())}</td>
+                    <td className="py-2.5 px-3 sm:py-4 sm:px-5 text-right whitespace-nowrap">
                       <button
                         onClick={() => setViewingRecord(rec)}
-                        className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-amber-800 font-black rounded-xl text-xs sm:text-sm transition-all cursor-pointer border border-slate-300 font-mono"
+                        className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-amber-800 font-black rounded-lg sm:rounded-xl text-xs transition-all cursor-pointer border border-slate-300 font-mono"
                       >
                         [View]
                       </button>
@@ -966,7 +972,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-500 text-sm">
+                  <td colSpan={7} className="py-6 text-center text-slate-500 text-xs sm:text-sm">
                     No maintenance services logged yet. Click <span className="text-amber-700 font-black">[ + Add Service ]</span> to create one.
                   </td>
                 </tr>

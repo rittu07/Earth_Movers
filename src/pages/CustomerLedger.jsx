@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import StatusBadge from '../components/common/StatusBadge';
+import EditTransactionModal from '../components/common/EditTransactionModal';
+import EditPaymentModal from '../components/common/EditPaymentModal';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getDateRange, isDateInRange } from '../utils/calculations';
 import { exportToPdf } from '../utils/pdfGenerator';
@@ -15,7 +17,9 @@ import {
   Receipt,
   CheckCircle,
   FileText,
-  ChevronDown
+  ChevronDown,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 
 const getLedgerShortDesc = (item) => {
@@ -31,11 +35,23 @@ const getLedgerShortDesc = (item) => {
 
 const CustomerLedger = () => {
   const { id } = useParams();
-  const { getCustomerById, getCustomerLedger, showToast } = useBusiness();
+  const {
+    getCustomerById,
+    getCustomerLedger,
+    transactions = [],
+    payments = [],
+    deleteTransaction,
+    deletePayment,
+    showToast
+  } = useBusiness();
+
   const [activeTab, setActiveTab] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [customDate, setCustomDate] = useState('');
   const [expandedLedgerId, setExpandedLedgerId] = useState(null);
+
+  const [editingTransaction, setEditingTransaction] = useState(null);
+  const [editingPayment, setEditingPayment] = useState(null);
 
   const customer = getCustomerById(id);
 
@@ -86,6 +102,43 @@ const CustomerLedger = () => {
     .reduce((sum, item) => sum + (Number(item.paid) || 0), 0);
 
   const filteredOutstanding = Math.max(0, filteredBusiness - filteredPaid);
+
+  const handleEdit = (item) => {
+    if (item.type === 'Transaction') {
+      const fullTrx = transactions.find((t) => t.id === item.id) || {
+        id: item.id,
+        customerName: customer.name,
+        phone: customer.phone,
+        itemService: item.description,
+        amount: item.amount,
+        paid: item.paid,
+        due: item.due,
+        date: item.date
+      };
+      setEditingTransaction(fullTrx);
+    } else if (item.type === 'Payment') {
+      const fullPay = payments.find((p) => p.id === item.id) || {
+        id: item.id,
+        customerName: customer.name,
+        phone: customer.phone,
+        amount: item.paid,
+        date: item.date
+      };
+      setEditingPayment(fullPay);
+    }
+  };
+
+  const handleDelete = (item) => {
+    if (item.type === 'Transaction') {
+      if (window.confirm(`Delete transaction entry ${item.id}? This will adjust customer outstanding due.`)) {
+        deleteTransaction(item.id);
+      }
+    } else if (item.type === 'Payment') {
+      if (window.confirm(`Delete payment entry ${item.id}? This will adjust customer outstanding due.`)) {
+        deletePayment(item.id);
+      }
+    }
+  };
 
   const handleDownload = () => {
     exportToPdf({
@@ -258,7 +311,7 @@ const CustomerLedger = () => {
             <option value="all">All Dates</option>
             <option value="today">Today</option>
             <option value="week">This Week</option>
-             <option value="month">This Month</option>
+            <option value="month">This Month</option>
             <option value="custom">Specific Date</option>
           </select>
           {dateFilter === 'custom' && (
@@ -382,6 +435,24 @@ const CustomerLedger = () => {
                         )}
                       </div>
                     )}
+
+                    {/* Action Bar (Edit / Delete Entry) */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(item)}
+                        className="flex-1 py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs rounded-xl border border-amber-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Pencil className="w-3.5 h-3.5" /> Edit {item.type}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item)}
+                        className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Delete
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -402,12 +473,13 @@ const CustomerLedger = () => {
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">Bill Amount</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">Amount Paid</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">Remaining Due</th>
+              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-center">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium">
             {filteredItems.length === 0 ? (
               <tr>
-                <td colSpan="7" className="py-10 text-center text-slate-400 font-bold text-sm">
+                <td colSpan="8" className="py-10 text-center text-slate-400 font-bold text-sm">
                   No records match the tab selection.
                 </td>
               </tr>
@@ -447,12 +519,48 @@ const CustomerLedger = () => {
                       <span className="font-bold text-sm text-slate-400">₹0</span>
                     )}
                   </td>
+
+                  <td className="py-4 px-4 text-center whitespace-nowrap">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(item)}
+                        className="p-2 inline-flex items-center text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-xl transition-colors cursor-pointer"
+                        title={`Edit ${item.type}`}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item)}
+                        className="p-2 inline-flex items-center text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                        title={`Delete ${item.type}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Edit Transaction Modal */}
+      <EditTransactionModal
+        isOpen={Boolean(editingTransaction)}
+        onClose={() => setEditingTransaction(null)}
+        transaction={editingTransaction}
+      />
+
+      {/* Edit Payment Modal */}
+      <EditPaymentModal
+        isOpen={Boolean(editingPayment)}
+        onClose={() => setEditingPayment(null)}
+        payment={editingPayment}
+      />
     </div>
   );
 };

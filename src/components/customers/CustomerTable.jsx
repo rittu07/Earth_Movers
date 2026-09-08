@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useBusiness } from '../../context/BusinessContext';
 import StatusBadge from '../common/StatusBadge';
+import EditCustomerModal from '../common/EditCustomerModal';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { openWhatsAppChat } from '../../utils/whatsapp';
-import { Eye, Trash2, Phone, MapPin, ChevronDown, MessageSquare, PlusCircle, Wallet } from 'lucide-react';
+import { Eye, Trash2, Phone, MapPin, ChevronDown, MessageSquare, PlusCircle, Wallet, Pencil } from 'lucide-react';
 
 const CustomerTable = ({ customers, onDelete }) => {
   const { transactions = [], payments = [] } = useBusiness();
   const [expandedId, setExpandedId] = useState(null);
+  const [editingCustomer, setEditingCustomer] = useState(null);
   const navigate = useNavigate();
 
   const getCustMetrics = (cust) => {
@@ -170,11 +172,22 @@ const CustomerTable = ({ customers, onDelete }) => {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
+                          setEditingCustomer(cust);
+                        }}
+                        className="py-2.5 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 font-extrabold text-xs rounded-xl border border-amber-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Pencil className="w-3.5 h-3.5" /> Edit Profile
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
                           navigate(`/customers/${cust.id}`);
                         }}
                         className="flex-1 py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                       >
-                        <Eye className="w-3.5 h-3.5" /> View Full Customer Ledger →
+                        <Eye className="w-3.5 h-3.5" /> View Ledger →
                       </button>
                       {onDelete && (
                         <button
@@ -208,12 +221,13 @@ const CustomerTable = ({ customers, onDelete }) => {
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">TOTAL BUSINESS</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">PAID AMOUNT</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">OUTSTANDING</th>
+              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-center">ACTION</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium">
             {customers.length === 0 ? (
               <tr>
-                <td colSpan="5" className="py-10 text-center text-slate-400 font-bold text-sm">
+                <td colSpan="6" className="py-10 text-center text-slate-400 font-bold text-sm">
                   No customers matching search criteria.
                 </td>
               </tr>
@@ -266,6 +280,38 @@ const CustomerTable = ({ customers, onDelete }) => {
                         <span className="font-bold text-sm text-slate-400">₹0</span>
                       )}
                     </td>
+
+                    <td className="py-4 px-4 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setEditingCustomer(cust)}
+                          className="p-2 inline-flex items-center text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-xl transition-colors cursor-pointer"
+                          title="Edit Customer Profile"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+
+                        <Link
+                          to={`/customers/${cust.id}`}
+                          className="p-2 text-indigo-600 hover:text-indigo-800 rounded-xl hover:bg-indigo-50 transition-colors"
+                          title="View Customer Ledger"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Link>
+
+                        {onDelete && (
+                          <button
+                            type="button"
+                            onClick={() => onDelete(cust)}
+                            className="p-2 inline-flex items-center text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                            title="Delete Customer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 );
               })
@@ -273,6 +319,13 @@ const CustomerTable = ({ customers, onDelete }) => {
           </tbody>
         </table>
       </div>
+
+      {/* Edit Customer Modal */}
+      <EditCustomerModal
+        isOpen={Boolean(editingCustomer)}
+        onClose={() => setEditingCustomer(null)}
+        customer={editingCustomer}
+      />
     </div>
   );
 };

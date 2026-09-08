@@ -314,6 +314,89 @@ export const BusinessProvider = ({ children }) => {
     return newTrx;
   };
 
+  // Helper to sync customer metrics dynamically across ledger updates
+  const updateCustomerMetricsFromLists = (trxsList, paysList) => {
+    setCustomers((prev) =>
+      prev.map((cust) => {
+        const custTrxs = trxsList.filter(
+          (t) => t.customerId === cust.id || (t.customerName && cust.name && t.customerName.toLowerCase().trim() === cust.name.toLowerCase().trim())
+        );
+        const custPays = paysList.filter(
+          (p) => p.customerId === cust.id || (p.customerName && cust.name && p.customerName.toLowerCase().trim() === cust.name.toLowerCase().trim())
+        );
+        const totalBus = custTrxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        const trxPaid = custTrxs.reduce((sum, t) => sum + (Number(t.paid) || 0), 0);
+        const directPaid = custPays.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+        const totalPaid = trxPaid + directPaid;
+        const outstanding = Math.max(0, totalBus - totalPaid);
+
+        return {
+          ...cust,
+          totalBusiness: totalBus,
+          paid: totalPaid,
+          outstanding: outstanding,
+          totalTransactions: custTrxs.length
+        };
+      })
+    );
+  };
+
+  // Update Transaction
+  const updateTransaction = (id, updatedFields) => {
+    setTransactions((prevTrxs) => {
+      const nextTrxs = prevTrxs.map((t) => {
+        if (t.id === id) {
+          const totalAmt = Number(updatedFields.amount !== undefined ? updatedFields.amount : t.amount) || 0;
+          const paidAmt = Number(updatedFields.paid !== undefined ? updatedFields.paid : t.paid) || 0;
+          const dueAmt = Math.max(0, totalAmt - paidAmt);
+          const status = paidAmt >= totalAmt ? 'Paid' : paidAmt > 0 ? 'Partial' : 'Pending';
+
+          const dateStr = updatedFields.date || t.date;
+          const displayDateStr = dateStr !== t.date ? `${formatDate(dateStr)}, ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}` : t.displayDate;
+
+          const updated = {
+            ...t,
+            ...updatedFields,
+            amount: totalAmt,
+            paid: paidAmt,
+            due: dueAmt,
+            status,
+            date: dateStr,
+            displayDate: displayDateStr,
+            updatedAt: new Date().toISOString()
+          };
+          persist('transactions', updated, 'update');
+          return updated;
+        }
+        return t;
+      });
+
+      setPayments((currentPays) => {
+        updateCustomerMetricsFromLists(nextTrxs, currentPays);
+        return currentPays;
+      });
+
+      return nextTrxs;
+    });
+    showToast(`Transaction ${id} updated successfully!`);
+  };
+
+  // Delete Transaction
+  const deleteTransaction = (id) => {
+    setTransactions((prevTrxs) => {
+      const nextTrxs = prevTrxs.filter((t) => t.id !== id);
+      persist('transactions', { id, deletedAt: new Date().toISOString() }, 'update');
+
+      setPayments((currentPays) => {
+        updateCustomerMetricsFromLists(nextTrxs, currentPays);
+        return currentPays;
+      });
+
+      return nextTrxs;
+    });
+    showToast(`Transaction deleted successfully!`);
+  };
+
   // Receive / Add Payment
   const addPayment = (payData) => {
     const payId = `PAY-${Math.floor(200 + Math.random() * 800)}`;
@@ -358,6 +441,53 @@ export const BusinessProvider = ({ children }) => {
     return newPayment;
   };
 
+  // Update Payment
+  const updatePayment = (id, updatedFields) => {
+    setPayments((prevPays) => {
+      const nextPays = prevPays.map((p) => {
+        if (p.id === id) {
+          const payAmt = Number(updatedFields.amount !== undefined ? updatedFields.amount : p.amount) || 0;
+          const dateStr = updatedFields.date || p.date;
+          const updated = {
+            ...p,
+            ...updatedFields,
+            amount: payAmt,
+            date: dateStr,
+            displayDate: formatDate(dateStr),
+            updatedAt: new Date().toISOString()
+          };
+          persist('payments', updated, 'update');
+          return updated;
+        }
+        return p;
+      });
+
+      setTransactions((currentTrxs) => {
+        updateCustomerMetricsFromLists(currentTrxs, nextPays);
+        return currentTrxs;
+      });
+
+      return nextPays;
+    });
+    showToast(`Payment record updated successfully!`);
+  };
+
+  // Delete Payment
+  const deletePayment = (id) => {
+    setPayments((prevPays) => {
+      const nextPays = prevPays.filter((p) => p.id !== id);
+      persist('payments', { id, deletedAt: new Date().toISOString() }, 'update');
+
+      setTransactions((currentTrxs) => {
+        updateCustomerMetricsFromLists(currentTrxs, nextPays);
+        return currentTrxs;
+      });
+
+      return nextPays;
+    });
+    showToast(`Payment record deleted successfully!`);
+  };
+
   // Add Expense
   const addExpense = (expData) => {
     const expId = `EXP-${Math.floor(300 + Math.random() * 700)}`;
@@ -383,6 +513,39 @@ export const BusinessProvider = ({ children }) => {
     persist('expenses', newExp);
     showToast(`Expense of ₹${amt.toLocaleString('en-IN')} recorded!`);
     return newExp;
+  };
+
+  // Update Expense
+  const updateExpense = (id, updatedFields) => {
+    setExpenses((prev) =>
+      prev.map((e) => {
+        if (e.id === id) {
+          const busId = updatedFields.businessId || e.businessId;
+          const busObj = businesses.find((b) => b.id === busId) || { name: 'General' };
+          const dateStr = updatedFields.date || e.date;
+          const updated = {
+            ...e,
+            ...updatedFields,
+            businessName: busObj.name,
+            amount: Number(updatedFields.amount !== undefined ? updatedFields.amount : e.amount) || 0,
+            date: dateStr,
+            displayDate: formatDate(dateStr),
+            updatedAt: new Date().toISOString()
+          };
+          persist('expenses', updated, 'update');
+          return updated;
+        }
+        return e;
+      })
+    );
+    showToast(`Expense record updated successfully!`);
+  };
+
+  // Delete Expense
+  const deleteExpense = (id) => {
+    setExpenses((prev) => prev.filter((e) => e.id !== id));
+    persist('expenses', { id, deletedAt: new Date().toISOString() }, 'update');
+    showToast(`Expense record deleted successfully!`);
   };
 
   // Add Diesel Refill Entry
@@ -493,6 +656,31 @@ export const BusinessProvider = ({ children }) => {
     persist('financeLoans', newLoan);
     showToast(`Finance record for ${newLoan.borrowerName} added!`);
     return newLoan;
+  };
+
+  const updateFinanceLoan = (loanId, updatedFields) => {
+    let updatedLoan = null;
+    setFinanceLoans((prev) =>
+      prev.map((loan) => {
+        if (loan.id === loanId) {
+          const principal = updatedFields.principal !== undefined ? Number(updatedFields.principal) : loan.principal;
+          const interestRate = updatedFields.interestRate !== undefined ? Number(updatedFields.interestRate) : loan.interestRate;
+          const startDate = updatedFields.startDate || loan.startDate;
+
+          updatedLoan = getLoanCalculatedDetails({
+            ...loan,
+            ...updatedFields,
+            principal,
+            interestRate,
+            startDate
+          });
+          return updatedLoan;
+        }
+        return loan;
+      })
+    );
+    if (updatedLoan) persist('financeLoans', updatedLoan, 'update');
+    showToast(`Finance loan record updated!`);
   };
 
   const updateFinanceLoanMonths = (loanId, newMonths, isManual = true) => {
@@ -726,6 +914,7 @@ export const BusinessProvider = ({ children }) => {
         addSupplierPayment,
         addDieselLog,
         addFinanceLoan,
+        updateFinanceLoan,
         updateFinanceLoanMonths,
         resetFinanceLoanAutoMonths,
         recordReturnPayment,
@@ -743,8 +932,14 @@ export const BusinessProvider = ({ children }) => {
         updateCustomer,
         deleteCustomer,
         addTransaction,
+        updateTransaction,
+        deleteTransaction,
         addPayment,
+        updatePayment,
+        deletePayment,
         addExpense,
+        updateExpense,
+        deleteExpense,
         syncNow: () => syncNow((result) => {
           if (result?.changed) reloadPersistedData().catch(() => {});
         }),

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useBusiness } from '../../context/BusinessContext';
 import StatusBadge from '../common/StatusBadge';
+import EditTransactionModal from '../common/EditTransactionModal';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { openWhatsAppChat, formatTransactionWhatsApp } from '../../utils/whatsapp';
-import { Eye, Phone, Boxes, Droplets, UserCheck, MapPin, MessageSquare, ChevronDown } from 'lucide-react';
+import { Eye, Phone, Boxes, Droplets, UserCheck, MapPin, MessageSquare, ChevronDown, Pencil, Trash2 } from 'lucide-react';
 
 const getShortDesc = (trx) => {
   if (trx.businessId === 'bricks') {
@@ -25,8 +27,17 @@ const getShortDesc = (trx) => {
 };
 
 const TransactionTable = ({ transactions = [] }) => {
+  const { deleteTransaction } = useBusiness();
   const [expandedId, setExpandedId] = useState(null);
+  const [editingTransaction, setEditingTransaction] = useState(null);
   const navigate = useNavigate();
+
+  const handleDelete = (id, e) => {
+    if (e) e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this transaction entry? This will update customer balance.')) {
+      deleteTransaction(id);
+    }
+  };
 
   return (
     <div>
@@ -159,56 +170,26 @@ const TransactionTable = ({ transactions = [] }) => {
                       </div>
                     </div>
 
-                    {/* Additional Sector Details */}
-                    {(trx.driverName || trx.isOutsourced || trx.waterSource || trx.deliveryPlace) && (
-                      <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5 text-[11px]">
-                        <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block">Sector Details</span>
-                        {trx.driverName && (
-                          <div className="flex items-center justify-between text-amber-900 font-semibold bg-amber-50 p-1.5 rounded-lg border border-amber-200">
-                            <span className="flex items-center gap-1">
-                              <UserCheck className="w-3.5 h-3.5 text-amber-600" /> Driver: {trx.driverName}
-                            </span>
-                            {Number(trx.driverAmount) > 0 && (
-                              <span className="font-bold text-amber-950 bg-amber-200/80 px-1.5 py-0.2 rounded">
-                                Bata: ₹{trx.driverAmount}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        {trx.isOutsourced && (
-                          <div className="flex items-center justify-between text-orange-950 font-semibold bg-orange-50 p-1.5 rounded-lg border border-orange-200">
-                            <span className="flex items-center gap-1">
-                              <Boxes className="w-3.5 h-3.5 text-orange-600" /> Supplier: {trx.outsourcedSupplier || 'Chamber'}
-                            </span>
-                            {Number(trx.outsourcedDue) > 0 && (
-                              <span className="font-bold text-rose-700 bg-rose-100 px-1.5 py-0.2 rounded">
-                                Due: ₹{trx.outsourcedDue}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        {trx.waterSource && (
-                          <div className="flex items-center gap-1 text-blue-900 font-semibold bg-blue-50 p-1.5 rounded-lg border border-blue-200">
-                            <Droplets className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                            <span>Source: {trx.waterSource}</span>
-                          </div>
-                        )}
-                        {trx.deliveryPlace && (
-                          <div className="flex items-center gap-1 text-slate-800 font-semibold bg-slate-100 p-1.5 rounded-lg border border-slate-200">
-                            <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                            <span>Site: {trx.deliveryPlace}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Notes */}
-                    {trx.notes && (
-                      <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Notes</span>
-                        <p className="text-[11px] text-slate-700 font-medium mt-0.5">{trx.notes}</p>
-                      </div>
-                    )}
+                    {/* Action Bar (Edit / Delete / Ledger) */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingTransaction(trx);
+                        }}
+                        className="flex-1 py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs rounded-xl border border-amber-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Pencil className="w-3.5 h-3.5" /> Edit Entry
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDelete(trx.id, e)}
+                        className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Delete
+                      </button>
+                    </div>
 
                     {/* Full Customer Ledger Navigation Link */}
                     <button
@@ -285,55 +266,6 @@ const TransactionTable = ({ transactions = [] }) => {
                   {/* Details Column */}
                   <td className="py-4 px-4 text-slate-900">
                     <div className="font-bold text-sm text-slate-900">{trx.itemService}</div>
-
-                    {/* JCB Specific Details */}
-                    {trx.businessId === 'jcb' && (
-                      <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs">
-                        {trx.driverName && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 font-bold border border-amber-200">
-                            <UserCheck className="w-3.5 h-3.5 text-amber-600" />
-                            Driver: {trx.driverName}
-                          </span>
-                        )}
-                        {Number(trx.driverAmount) > 0 && (
-                          <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-950 font-extrabold">
-                            Bata: {formatCurrency(trx.driverAmount)}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Bricks Specific Outsourced Details */}
-                    {trx.businessId === 'bricks' && (
-                      <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs">
-                        {trx.isOutsourced ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-orange-100 text-orange-950 font-extrabold border border-orange-200">
-                            <Boxes className="w-3.5 h-3.5 text-orange-600" />
-                            Outsourced: {trx.outsourcedSupplier || 'External Chamber'}
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold border border-slate-200">
-                            In-House Production
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Water Specific Source & Place Details */}
-                    {trx.businessId === 'water' && (
-                      <div className="flex flex-col gap-0.5 mt-1 text-xs text-slate-600 font-medium">
-                        {trx.waterSource && (
-                          <span className="inline-flex items-center gap-1 text-blue-800 font-semibold">
-                            <Droplets className="w-3.5 h-3.5 text-blue-500" /> Source: {trx.waterSource}
-                          </span>
-                        )}
-                        {trx.deliveryPlace && (
-                          <span className="inline-flex items-center gap-1 text-slate-700">
-                            <MapPin className="w-3.5 h-3.5 text-slate-400" /> Place: {trx.deliveryPlace}
-                          </span>
-                        )}
-                      </div>
-                    )}
                   </td>
 
                   <td className="py-4 px-4 text-center font-bold text-sm text-slate-800 whitespace-nowrap">
@@ -360,6 +292,24 @@ const TransactionTable = ({ transactions = [] }) => {
 
                   <td className="py-4 px-4 text-center whitespace-nowrap">
                     <div className="flex items-center justify-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setEditingTransaction(trx)}
+                        className="p-2 inline-flex items-center text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-xl transition-colors cursor-pointer"
+                        title="Edit Transaction"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => handleDelete(trx.id, e)}
+                        className="p-2 inline-flex items-center text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                        title="Delete Transaction"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+
                       {trx.phone && (
                         <button
                           type="button"
@@ -384,6 +334,7 @@ const TransactionTable = ({ transactions = [] }) => {
                           <MessageSquare className="w-4 h-4" />
                         </button>
                       )}
+
                       <Link
                         to={`/customers/${trx.customerId}`}
                         className="p-2 inline-flex items-center text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-xl transition-colors"
@@ -399,6 +350,13 @@ const TransactionTable = ({ transactions = [] }) => {
           </tbody>
         </table>
       </div>
+
+      {/* Edit Modal */}
+      <EditTransactionModal
+        isOpen={Boolean(editingTransaction)}
+        onClose={() => setEditingTransaction(null)}
+        transaction={editingTransaction}
+      />
     </div>
   );
 };

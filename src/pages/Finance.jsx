@@ -10,6 +10,7 @@ import { getLoanCalculatedDetails, calculateElapsedMonths, getLoanDueDateInfo } 
 import { exportToPdf } from '../utils/pdfGenerator';
 import { formatFinanceLoanWhatsApp, formatFinanceReturnPaymentWhatsApp, openWhatsAppChat } from '../utils/whatsapp';
 import WhatsAppModal from '../components/common/WhatsAppModal';
+import EditFinanceLoanModal from '../components/common/EditFinanceLoanModal';
 import {
   Landmark,
   PlusCircle,
@@ -24,7 +25,8 @@ import {
   Minus,
   Info,
   Calendar,
-  Download
+  Download,
+  Pencil
 } from 'lucide-react';
 
 export const isMonthSettled = (loanCalculated, monthNum) => {
@@ -172,6 +174,7 @@ const Finance = () => {
   // Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+  const [editingLoan, setEditingLoan] = useState(null);
   const [selectedLoan, setSelectedLoan] = useState(null);
   const [returnPayAmount, setReturnPayAmount] = useState('');
   const [returnPayMethod, setReturnPayMethod] = useState('Cash');
@@ -656,6 +659,13 @@ const Finance = () => {
                           <span>💰</span> Record Return
                         </button>
                         <button
+                          onClick={() => setEditingLoan(loan)}
+                          className="py-2.5 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 font-mono font-black text-xs rounded-xl border border-amber-200 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          title="Edit Loan Details"
+                        >
+                          <Pencil className="w-3.5 h-3.5" /> Edit
+                        </button>
+                        <button
                           onClick={() => handleRequestSettle(loan)}
                           className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-mono font-black text-xs rounded-xl border border-slate-300 transition-all cursor-pointer"
                         >
@@ -884,8 +894,15 @@ const Finance = () => {
                             </>
                           )}
                           <button
+                            onClick={() => setEditingLoan(loan)}
+                            className="p-1 text-amber-600 hover:text-amber-800 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer inline-flex items-center"
+                            title="Edit Loan Record"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
                             onClick={() => handleRequestDelete(loan)}
-                            className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                            className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer inline-flex items-center"
                             title="Delete Record"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -1722,6 +1739,13 @@ const Finance = () => {
         phone={whatsAppPhone}
         customerName={whatsAppCustName}
         messageText={whatsAppText}
+      />
+
+      {/* Edit Finance Loan Modal */}
+      <EditFinanceLoanModal
+        isOpen={Boolean(editingLoan)}
+        onClose={() => setEditingLoan(null)}
+        loan={editingLoan}
       />
     </div>
   );
