@@ -49,15 +49,12 @@ const JCBRental = () => {
             >
               <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600" /> Statement PDF
             </button>
-            <button
-              onClick={() => {
-                setActiveTab('maintenance');
-                setOpenMaintModal(true);
-              }}
+            <Link
+              to="/maintenance/add"
               className="px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer font-mono"
             >
               <Wrench className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500" /> + Add Maintenance
-            </button>
+            </Link>
             <Link
               to="/transactions/add?business=jcb"
               className="px-3 py-1.5 sm:px-4 sm:py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-amber-600/30 transition-all font-mono"

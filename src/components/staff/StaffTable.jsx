@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useBusiness } from '../../context/BusinessContext';
 import { formatCurrency } from '../../utils/formatCurrency';
 import {
@@ -155,16 +156,13 @@ const StaffTable = ({
                         <Pencil className="w-3.5 h-3.5" /> Edit
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onViewLedger && onViewLedger(s);
-                        }}
+                      <Link
+                        to={`/staff/${s.id}`}
                         className="flex-1 py-2 px-3 bg-slate-900 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <Eye className="w-3.5 h-3.5" /> View Ledger →
-                      </button>
+                      </Link>
 
                       {onDelete && (
                         <button
@@ -193,8 +191,9 @@ const StaffTable = ({
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">STAFF MEMBER</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">MOBILE NUMBER</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">ROLE</th>
-              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">MONTHLY SALARY</th>
+              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">BASE SALARY</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-center">BATA RATE</th>
+              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">TOTAL INCOME</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">ADVANCE BALANCE</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-center">ACTION</th>
             </tr>
@@ -202,7 +201,7 @@ const StaffTable = ({
           <tbody className="divide-y divide-slate-100 font-medium">
             {staff.length === 0 ? (
               <tr>
-                <td colSpan="7" className="py-10 text-center text-slate-400 font-bold text-sm">
+                <td colSpan="8" className="py-10 text-center text-slate-400 font-bold text-sm">
                   No staff members matching criteria.
                 </td>
               </tr>
@@ -219,12 +218,12 @@ const StaffTable = ({
                           {s.name.charAt(0)}
                         </div>
                         <div>
-                          <button
-                            onClick={() => onViewLedger && onViewLedger(s)}
+                          <Link
+                            to={`/staff/${s.id}`}
                             className="font-black text-base text-slate-900 hover:text-indigo-600 transition-colors text-left block"
                           >
                             {s.name}
-                          </button>
+                          </Link>
                           {s.notes && (
                             <p className="text-xs text-slate-500 font-medium truncate max-w-xs">
                               {s.notes}
@@ -249,7 +248,7 @@ const StaffTable = ({
                       </span>
                     </td>
 
-                    {/* Monthly Salary & Net Payout */}
+                    {/* Base Salary & Net Payout */}
                     <td className="py-4 px-4 text-right whitespace-nowrap">
                       <div className="font-black text-base text-slate-950">
                         {formatCurrency(s.monthlySalary || 0)}
@@ -269,6 +268,29 @@ const StaffTable = ({
                       ) : (
                         <span className="text-slate-400 font-semibold text-xs">No Bata</span>
                       )}
+                    </td>
+
+                    {/* Total Income (Base + Bata) */}
+                    <td className="py-4 px-4 text-right whitespace-nowrap">
+                      {(() => {
+                        const baseSalary = s.monthlySalary || 0;
+                        const bataEarnings = (s.totalBataHours || 0) * (s.bataRate || 0);
+                        const totalIncome = baseSalary + bataEarnings;
+                        return (
+                          <div>
+                            <span className="font-black text-base text-indigo-700 block">
+                              {formatCurrency(totalIncome)}
+                            </span>
+                            {bataEarnings > 0 ? (
+                              <span className="text-[10px] font-semibold text-slate-500 block">
+                                Base ₹{baseSalary.toLocaleString('en-IN')} + Bata ₹{bataEarnings.toLocaleString('en-IN')}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-semibold text-slate-400 block">Base salary only</span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
 
                     {/* Advance Balance */}
@@ -319,14 +341,13 @@ const StaffTable = ({
                           <Pencil className="w-4 h-4" />
                         </button>
 
-                        <button
-                          type="button"
-                          onClick={() => onViewLedger && onViewLedger(s)}
+                        <Link
+                          to={`/staff/${s.id}`}
                           className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer"
                           title="View Staff Ledger"
                         >
                           <Eye className="w-4 h-4" />
-                        </button>
+                        </Link>
 
                         {onDelete && (
                           <button

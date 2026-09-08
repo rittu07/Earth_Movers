@@ -147,12 +147,12 @@ const AddEditStaffModal = ({ isOpen, onClose, staffToEdit = null }) => {
           {/* Salary & Bata Box */}
           <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-3">
             <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
-              <DollarSign className="w-4 h-4 text-emerald-600" /> Fixed Monthly Salary & Bata
+              <DollarSign className="w-4 h-4 text-emerald-600" /> Base Salary & Bata
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Monthly Salary (₹)</label>
+                <label className="block font-bold text-slate-700 mb-1">Base Salary (₹)</label>
                 <input
                   type="number"
                   placeholder="25000"
@@ -208,7 +208,7 @@ const AddEditStaffModal = ({ isOpen, onClose, staffToEdit = null }) => {
               </div>
 
               <div>
-                <label className="block font-bold text-amber-900 mb-1">Monthly Salary Deduction (₹)</label>
+                <label className="block font-bold text-amber-900 mb-1">Monthly Deduction from Salary (₹)</label>
                 <input
                   type="number"
                   placeholder="10000"
@@ -216,13 +216,13 @@ const AddEditStaffModal = ({ isOpen, onClose, staffToEdit = null }) => {
                   onChange={(e) => setMonthlyDeduction(e.target.value)}
                   className="w-full p-2.5 bg-white border border-amber-300 rounded-xl font-bold text-rose-700 focus:outline-hidden"
                 />
-                <span className="text-[10px] text-amber-700 font-medium">Deducted from monthly salary</span>
+                <span className="text-[10px] text-amber-700 font-medium">Deducted from base salary each month</span>
               </div>
             </div>
 
             {/* Calculated Monthly Take-home */}
             <div className="bg-white p-3 rounded-xl border border-amber-200 flex items-center justify-between">
-              <span className="font-bold text-slate-700">Net Monthly Salary Payout:</span>
+              <span className="font-bold text-slate-700">Net Monthly Payout:</span>
               <span className="font-black text-sm text-emerald-700">
                 ₹{calculatedNetSalary.toLocaleString('en-IN')}{' '}
                 <span className="text-[10px] font-normal text-slate-500">(₹{Number(monthlySalary) || 0} - ₹{Number(monthlyDeduction) || 0})</span>

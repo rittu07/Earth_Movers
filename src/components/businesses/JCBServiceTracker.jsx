@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Truck,
   PlusCircle,
@@ -21,10 +22,17 @@ import {
   Paperclip,
   CheckCircle2,
   Filter,
-  Activity
+  Activity,
+  ExternalLink
 } from 'lucide-react';
 import { formatJCBOverdueWhatsApp, openWhatsAppChat } from '../../utils/whatsapp';
 import { formatCurrency } from '../../utils/formatCurrency';
+import {
+  getStoredFleet,
+  saveStoredFleet,
+  getStoredMaintenanceRecords,
+  saveStoredMaintenanceRecords
+} from '../../data/jcbServiceData';
 
 const initialFleetData = [
   {
@@ -211,26 +219,20 @@ const formatDisplayDate = (dateStr) => {
 };
 
 const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClosed }) => {
-  const [fleet, setFleet] = useState(initialFleetData);
+  const navigate = useNavigate();
+  const [fleet, setFleet] = useState(getStoredFleet);
   const [selectedJcbId, setSelectedJcbId] = useState('jcb-1');
 
   // Maintenance records state
-  const [maintenanceRecords, setMaintenanceRecords] = useState(() => {
-    try {
-      const saved = localStorage.getItem('jcb_maintenance_records');
-      return saved ? JSON.parse(saved) : initialMaintenanceRecords;
-    } catch (e) {
-      return initialMaintenanceRecords;
-    }
-  });
+  const [maintenanceRecords, setMaintenanceRecords] = useState(getStoredMaintenanceRecords);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('jcb_maintenance_records', JSON.stringify(maintenanceRecords));
-    } catch (e) {
-      console.error(e);
-    }
+    saveStoredMaintenanceRecords(maintenanceRecords);
   }, [maintenanceRecords]);
+
+  useEffect(() => {
+    saveStoredFleet(fleet);
+  }, [fleet]);
 
   const [isAddJcbOpen, setIsAddJcbOpen] = useState(false);
   const [isMeterUpdateOpen, setIsMeterUpdateOpen] = useState(false);
@@ -239,9 +241,10 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
 
   useEffect(() => {
     if (autoOpenAddMaintenance) {
-      setIsAddMaintenanceOpen(true);
+      navigate('/maintenance/add');
+      if (onAddMaintenanceClosed) onAddMaintenanceClosed();
     }
-  }, [autoOpenAddMaintenance]);
+  }, [autoOpenAddMaintenance, navigate, onAddMaintenanceClosed]);
 
   // New JCB Form State
   const [newCode, setNewCode] = useState('');
@@ -251,35 +254,85 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
   // Meter Update Form State
   const [updatedHours, setUpdatedHours] = useState('');
 
-  // Add Maintenance Form State
+  // Add Maintenance Form State (Multi-Service Support)
   const selectedMachine = fleet.find((m) => m.id === selectedJcbId) || fleet[0];
   const [maintJcbId, setMaintJcbId] = useState('jcb-1');
-  const [maintServiceType, setMaintServiceType] = useState('Engine Oil');
-  const [maintOilGrade, setMaintOilGrade] = useState('15W-40');
   const [maintServiceDate, setMaintServiceDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [maintHourMeter, setMaintHourMeter] = useState('4528');
-  const [maintQuantity, setMaintQuantity] = useState('20');
-  const [maintCost, setMaintCost] = useState('8500');
   const [maintServiceProvider, setMaintServiceProvider] = useState('');
   const [maintInvoiceName, setMaintInvoiceName] = useState('');
-  const [maintRemarks, setMaintRemarks] = useState('');
+  const [maintGeneralRemarks, setMaintGeneralRemarks] = useState('');
 
-  // Update default oil grade when service type changes
-  const handleServiceTypeChange = (type) => {
-    setMaintServiceType(type);
-    if (type === 'Others') {
-      setMaintOilGrade('N/A');
-      setMaintQuantity('0');
-    } else {
-      setMaintOilGrade(DEFAULT_OIL_GRADES[type] || '15W-40');
-      if (maintQuantity === '0' || !maintQuantity) setMaintQuantity('20');
+  // Service items list state (supports multiple services simultaneously)
+  const [serviceItems, setServiceItems] = useState([
+    {
+      id: 'item-1',
+      serviceType: 'Engine Oil',
+      oilGrade: '15W-40',
+      quantity: '20',
+      cost: '8500',
+      remarks: ''
     }
+  ]);
+
+  const handleServiceTypeChangeInItem = (index, type) => {
+    setServiceItems((prev) => {
+      const copy = [...prev];
+      const defaultGrade = type === 'Others' ? 'N/A' : (DEFAULT_OIL_GRADES[type] || '15W-40');
+      const defaultQty = type === 'Others' ? '0' : (type === 'Air Filter' || type === 'Filter' ? '1' : '20');
+      const defaultCost = type === 'Engine Oil' ? '8500' : type === 'Hydraulic Oil' ? '12000' : type === 'Air Filter' ? '3200' : type === 'Greasing' ? '1500' : '2500';
+
+      copy[index] = {
+        ...copy[index],
+        serviceType: type,
+        oilGrade: defaultGrade,
+        quantity: defaultQty,
+        cost: copy[index].cost || defaultCost
+      };
+      return copy;
+    });
   };
 
-  // Auto calculate Next Service Due
-  const calculatedInterval = SERVICE_INTERVALS[maintServiceType] || 300;
-  const currentMeterNum = Number(maintHourMeter) || 0;
-  const autoNextDue = currentMeterNum + calculatedInterval;
+  const handleUpdateItemField = (index, field, value) => {
+    setServiceItems((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+  };
+
+  const addServiceItem = (type = 'Engine Oil') => {
+    const defaultGrade = type === 'Others' ? 'N/A' : (DEFAULT_OIL_GRADES[type] || '15W-40');
+    const defaultQty = type === 'Others' ? '0' : (type === 'Air Filter' || type === 'Filter' ? '1' : '20');
+    const defaultCost = type === 'Engine Oil' ? '8500' : type === 'Hydraulic Oil' ? '12000' : type === 'Air Filter' ? '3200' : type === 'Greasing' ? '1500' : '2500';
+
+    setServiceItems((prev) => [
+      ...prev,
+      {
+        id: `item-${Date.now()}-${Math.random()}`,
+        serviceType: type,
+        oilGrade: defaultGrade,
+        quantity: defaultQty,
+        cost: defaultCost,
+        remarks: ''
+      }
+    ]);
+  };
+
+  const removeServiceItem = (index) => {
+    if (serviceItems.length <= 1) return;
+    setServiceItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const applyFullServicePackage = () => {
+    setServiceItems([
+      { id: `item-${Date.now()}-1`, serviceType: 'Engine Oil', oilGrade: '15W-40', quantity: '20', cost: '8500', remarks: 'Routine engine oil service' },
+      { id: `item-${Date.now()}-2`, serviceType: 'Air Filter', oilGrade: 'OEM Grade Filter', quantity: '1', cost: '3200', remarks: 'Air filter replacement' },
+      { id: `item-${Date.now()}-3`, serviceType: 'Greasing', oilGrade: 'AP-3 Grease', quantity: '1', cost: '1500', remarks: 'Chassis greasing' }
+    ]);
+  };
+
+  const totalServicesCost = serviceItems.reduce((sum, item) => sum + (Number(item.cost) || 0), 0);
 
   // Smooth scroll & select machine when clicking row or button
   const handleSelectMachine = (targetId) => {
@@ -292,84 +345,84 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
     }, 50);
   };
 
-  // Open Add Maintenance Modal with pre-filled default machine & optional preset type
+  // Open Add Maintenance (Navigates to dedicated Full Page)
   const openAddMaintenanceModal = (targetJcbId = selectedJcbId, presetType = 'Engine Oil') => {
-    const machine = fleet.find((m) => m.id === targetJcbId) || selectedMachine;
-    setMaintJcbId(machine.id);
-    setMaintServiceType(presetType);
-    setMaintOilGrade(presetType === 'Others' ? 'N/A' : (DEFAULT_OIL_GRADES[presetType] || '15W-40'));
-    setMaintServiceDate(new Date().toISOString().split('T')[0]);
-    setMaintHourMeter(machine ? machine.totalHours.toString() : '4528');
-    setMaintQuantity(presetType === 'Others' ? '0' : '20');
-    setMaintCost('8500');
-    setMaintServiceProvider('');
-    setMaintInvoiceName('');
-    setMaintRemarks('');
-    setIsAddMaintenanceOpen(true);
+    navigate(`/maintenance/add?machine=${targetJcbId}&type=${encodeURIComponent(presetType)}`);
   };
 
-  // Submit Add Maintenance Form
+  // Submit Add Maintenance Form (handles multiple services at once)
   const handleAddMaintenanceSubmit = (e) => {
     e.preventDefault();
     const targetMachine = fleet.find((m) => m.id === maintJcbId) || selectedMachine;
     const hourMeterNum = Number(maintHourMeter) || 0;
-    const costNum = Number(maintCost) || 0;
-    const nextDueNum = autoNextDue;
-    const gradeVal = maintServiceType === 'Others' ? 'N/A' : (maintOilGrade.trim() || DEFAULT_OIL_GRADES[maintServiceType] || '15W-40');
-    const qtyVal = maintServiceType === 'Others' ? '-' : (maintQuantity || '0');
 
-    let status = 'OK';
-    if (targetMachine.totalHours - hourMeterNum >= calculatedInterval) {
-      status = 'Overdue';
-    } else if (targetMachine.totalHours - hourMeterNum >= calculatedInterval - 50) {
-      status = 'Due Soon';
-    }
+    const createdRecords = [];
+    const newLogs = [];
 
-    const newRecord = {
-      id: `maint-${Date.now()}`,
-      jcbId: targetMachine.id,
-      jcbCode: targetMachine.code,
-      serviceType: maintServiceType,
-      oilGrade: gradeVal,
-      date: maintServiceDate,
-      displayDate: formatDisplayDate(maintServiceDate),
-      hourMeter: hourMeterNum,
-      quantity: qtyVal,
-      unit: maintServiceType.includes('Oil') ? 'L' : 'Pcs',
-      cost: costNum,
-      serviceProvider: maintServiceProvider.trim() || 'JCB Authorized Service',
-      invoiceName: maintInvoiceName || 'service_invoice.pdf',
-      nextDue: nextDueNum,
-      remarks: maintRemarks.trim(),
-      notes: maintRemarks.trim() || `${maintServiceType} service record`,
-      status: status
-    };
+    let updatedEng = targetMachine.engineOilLastMeter;
+    let updatedBrg = targetMachine.greasingLastMeter;
+    let updatedHyd = targetMachine.hydraulicOilLastMeter;
+    let updatedFlt = targetMachine.filterLastMeter;
 
-    setMaintenanceRecords([newRecord, ...maintenanceRecords]);
+    serviceItems.forEach((item, idx) => {
+      const type = item.serviceType || 'Engine Oil';
+      const costNum = Number(item.cost) || 0;
+      const interval = SERVICE_INTERVALS[type] || 300;
+      const nextDueNum = hourMeterNum + interval;
+      const gradeVal = type === 'Others' ? 'N/A' : (item.oilGrade?.trim() || DEFAULT_OIL_GRADES[type] || '15W-40');
+      const qtyVal = type === 'Others' ? '-' : (item.quantity || '0');
 
-    // Update fleet machine service history & meter counters
+      let status = 'OK';
+      if (targetMachine.totalHours - hourMeterNum >= interval) {
+        status = 'Overdue';
+      } else if (targetMachine.totalHours - hourMeterNum >= interval - 50) {
+        status = 'Due Soon';
+      }
+
+      const combinedRemarks = [item.remarks, maintGeneralRemarks].filter(Boolean).join(' | ');
+
+      const record = {
+        id: `maint-${Date.now()}-${idx}`,
+        jcbId: targetMachine.id,
+        jcbCode: targetMachine.code,
+        serviceType: type,
+        oilGrade: gradeVal,
+        date: maintServiceDate,
+        displayDate: formatDisplayDate(maintServiceDate),
+        hourMeter: hourMeterNum,
+        quantity: qtyVal,
+        unit: type.includes('Oil') ? 'L' : 'Pcs',
+        cost: costNum,
+        serviceProvider: maintServiceProvider.trim() || 'JCB Authorized Service',
+        invoiceName: maintInvoiceName || 'service_invoice.pdf',
+        nextDue: nextDueNum,
+        remarks: combinedRemarks,
+        notes: combinedRemarks || `${type} service record`,
+        status: status
+      };
+
+      createdRecords.push(record);
+
+      if (type === 'Engine Oil') updatedEng = hourMeterNum;
+      if (type === 'Greasing' || type === 'Bearing Oil') updatedBrg = hourMeterNum;
+      if (type === 'Hydraulic Oil') updatedHyd = hourMeterNum;
+      if (type === 'Air Filter' || type === 'Filter') updatedFlt = hourMeterNum;
+
+      newLogs.push({
+        date: formatDisplayDate(maintServiceDate),
+        type: type,
+        oilGrade: gradeVal,
+        meter: hourMeterNum,
+        cost: costNum,
+        notes: `${maintServiceProvider || 'Serviced'} (${gradeVal}) at ${hourMeterNum} hrs`
+      });
+    });
+
+    setMaintenanceRecords([...createdRecords, ...maintenanceRecords]);
+
     setFleet(
       fleet.map((m) => {
         if (m.id !== targetMachine.id) return m;
-
-        let updatedEng = m.engineOilLastMeter;
-        let updatedBrg = m.greasingLastMeter;
-        let updatedHyd = m.hydraulicOilLastMeter;
-        let updatedFlt = m.filterLastMeter;
-
-        if (maintServiceType === 'Engine Oil') updatedEng = hourMeterNum;
-        if (maintServiceType === 'Greasing' || maintServiceType === 'Bearing Oil') updatedBrg = hourMeterNum;
-        if (maintServiceType === 'Hydraulic Oil') updatedHyd = hourMeterNum;
-        if (maintServiceType === 'Air Filter' || maintServiceType === 'Filter') updatedFlt = hourMeterNum;
-
-        const newLog = {
-          date: formatDisplayDate(maintServiceDate),
-          type: maintServiceType,
-          oilGrade: gradeVal,
-          meter: hourMeterNum,
-          cost: costNum,
-          notes: `${maintServiceProvider || 'Serviced'} (${gradeVal}) at ${hourMeterNum} hrs`
-        };
 
         return {
           ...m,
@@ -378,12 +431,13 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
           hydraulicOilLastMeter: updatedHyd,
           filterLastMeter: updatedFlt,
           totalHours: Math.max(m.totalHours, hourMeterNum),
-          serviceHistory: [newLog, ...(m.serviceHistory || [])]
+          serviceHistory: [...newLogs, ...(m.serviceHistory || [])]
         };
       })
     );
 
     setIsAddMaintenanceOpen(false);
+    if (onAddMaintenanceClosed) onAddMaintenanceClosed();
     handleSelectMachine(targetMachine.id);
   };
 
@@ -982,20 +1036,25 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
         </div>
       </div>
 
-      {/* ADD MAINTENANCE MODAL (Fixed height & scrollable form body) */}
+      {/* ADD MAINTENANCE MODAL (Supports Adding Multiple Services at Once) */}
       {isAddMaintenanceOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200 font-sans">
-          <div className="bg-white text-slate-900 border border-slate-200 rounded-3xl max-w-lg w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden my-auto">
+          <div className="bg-white text-slate-900 border border-slate-200 rounded-3xl max-w-3xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden my-auto">
             
             {/* Modal Header (Fixed Top) */}
-            <div className="flex items-center justify-between border-b border-slate-200 p-4 sm:p-5 shrink-0">
+            <div className="flex items-center justify-between border-b border-slate-200 p-4 sm:p-5 shrink-0 bg-slate-50/80">
               <div>
-                <h3 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2.5">
-                  <Wrench className="w-5 h-5 text-amber-600" />
-                  Add Maintenance
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
+                    <Wrench className="w-5 h-5 text-amber-600" />
+                    Add Maintenance Services
+                  </h3>
+                  <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 text-xs font-mono font-black rounded-full border border-amber-300">
+                    Multi-Service Support
+                  </span>
+                </div>
                 <p className="text-xs text-slate-500 font-semibold mt-0.5">
-                  Record new JCB equipment maintenance service details
+                  Record one or multiple equipment maintenance services performed at the same time
                 </p>
               </div>
               <button
@@ -1009,234 +1068,363 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
               </button>
             </div>
 
-            {/* Form & Scrollable Body */}
-            <form onSubmit={handleAddMaintenanceSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 text-xs sm:text-sm font-black flex flex-col justify-between">
-              <div className="space-y-4">
-                {/* 1. JCB Select */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <label className="text-slate-700 w-36 font-mono">JCB</label>
-                  <div className="flex-1">
-                    <select
-                      value={maintJcbId}
-                      onChange={(e) => {
-                        setMaintJcbId(e.target.value);
-                        const target = fleet.find(m => m.id === e.target.value);
-                        if (target) setMaintHourMeter(target.totalHours.toString());
-                      }}
-                      className="w-full p-3 bg-slate-50 border border-slate-300 rounded-2xl font-black text-amber-700 text-sm focus:outline-hidden focus:border-amber-600 focus:bg-white cursor-pointer font-mono"
-                    >
-                      {fleet.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          [ {m.code} - {m.regNo} ]
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+            {/* Form Body (Scrollable) */}
+            <form onSubmit={handleAddMaintenanceSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 text-xs sm:text-sm font-black flex flex-col justify-between">
+              <div className="space-y-5">
+                
+                {/* 1. General Info Header Card */}
+                <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-200/80 space-y-3.5">
+                  <h4 className="text-xs font-mono font-black text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Truck className="w-4 h-4 text-amber-600" />
+                    1. Machine & Service Work Order Info
+                  </h4>
 
-                {/* 2. Service Type Select */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <label className="text-slate-700 w-36 font-mono">Service Type</label>
-                  <div className="flex-1">
-                    <select
-                      value={maintServiceType}
-                      onChange={(e) => handleServiceTypeChange(e.target.value)}
-                      className="w-full p-3 bg-slate-50 border border-slate-300 rounded-2xl font-black text-slate-900 text-sm focus:outline-hidden focus:border-amber-600 focus:bg-white cursor-pointer font-mono"
-                    >
-                      <option value="Engine Oil">[ Engine Oil ]</option>
-                      <option value="Hydraulic Oil">[ Hydraulic Oil ]</option>
-                      <option value="Air Filter">[ Air Filter ]</option>
-                      <option value="Greasing">[ Greasing ]</option>
-                      <option value="Filter">[ Filter ]</option>
-                      <option value="Bearing Oil">[ Bearing Oil ]</option>
-                      <option value="Transmission Oil">[ Transmission Oil ]</option>
-                      <option value="Others">[ Others ]</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* 3. Oil Grade / Spec Field (Hidden for Others) */}
-                {maintServiceType !== 'Others' && (
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                    <label className="text-slate-700 w-36 font-mono pt-2">Oil Grade / Spec</label>
-                    <div className="flex-1 space-y-2">
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. 15W-40 / Tellus 68 / AP-3 Grease"
-                        value={maintOilGrade}
-                        onChange={(e) => setMaintOilGrade(e.target.value)}
-                        className="w-full p-3 bg-slate-50 border border-slate-300 rounded-2xl font-black text-slate-900 text-sm focus:outline-hidden focus:border-amber-600 focus:bg-white font-mono"
-                      />
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {['15W-40', 'Tellus 68', 'ISO VG 46', 'AP-3 Grease', '80W-90'].map((preset) => (
-                          <button
-                            key={preset}
-                            type="button"
-                            onClick={() => setMaintOilGrade(preset)}
-                            className={`px-2.5 py-1 text-[11px] font-mono font-black rounded-xl cursor-pointer transition-all border ${
-                              maintOilGrade === preset
-                                ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                                : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
-                            }`}
-                          >
-                            + {preset}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 4. Service Date */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <label className="text-slate-700 w-36 font-mono">Service Date</label>
-                  <div className="flex-1">
-                    <input
-                      type="date"
-                      required
-                      value={maintServiceDate}
-                      onChange={(e) => setMaintServiceDate(e.target.value)}
-                      className="w-full p-3 bg-slate-50 border border-slate-300 rounded-2xl font-mono text-slate-900 text-sm focus:outline-hidden focus:border-amber-600 focus:bg-white"
-                    />
-                  </div>
-                </div>
-
-                {/* 5. Hour Meter */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <label className="text-slate-700 w-36 font-mono">Hour Meter</label>
-                  <div className="flex-1">
-                    <input
-                      type="number"
-                      required
-                      placeholder="e.g. 4528"
-                      value={maintHourMeter}
-                      onChange={(e) => setMaintHourMeter(e.target.value)}
-                      className="w-full p-3 bg-slate-50 border border-slate-300 rounded-2xl font-mono font-black text-amber-700 text-base focus:outline-hidden focus:border-amber-600 focus:bg-white"
-                    />
-                  </div>
-                </div>
-
-                {/* 6. Quantity (Hidden for Others) */}
-                {maintServiceType !== 'Others' && (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <label className="text-slate-700 w-36 font-mono">Quantity</label>
-                    <div className="flex-1 flex items-center gap-2">
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. 20"
-                        value={maintQuantity}
-                        onChange={(e) => setMaintQuantity(e.target.value)}
-                        className="w-full p-3 bg-slate-50 border border-slate-300 rounded-2xl font-bold text-slate-900 text-base focus:outline-hidden focus:border-amber-600 focus:bg-white font-mono"
-                      />
-                      <span className="px-3.5 py-3 bg-slate-100 border border-slate-300 rounded-2xl text-slate-800 font-black shrink-0 font-mono text-sm">
-                        {maintServiceType.includes('Oil') ? 'L' : 'Pcs'}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* 7. Remarks / Description Section */}
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                  <label className="text-slate-700 w-36 font-mono pt-2">
-                    Remarks {maintServiceType === 'Others' && '*'}
-                  </label>
-                  <div className="flex-1">
-                    <textarea
-                      rows={2}
-                      required={maintServiceType === 'Others'}
-                      placeholder={
-                        maintServiceType === 'Others'
-                          ? 'e.g. Bucket teeth replacement, electrical repair, pin Bushing work...'
-                          : 'Optional service notes or remarks...'
-                      }
-                      value={maintRemarks}
-                      onChange={(e) => setMaintRemarks(e.target.value)}
-                      className="w-full p-3 bg-slate-50 border border-slate-300 rounded-2xl font-bold text-slate-900 text-sm focus:outline-hidden focus:border-amber-600 focus:bg-white"
-                    />
-                  </div>
-                </div>
-
-                {/* 8. Cost */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <label className="text-slate-700 w-36 font-mono">Cost</label>
-                  <div className="flex-1 flex items-center gap-2">
-                    <span className="px-3.5 py-3 bg-slate-100 border border-slate-300 rounded-2xl text-amber-700 font-black shrink-0 font-mono text-sm">
-                      ₹
-                    </span>
-                    <input
-                      type="number"
-                      required
-                      placeholder="e.g. 8500"
-                      value={maintCost}
-                      onChange={(e) => setMaintCost(e.target.value)}
-                      className="w-full p-3 bg-slate-50 border border-slate-300 rounded-2xl font-mono font-bold text-slate-900 text-base focus:outline-hidden focus:border-amber-600 focus:bg-white"
-                    />
-                  </div>
-                </div>
-
-                {/* 9. Service Provider */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <label className="text-slate-700 w-36 font-mono">Service Provider</label>
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      placeholder="e.g. JCB Authorized Dealer / Garage"
-                      value={maintServiceProvider}
-                      onChange={(e) => setMaintServiceProvider(e.target.value)}
-                      className="w-full p-3 bg-slate-50 border border-slate-300 rounded-2xl font-bold text-slate-900 text-sm focus:outline-hidden focus:border-amber-600 focus:bg-white"
-                    />
-                  </div>
-                </div>
-
-                {/* 10. Invoice Upload */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <label className="text-slate-700 w-36 font-mono">Invoice</label>
-                  <div className="flex-1">
-                    <label className="w-full p-3 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-2xl font-black text-amber-700 text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all font-mono">
-                      <Upload className="w-4 h-4 text-amber-600" />
-                      <span>{maintInvoiceName ? `[ File: ${maintInvoiceName} ]` : '[ Upload ]'}</span>
-                      <input
-                        type="file"
-                        className="hidden"
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {/* JCB Select */}
+                    <div>
+                      <label className="block text-slate-700 font-mono mb-1">JCB Equipment *</label>
+                      <select
+                        value={maintJcbId}
                         onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            setMaintInvoiceName(e.target.files[0].name);
-                          }
+                          setMaintJcbId(e.target.value);
+                          const target = fleet.find(m => m.id === e.target.value);
+                          if (target) setMaintHourMeter(target.totalHours.toString());
                         }}
+                        className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-black text-amber-700 text-sm focus:outline-hidden focus:border-amber-600 cursor-pointer font-mono"
+                      >
+                        {fleet.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.code}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Service Date */}
+                    <div>
+                      <label className="block text-slate-700 font-mono mb-1">Service Date *</label>
+                      <input
+                        type="date"
+                        required
+                        value={maintServiceDate}
+                        onChange={(e) => setMaintServiceDate(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 text-sm focus:outline-hidden focus:border-amber-600"
                       />
-                    </label>
+                    </div>
+
+                    {/* Hour Meter */}
+                    <div>
+                      <label className="block text-slate-700 font-mono mb-1">Current Hour Meter (hrs) *</label>
+                      <input
+                        type="number"
+                        required
+                        placeholder="e.g. 4528"
+                        value={maintHourMeter}
+                        onChange={(e) => setMaintHourMeter(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-mono font-black text-amber-700 text-sm focus:outline-hidden focus:border-amber-600"
+                      />
+                    </div>
+
+                    {/* Service Provider */}
+                    <div>
+                      <label className="block text-slate-700 font-mono mb-1">Service Provider</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. JCB Dealer / Garage"
+                        value={maintServiceProvider}
+                        onChange={(e) => setMaintServiceProvider(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 text-sm focus:outline-hidden focus:border-amber-600"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                    {/* Invoice Upload */}
+                    <div>
+                      <label className="block text-slate-700 font-mono mb-1">Invoice Attachment</label>
+                      <label className="w-full p-2.5 bg-white hover:bg-slate-50 border border-slate-300 rounded-xl font-black text-amber-700 text-xs flex items-center justify-center gap-2 cursor-pointer transition-all font-mono">
+                        <Upload className="w-3.5 h-3.5 text-amber-600" />
+                        <span>{maintInvoiceName ? `[ ${maintInvoiceName} ]` : '[ Upload Invoice ]'}</span>
+                        <input
+                          type="file"
+                          className="hidden"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setMaintInvoiceName(e.target.files[0].name);
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+
+                    {/* General Remarks */}
+                    <div>
+                      <label className="block text-slate-700 font-mono mb-1">General Notes / Work Order #</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. WO-2026-981 / Scheduled service"
+                        value={maintGeneralRemarks}
+                        onChange={(e) => setMaintGeneralRemarks(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 text-sm focus:outline-hidden focus:border-amber-600"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* 11. Next Service Due */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
-                  <label className="text-slate-700 w-36 font-mono">Next Service Due</label>
-                  <div className="flex-1 p-3 bg-slate-100 border border-slate-200 rounded-2xl text-emerald-800 font-mono font-black text-sm text-center tracking-wide">
-                    [ Auto: {autoNextDue.toLocaleString()} hrs ]
+                {/* 2. Multiple Service Items Section */}
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <h4 className="text-xs font-mono font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Droplet className="w-4 h-4 text-amber-600" />
+                      2. Service Items Performed ({serviceItems.length})
+                    </h4>
+
+                    {/* Quick Package Presets */}
+                    <button
+                      type="button"
+                      onClick={applyFullServicePackage}
+                      className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs font-black rounded-lg cursor-pointer transition-all shadow-xs flex items-center gap-1 self-start sm:self-auto"
+                    >
+                      ⚡ Apply Full Service Package (3-in-1)
+                    </button>
+                  </div>
+
+                  {/* List of Service Item Cards */}
+                  <div className="space-y-3">
+                    {serviceItems.map((item, index) => {
+                      const interval = SERVICE_INTERVALS[item.serviceType] || 300;
+                      const nextDue = (Number(maintHourMeter) || 0) + interval;
+
+                      return (
+                        <div
+                          key={item.id || index}
+                          className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 relative group hover:border-amber-300 transition-all"
+                        >
+                          {/* Item Header */}
+                          <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="w-6 h-6 bg-amber-600 text-white rounded-full flex items-center justify-center font-mono text-xs font-black">
+                                #{index + 1}
+                              </span>
+                              <span className="font-mono font-black text-slate-800 text-sm">
+                                {item.serviceType}
+                              </span>
+                              <span className="text-[11px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                Next Due: {nextDue.toLocaleString()} hrs (+{interval}h)
+                              </span>
+                            </div>
+
+                            {serviceItems.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeServiceItem(index)}
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
+                                title="Remove this service item"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Item Inputs Row */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {/* Service Type */}
+                            <div>
+                              <label className="block text-slate-600 font-mono text-[11px] mb-1">Service Type *</label>
+                              <select
+                                value={item.serviceType}
+                                onChange={(e) => handleServiceTypeChangeInItem(index, e.target.value)}
+                                className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 text-xs focus:outline-hidden focus:border-amber-600 cursor-pointer font-mono"
+                              >
+                                <option value="Engine Oil">Engine Oil</option>
+                                <option value="Hydraulic Oil">Hydraulic Oil</option>
+                                <option value="Air Filter">Air Filter</option>
+                                <option value="Greasing">Greasing</option>
+                                <option value="Filter">Filter</option>
+                                <option value="Bearing Oil">Bearing Oil</option>
+                                <option value="Transmission Oil">Transmission Oil</option>
+                                <option value="Others">Others</option>
+                              </select>
+                            </div>
+
+                            {/* Quantity */}
+                            {item.serviceType !== 'Others' ? (
+                              <div>
+                                <label className="block text-slate-600 font-mono text-[11px] mb-1">Quantity *</label>
+                                <div className="flex items-center gap-1.5">
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder="e.g. 20"
+                                    value={item.quantity}
+                                    onChange={(e) => handleUpdateItemField(index, 'quantity', e.target.value)}
+                                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 text-xs focus:outline-hidden focus:border-amber-600"
+                                  />
+                                  <span className="px-2.5 py-2.5 bg-slate-200 border border-slate-300 rounded-xl text-slate-700 font-mono font-black text-xs shrink-0">
+                                    {item.serviceType.includes('Oil') ? 'L' : 'Pcs'}
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div>
+                                <label className="block text-slate-600 font-mono text-[11px] mb-1">Quantity</label>
+                                <input
+                                  type="text"
+                                  disabled
+                                  value="N/A"
+                                  className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl font-mono text-slate-400 text-xs"
+                                />
+                              </div>
+                            )}
+
+                            {/* Cost */}
+                            <div>
+                              <label className="block text-slate-600 font-mono text-[11px] mb-1">Cost (₹) *</label>
+                              <div className="flex items-center gap-1.5">
+                                <span className="px-2.5 py-2.5 bg-slate-200 border border-slate-300 rounded-xl text-amber-800 font-mono font-black text-xs shrink-0">
+                                  ₹
+                                </span>
+                                <input
+                                  type="number"
+                                  required
+                                  placeholder="e.g. 8500"
+                                  value={item.cost}
+                                  onChange={(e) => handleUpdateItemField(index, 'cost', e.target.value)}
+                                  className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 text-xs focus:outline-hidden focus:border-amber-600"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Oil Grade / Spec Row (Hidden for Others) */}
+                          {item.serviceType !== 'Others' && (
+                            <div>
+                              <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
+                                <label className="block text-slate-600 font-mono text-[11px]">Oil Grade / Spec *</label>
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  {['15W-40', 'Tellus 68', 'AP-3 Grease', '80W-90'].map((preset) => (
+                                    <button
+                                      key={preset}
+                                      type="button"
+                                      onClick={() => handleUpdateItemField(index, 'oilGrade', preset)}
+                                      className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-md cursor-pointer transition-all border ${
+                                        item.oilGrade === preset
+                                          ? 'bg-amber-600 text-white border-amber-600'
+                                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                                      }`}
+                                    >
+                                      + {preset}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              <input
+                                type="text"
+                                required
+                                placeholder="e.g. 15W-40 / Tellus 68 / AP-3 Grease"
+                                value={item.oilGrade}
+                                onChange={(e) => handleUpdateItemField(index, 'oilGrade', e.target.value)}
+                                className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-mono text-slate-900 text-xs focus:outline-hidden focus:border-amber-600"
+                              />
+                            </div>
+                          )}
+
+                          {/* Specific Item Remarks */}
+                          <div>
+                            <input
+                              type="text"
+                              required={item.serviceType === 'Others'}
+                              placeholder={
+                                item.serviceType === 'Others'
+                                  ? 'Describe work done (e.g., bucket pin bushing, hose replacement...)'
+                                  : 'Optional item specific notes...'
+                              }
+                              value={item.remarks}
+                              onChange={(e) => handleUpdateItemField(index, 'remarks', e.target.value)}
+                              className="w-full p-2 bg-white border border-slate-200 rounded-xl text-slate-900 text-xs focus:outline-hidden focus:border-amber-600 font-normal"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Add Service Buttons Toolbar */}
+                  <div className="pt-1 flex flex-wrap items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => addServiceItem('Engine Oil')}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-mono font-black text-xs rounded-xl cursor-pointer transition-all flex items-center gap-1.5 border border-slate-300"
+                    >
+                      <PlusCircle className="w-4 h-4 text-amber-600" />
+                      + Add Another Service Item
+                    </button>
+
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
+                      <span className="text-slate-500 font-bold">Quick Add:</span>
+                      <button
+                        type="button"
+                        onClick={() => addServiceItem('Engine Oil')}
+                        className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg cursor-pointer font-bold"
+                      >
+                        + Engine Oil
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => addServiceItem('Hydraulic Oil')}
+                        className="px-2.5 py-1 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-300 rounded-lg cursor-pointer font-bold"
+                      >
+                        + Hydraulic Oil
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => addServiceItem('Air Filter')}
+                        className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg cursor-pointer font-bold"
+                      >
+                        + Air Filter
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => addServiceItem('Greasing')}
+                        className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg cursor-pointer font-bold"
+                      >
+                        + Greasing
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Modal Buttons (Fixed inside Form Bottom) */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 font-mono shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAddMaintenanceOpen(false);
-                    if (onAddMaintenanceClosed) onAddMaintenanceClosed();
-                  }}
-                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs sm:text-sm rounded-2xl cursor-pointer transition-all"
-                >
-                  [Cancel]
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-black text-xs sm:text-sm rounded-2xl shadow-md shadow-amber-600/20 cursor-pointer transition-all"
-                >
-                  [Save]
-                </button>
+              {/* Modal Footer / Submit Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-slate-200 font-mono shrink-0">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-700 text-xs font-bold">
+                    Total Services: <span className="text-slate-900 font-black">{serviceItems.length} items</span>
+                  </div>
+                  <div className="px-3 py-1.5 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 text-xs font-black">
+                    Combined Cost: <span className="text-amber-700 font-black text-sm">{formatCurrency(totalServicesCost)}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddMaintenanceOpen(false);
+                      if (onAddMaintenanceClosed) onAddMaintenanceClosed();
+                    }}
+                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs sm:text-sm rounded-2xl cursor-pointer transition-all"
+                  >
+                    [Cancel]
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-black text-xs sm:text-sm rounded-2xl shadow-md shadow-amber-600/20 cursor-pointer transition-all flex items-center gap-2"
+                  >
+                    <Wrench className="w-4 h-4" />
+                    [Save {serviceItems.length} {serviceItems.length === 1 ? 'Service' : 'Services'}]
+                  </button>
+                </div>
               </div>
             </form>
           </div>

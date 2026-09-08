@@ -939,9 +939,10 @@ export const BusinessProvider = ({ children }) => {
     const staffObj = staff.find((s) => s.id === payoutData.staffId || s.name === payoutData.staffName);
     if (!staffObj) return;
 
-    const baseSalary = Number(payoutData.monthlySalary !== undefined ? payoutData.monthlySalary : staffObj.monthlySalary) || 0;
-    const advanceDeduction = Number(payoutData.monthlyDeduction !== undefined ? payoutData.monthlyDeduction : staffObj.monthlyDeduction) || 0;
-    const netSalaryPaid = Math.max(0, baseSalary - advanceDeduction);
+    const fullMonthlySalary = staffObj.monthlySalary || 0;
+    const salaryPaidNow = Number(payoutData.salaryPaidNow !== undefined ? payoutData.salaryPaidNow : payoutData.monthlySalary !== undefined ? payoutData.monthlySalary : fullMonthlySalary) || 0;
+    const advanceDeduction = Number(payoutData.monthlyDeduction !== undefined ? payoutData.monthlyDeduction : 0) || 0;
+    const netSalaryPaid = Math.max(0, salaryPaidNow - advanceDeduction);
     const bataAmount = Number(payoutData.bataAmount) || 0;
     const totalPayout = netSalaryPaid + bataAmount;
     const payDate = payoutData.date || new Date().toISOString().split('T')[0];
@@ -950,24 +951,63 @@ export const BusinessProvider = ({ children }) => {
     const updatedAdvanceRemaining = Math.max(0, (staffObj.advanceRemaining || 0) - advanceDeduction);
     updateStaff(staffObj.id, { advanceRemaining: updatedAdvanceRemaining });
 
+    const isPartial = payoutData.isPartialSalary !== undefined
+      ? payoutData.isPartialSalary
+      : (salaryPaidNow < (payoutData.remainingBeforePayout !== undefined ? payoutData.remainingBeforePayout : fullMonthlySalary));
+
+    const monthLabel = payoutData.salaryMonthLabel || payoutData.salaryMonth || '';
+
     // Record as business expense
     const expId = `EXP-${Math.floor(300 + Math.random() * 700)}`;
     const newExp = {
       id: expId,
       date: payDate,
       displayDate: formatDate(payDate),
-      category: 'Staff Salary / Bata',
+      category: isPartial ? 'Partial Salary' : 'Salary Payout',
       businessId: 'jcb',
       businessName: 'General / Fleet Operations',
-      description: `Salary & Bata Payout: ${staffObj.name} (${staffObj.role})`,
+      staffId: staffObj.id,
+      staffName: staffObj.name,
+      salaryMonth: payoutData.salaryMonth || '',
+      salaryMonthLabel: monthLabel,
+      salaryPaidNow: salaryPaidNow,
+      isPartialSalary: isPartial,
+      description: isPartial
+        ? `Mid-Month / Partial Salary: ${staffObj.name}${monthLabel ? ` (${monthLabel})` : ''}`
+        : `Salary & Bata Payout: ${staffObj.name}${monthLabel ? ` (${monthLabel})` : ''}`,
       amount: totalPayout,
       method: payoutData.paymentMethod || 'Cash',
-      notes: `Base Salary: ₹${baseSalary}, Advance Deducted: ₹${advanceDeduction}, Net Salary: ₹${netSalaryPaid}, Bata: ₹${bataAmount}. ${payoutData.notes || ''}`
+      notes: `${monthLabel ? `Month: ${monthLabel}. ` : ''}Base Paid: ₹${salaryPaidNow}, Advance Deducted: ₹${advanceDeduction}, Bata: ₹${bataAmount}. ${payoutData.notes || ''}`.trim()
     };
     setExpenses((prev) => [newExp, ...prev]);
     persist('expenses', newExp);
 
-    showToast(`Paid ₹${totalPayout.toLocaleString('en-IN')} to ${staffObj.name} (Advance balance: ₹${updatedAdvanceRemaining.toLocaleString('en-IN')})`);
+    showToast(`Paid ₹${totalPayout.toLocaleString('en-IN')} to ${staffObj.name} (${isPartial ? 'Mid-Month / Partial' : 'Salary Payout'})`);
+  };
+
+  const getStaffSalaryPaidForMonth = (staffId, salaryMonth) => {
+    if (!staffId || !salaryMonth) return 0;
+    const staffObj = staff.find((s) => s.id === staffId);
+    const staffName = staffObj?.name?.toLowerCase() || '';
+
+    return expenses
+      .filter((e) => {
+        const matchesStaff = (e.staffId && e.staffId === staffId) || (e.description && staffName && e.description.toLowerCase().includes(staffName));
+        if (!matchesStaff) return false;
+
+        const isSalary = e.category === 'Staff Salary / Bata' || e.category === 'Salary Payout' || e.category === 'Partial Salary' || e.category === 'Salary + Bata';
+        if (!isSalary) return false;
+
+        if (e.salaryMonth) {
+          return e.salaryMonth === salaryMonth;
+        }
+        if (e.notes && e.notes.toLowerCase().includes(salaryMonth.toLowerCase())) return true;
+        return false;
+      })
+      .reduce((sum, e) => {
+        const paidNow = e.salaryPaidNow !== undefined ? Number(e.salaryPaidNow) : (Number(e.amount) || 0);
+        return sum + paidNow;
+      }, 0);
   };
 
   const addStaffAdvance = (staffId, amount, notes = '') => {
@@ -990,9 +1030,11 @@ export const BusinessProvider = ({ children }) => {
       id: expId,
       date: todayStr,
       displayDate: formatDate(todayStr),
-      category: 'Staff Advance / Loan',
+      category: 'Advance Given',
       businessId: 'jcb',
       businessName: 'General / Fleet Operations',
+      staffId: staffObj.id,
+      staffName: staffObj.name,
       description: `Advance Loan Paid to Staff: ${staffObj.name} (${staffObj.role})`,
       amount: addAmt,
       method: 'Cash',
@@ -1012,7 +1054,7 @@ export const BusinessProvider = ({ children }) => {
     const nameLower = staffObj.name.toLowerCase();
 
     const staffExps = expenses.filter(
-      (e) => e.description && e.description.toLowerCase().includes(nameLower)
+      (e) => (e.staffId && e.staffId === staffObj.id) || (e.description && e.description.toLowerCase().includes(nameLower))
     );
 
     return staffExps.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -1059,6 +1101,7 @@ export const BusinessProvider = ({ children }) => {
         addStaffAdvance,
         getStaffById,
         getStaffLedger,
+        getStaffSalaryPaidForMonth,
         addSupplier,
         addSupplierPayment,
         addDieselLog,

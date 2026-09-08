@@ -496,6 +496,7 @@ export const initialJcbMonthlyHours = [
 ];
 
 export const initialDriverMonthlyReports = [
+  { driverName: 'Perumal', jcbVehicle: 'JCB-01 (TN-23-AX-1234)', monthlyHours: 140, workingDays: 24, month: 'August 2026' },
   { driverName: 'Kumar', jcbVehicle: 'JCB-01 (TN-23-AX-1234)', monthlyHours: 142, workingDays: 24, month: 'August 2026' },
   { driverName: 'Ravi', jcbVehicle: 'JCB-02 (TN-23-BY-5678)', monthlyHours: 156, workingDays: 26, month: 'August 2026' },
   { driverName: 'Murugan', jcbVehicle: 'JCB-01 (TN-23-AX-1234)', monthlyHours: 138, workingDays: 23, month: 'August 2026' },

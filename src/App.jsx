@@ -32,6 +32,8 @@ import Reports from './pages/Reports';
 import Ledger from './pages/Ledger';
 import Settings from './pages/Settings';
 import QuickExcelEntryPage from './pages/QuickExcelEntryPage';
+import StaffLedger from './pages/StaffLedger';
+import AddMaintenance from './pages/AddMaintenance';
 
 const AppContent = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -107,6 +109,9 @@ const AppContent = () => {
 
             <Route path="/settings" element={<Settings />} />
             <Route path="/excel-entry" element={<QuickExcelEntryPage />} />
+            <Route path="/staff/:id" element={<StaffLedger />} />
+            <Route path="/maintenance/add" element={<AddMaintenance />} />
+            <Route path="/business/jcb/maintenance/add" element={<AddMaintenance />} />
           </Routes>
         </main>
       </div>

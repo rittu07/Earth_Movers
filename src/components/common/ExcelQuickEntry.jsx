@@ -171,7 +171,35 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
     );
   };
 
-  const addTxRow = () => setTxRows((prev) => [...prev, createEmptyTxRow(initialBusId)]);
+  const addTxRow = () => {
+    setTxRows((prev) => {
+      const lastRow = prev.length > 0 ? prev[prev.length - 1] : null;
+      const busIdToUse = lastRow ? lastRow.businessId : initialBusId;
+      const newRow = createEmptyTxRow(busIdToUse);
+
+      if (lastRow) {
+        // Automatically keep/carry over customer selected from Line 1 / previous row
+        newRow.customerId = lastRow.customerId || '';
+        newRow.customerName = lastRow.customerName || '';
+        newRow.customerPhone = lastRow.customerPhone || '';
+        newRow.isNewCustomer = lastRow.isNewCustomer || false;
+
+        // Carry over date & business sector metadata
+        newRow.date = lastRow.date || getTodayString();
+        if (lastRow.businessId === 'water') {
+          newRow.waterSource = lastRow.waterSource || 'Own Borewell (Plant 1)';
+          newRow.deliveryPlace = lastRow.deliveryPlace || '';
+        } else if (lastRow.businessId === 'jcb') {
+          newRow.jcbVehicle = lastRow.jcbVehicle || 'JCB-01 (TN-23-AX-1234)';
+          newRow.driverName = lastRow.driverName || 'Driver Perumal';
+          newRow.driverPhone = lastRow.driverPhone || '9876543210';
+        }
+      }
+
+      return [...prev, newRow];
+    });
+  };
+
   const deleteTxRow = (id) => {
     if (txRows.length <= 1) {
       setTxRows([createEmptyTxRow(initialBusId)]);
