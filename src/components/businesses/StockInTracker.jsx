@@ -20,6 +20,7 @@ import {
   Mountain
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { loadSyncedCollection, saveSyncedCollection, saveSyncedEntity } from '../../db/syncedStorage';
 
 // Initial Mock Records tailored per business unit
 const getInitialStockRecords = (businessId) => {
@@ -183,25 +184,20 @@ const getInitialStockRecords = (businessId) => {
 };
 
 const StockInTracker = ({ businessId = 'bricks', businessName = 'Bricks Supply' }) => {
-  const storageKey = `${businessId}_stock_in_records`;
   const initialRecords = getInitialStockRecords(businessId);
-
-  const [stockRecords, setStockRecords] = useState(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      return saved ? JSON.parse(saved) : initialRecords;
-    } catch (e) {
-      return initialRecords;
-    }
-  });
+  const [stockRecords, setStockRecords] = useState(initialRecords);
+  const [storageReady, setStorageReady] = useState(false);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(stockRecords));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [stockRecords, storageKey]);
+    loadSyncedCollection('stockEntries', `${businessId}_stock_in_records`).then((saved) => {
+      if (saved.length) setStockRecords(saved.filter((record) => record.businessId === businessId));
+      setStorageReady(true);
+    }).catch(() => setStorageReady(true));
+  }, [businessId]);
+
+  useEffect(() => {
+    if (storageReady) saveSyncedCollection('stockEntries', 'stockEntry', stockRecords).catch(() => {});
+  }, [stockRecords, storageReady]);
 
   // Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -272,7 +268,8 @@ const StockInTracker = ({ businessId = 'bricks', businessName = 'Bricks Supply' 
     if (!quantity || !rate) return;
 
     const newRecord = {
-      id: `stk-${Date.now()}`,
+      id: `stk-${businessId}-${Date.now()}`,
+      businessId,
       date: entryDate,
       type: entryType,
       source: entryType === 'Production' ? 'Own Production' : 'Purchased',
@@ -301,6 +298,7 @@ const StockInTracker = ({ businessId = 'bricks', businessName = 'Bricks Supply' 
   const handleDeleteRecord = (id) => {
     if (window.confirm('Are you sure you want to remove this Stock In record?')) {
       setStockRecords(stockRecords.filter((r) => r.id !== id));
+      saveSyncedEntity('stockEntries', 'stockEntry', { id }, 'delete').catch(() => {});
     }
   };
 

@@ -153,7 +153,7 @@ export const BusinessProvider = ({ children }) => {
   // Delete Customer
   const deleteCustomer = (id) => {
     setCustomers((prev) => prev.filter((c) => c.id !== id));
-    persist('customers', { id, deletedAt: new Date().toISOString() }, 'update');
+    persist('customers', { id, deletedAt: new Date().toISOString() }, 'delete');
     showToast('Customer deleted successfully!');
   };
 
@@ -389,7 +389,7 @@ export const BusinessProvider = ({ children }) => {
   const deleteTransaction = (id) => {
     setTransactions((prevTrxs) => {
       const nextTrxs = prevTrxs.filter((t) => t.id !== id);
-      persist('transactions', { id, deletedAt: new Date().toISOString() }, 'update');
+      persist('transactions', { id, deletedAt: new Date().toISOString() }, 'delete');
 
       setPayments((currentPays) => {
         updateCustomerMetricsFromLists(nextTrxs, currentPays);
@@ -480,7 +480,7 @@ export const BusinessProvider = ({ children }) => {
   const deletePayment = (id) => {
     setPayments((prevPays) => {
       const nextPays = prevPays.filter((p) => p.id !== id);
-      persist('payments', { id, deletedAt: new Date().toISOString() }, 'update');
+      persist('payments', { id, deletedAt: new Date().toISOString() }, 'delete');
 
       setTransactions((currentTrxs) => {
         updateCustomerMetricsFromLists(currentTrxs, nextPays);
@@ -548,7 +548,7 @@ export const BusinessProvider = ({ children }) => {
   // Delete Expense
   const deleteExpense = (id) => {
     setExpenses((prev) => prev.filter((e) => e.id !== id));
-    persist('expenses', { id, deletedAt: new Date().toISOString() }, 'update');
+    persist('expenses', { id, deletedAt: new Date().toISOString() }, 'delete');
     showToast(`Expense record deleted successfully!`);
   };
 
@@ -931,7 +931,7 @@ export const BusinessProvider = ({ children }) => {
 
   const deleteStaff = (id) => {
     setStaff((prev) => prev.filter((s) => s.id !== id));
-    persist('staff', { id, deletedAt: new Date().toISOString() }, 'update');
+    persist('staff', { id, deletedAt: new Date().toISOString() }, 'delete');
     showToast('Staff member removed.');
   };
 

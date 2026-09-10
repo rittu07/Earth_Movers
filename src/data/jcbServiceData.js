@@ -20,6 +20,8 @@ export const DEFAULT_OIL_GRADES = {
   'Others': 'N/A'
 };
 
+import { saveSyncedCollection } from '../db/syncedStorage';
+
 export const initialFleetData = [
   {
     id: 'jcb-1',
@@ -173,35 +175,17 @@ export const initialMaintenanceRecords = [
 ];
 
 export const getStoredFleet = () => {
-  try {
-    const saved = localStorage.getItem('jcb_fleet_data');
-    return saved ? JSON.parse(saved) : initialFleetData;
-  } catch (e) {
-    return initialFleetData;
-  }
+  return initialFleetData;
 };
 
 export const saveStoredFleet = (fleet) => {
-  try {
-    localStorage.setItem('jcb_fleet_data', JSON.stringify(fleet));
-  } catch (e) {
-    console.error(e);
-  }
+  return saveSyncedCollection('jcbFleet', 'jcbFleet', fleet);
 };
 
 export const getStoredMaintenanceRecords = () => {
-  try {
-    const saved = localStorage.getItem('jcb_maintenance_records');
-    return saved ? JSON.parse(saved) : initialMaintenanceRecords;
-  } catch (e) {
-    return initialMaintenanceRecords;
-  }
+  return initialMaintenanceRecords;
 };
 
 export const saveStoredMaintenanceRecords = (records) => {
-  try {
-    localStorage.setItem('jcb_maintenance_records', JSON.stringify(records));
-  } catch (e) {
-    console.error(e);
-  }
+  return saveSyncedCollection('maintenanceRecords', 'maintenanceRecord', records);
 };

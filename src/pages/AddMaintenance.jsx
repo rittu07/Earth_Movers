@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
@@ -23,6 +23,7 @@ import {
   getStoredMaintenanceRecords,
   saveStoredMaintenanceRecords
 } from '../data/jcbServiceData';
+import { loadSyncedCollection } from '../db/syncedStorage';
 
 const formatDisplayDate = (dateStr) => {
   if (!dateStr) return '';
@@ -41,6 +42,16 @@ const AddMaintenance = () => {
 
   const [fleet, setFleet] = useState(getStoredFleet);
   const [maintenanceRecords, setMaintenanceRecords] = useState(getStoredMaintenanceRecords);
+
+  useEffect(() => {
+    Promise.all([
+      loadSyncedCollection('jcbFleet', 'jcb_fleet_data'),
+      loadSyncedCollection('maintenanceRecords', 'jcb_maintenance_records')
+    ]).then(([savedFleet, savedRecords]) => {
+      if (savedFleet.length) setFleet(savedFleet);
+      if (savedRecords.length) setMaintenanceRecords(savedRecords);
+    }).catch(() => {});
+  }, []);
 
   const preselectedJcb = searchParams.get('machine') || 'jcb-1';
   const preselectedType = searchParams.get('type') || 'Engine Oil';

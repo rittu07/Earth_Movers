@@ -1,6 +1,7 @@
 import { getAllLocal, getMeta, putLocal, deleteLocal } from './localDb';
 
-const API_URL = import.meta.env.VITE_API_URL || '';
+// The deployed Worker serves both the SPA and API, so production sync works without a build-time URL.
+const API_URL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 const API_TOKEN = import.meta.env.VITE_API_TOKEN || '';
 const CLIENT_ID_KEY = 'earth-movers-client-id';
 
@@ -61,7 +62,11 @@ const storeForEntity = {
   dieselLog: 'dieselLogs',
   supplier: 'suppliers',
   financeLoan: 'financeLoans',
-  staff: 'staff'
+  staff: 'staff',
+  jcbFleet: 'jcbFleet',
+  maintenanceRecord: 'maintenanceRecords',
+  jcbDocument: 'jcbDocuments',
+  stockEntry: 'stockEntries'
 };
 
 const pullRemoteChanges = async () => {

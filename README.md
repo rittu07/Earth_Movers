@@ -77,8 +77,9 @@ A full-stack offline-first business ledger application for rural transport opera
 ┌─────────────────────────────────────────────────┐
 │              Cloudflare D1 (SQLite)               │
 │  customers, transactions, payments, expenses,     │
-│  diesel_logs, suppliers, finance_loans,            │
-│  sync_events                                       │
+│  diesel_logs, suppliers, finance_loans, staff,     │
+│  jcb_fleet, maintenance_records, jcb_documents,    │
+│  stock_entries, sync_events                         │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -144,7 +145,7 @@ not_found_handling = "single-page-application"  # SPA fallback
 
 ### How It Works
 
-1. **Local Write** — Every create/update/delete writes to IndexedDB immediately and queues a sync event
+1. **Local Write** — Every create/update/delete writes to IndexedDB immediately and queues a sync event. Existing operational browser data is migrated once into IndexedDB before it is synced.
 2. **Push** — `flushSyncQueue()` sends all pending events to `POST /api/sync`
 3. **Pull** — `pullRemoteChanges()` fetches events from other clients via `GET /api/sync?since=<cursor>`
 4. **Dedup** — Each event has a unique `event_id`; D1 uses `ON CONFLICT DO NOTHING` on the `sync_events` table
@@ -205,6 +206,49 @@ CREATE TABLE sync_events (
 | due_amount | REAL | Remaining balance |
 | payment_history | TEXT | JSON array of repayments |
 | status | TEXT | Active / Settled |
+
+### Staff
+| Column | Type | Description |
+|--------|------|-------------|
+| id | TEXT | Primary key (`staff-{timestamp}`) |
+| payload | TEXT | Full staff record JSON, including role, salary, bata, advances, and status |
+| created_at, updated_at | TEXT | ISO 8601 timestamps |
+
+### JCB Fleet
+| Column | Type | Description |
+|--------|------|-------------|
+| id | TEXT | Primary key (`jcb-*`) |
+| payload | TEXT | Full vehicle record JSON, including registration, meter readings, service intervals, and history |
+| created_at, updated_at | TEXT | ISO 8601 timestamps |
+
+### Maintenance Records
+| Column | Type | Description |
+|--------|------|-------------|
+| id | TEXT | Primary key (`maint-*`) |
+| payload | TEXT | Full maintenance record JSON, including service type, meter, invoice name, provider, cost, due meter, and notes |
+| created_at, updated_at | TEXT | ISO 8601 timestamps |
+
+### JCB Documents
+| Column | Type | Description |
+|--------|------|-------------|
+| id | TEXT | Vehicle primary key (`jcb-*`) |
+| payload | TEXT | Vehicle document registry JSON, including insurance, permits, RC, warranty, expiry dates, and attachment names |
+| created_at, updated_at | TEXT | ISO 8601 timestamps |
+
+### Stock Entries
+| Column | Type | Description |
+|--------|------|-------------|
+| id | TEXT | Primary key (`stk-{business}-{timestamp}`) |
+| payload | TEXT | Stock-in JSON, including business, source, material, quantity, rate, vehicle, quality, damage quantity, and cost |
+| created_at, updated_at | TEXT | ISO 8601 timestamps |
+
+### Schema Migrations
+
+| Migration | Purpose |
+|-----------|---------|
+| `0001_initial.sql` | Core ledger, customers, transactions, payments, expenses, diesel, suppliers, finance, and sync events |
+| `0002_add_payment_history.sql` | Finance-loan repayment history |
+| `0003_add_operational_data.sql` | Staff, fleet, maintenance, document registry, and stock-in tables |
 
 ---
 
@@ -282,6 +326,7 @@ Earth_Movers/
 │   ├── db/
 │   │   ├── localDb.js                     # IndexedDB wrapper
 │   │   └── syncQueue.js                   # Sync queue + push/pull logic
+│   │   └── syncedStorage.js                # Operational data persistence + legacy migration
 │   ├── pages/                             # All page components
 │   ├── utils/
 │   │   ├── calculations.js                # Report data, date ranges, metrics
@@ -293,6 +338,7 @@ Earth_Movers/
 │   ├── migrations/
 │   │   ├── 0001_initial.sql               # Core schema
 │   │   └── 0002_add_payment_history.sql   # Finance loan payment history
+│   │   └── 0003_add_operational_data.sql  # Operational data schema
 │   └── package.json
 ├── .env.example                           # Environment template
 ├── package.json                           # Scripts + dependencies
@@ -305,13 +351,18 @@ Earth_Movers/
 
 ### Backend & Sync
 - Created Hono Worker API with `POST /api/sync`, `GET /api/sync`, and entity read endpoints
-- Created D1 schema with all tables (customers, transactions, payments, expenses, diesel_logs, suppliers, finance_loans, sync_events)
+- Created D1 schema with all tables (customers, transactions, payments, expenses, diesel_logs, suppliers, finance_loans, staff, jcb_fleet, maintenance_records, jcb_documents, stock_entries, sync_events)
 - Worker serves both frontend (via ASSETS binding) and API from the same URL
 - Fixed transaction SQL placeholder count mismatch (35 to 34)
 - Fixed Worker D1 upsert from `DO NOTHING` to `DO UPDATE SET` — updates now persist
 - Added `DELETE` support for entity removals
 - Added `payment_history` column to finance_loans (migration 0002)
 - Worker serializes `paymentHistory` as JSON for D1 storage
+- Added migration `0003_add_operational_data.sql` for staff, JCB fleet, maintenance records, vehicle documents, and stock entries
+- Added Worker sync and read support for all operational entities
+- Corrected create/update/delete event handling so deleted entities are removed from D1
+- Operational modules now persist through IndexedDB and the Cloudflare sync queue instead of direct `localStorage` writes
+- Deployed applications use their Worker origin as the default API URL, so synchronization works without a production `.env` file
 
 ### Offline-First & Sync
 - Created IndexedDB local storage layer (`localDb.js`) and sync queue (`syncQueue.js`)

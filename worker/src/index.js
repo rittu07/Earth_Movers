@@ -25,8 +25,15 @@ const tableFor = {
   expense: 'expenses',
   dieselLog: 'diesel_logs',
   supplier: 'suppliers',
-  financeLoan: 'finance_loans'
+  financeLoan: 'finance_loans',
+  staff: 'staff',
+  jcbFleet: 'jcb_fleet',
+  maintenanceRecord: 'maintenance_records',
+  jcbDocument: 'jcb_documents',
+  stockEntry: 'stock_entries'
 };
+
+const jsonEntityTypes = new Set(['staff', 'jcbFleet', 'maintenanceRecord', 'jcbDocument', 'stockEntry']);
 
 function entityStatement(event, receivedAt) {
   const data = event.payload;
@@ -38,6 +45,13 @@ function entityStatement(event, receivedAt) {
   }
 
   if (event.operation !== 'create' && event.operation !== 'update') return null;
+
+  if (jsonEntityTypes.has(event.entityType)) {
+    return {
+      sql: `INSERT INTO ${table} (id,payload,created_at,updated_at) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at`,
+      bindings: [event.entityId, JSON.stringify(data), value(data, 'createdAt', receivedAt), receivedAt]
+    };
+  }
 
   if (event.entityType === 'customer') {
     return {
@@ -112,7 +126,12 @@ app.get('/api/sync', async (c) => {
 });
 
 for (const [path, table] of Object.entries(tableFor)) {
-  app.get(`/api/${path === 'dieselLog' ? 'diesel-logs' : path.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}s`, async (c) => {
+  const endpoint = path === 'dieselLog'
+    ? 'diesel-logs'
+    : path === 'staff'
+      ? 'staff'
+      : `${path.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}s`;
+  app.get(`/api/${endpoint}`, async (c) => {
     const result = await c.env.DB.prepare(`SELECT * FROM ${table} ORDER BY rowid DESC LIMIT 500`).all();
     return c.json({ data: result.results || [] });
   });

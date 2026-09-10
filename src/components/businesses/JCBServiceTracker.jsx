@@ -33,6 +33,7 @@ import {
   getStoredMaintenanceRecords,
   saveStoredMaintenanceRecords
 } from '../../data/jcbServiceData';
+import { loadSyncedCollection } from '../../db/syncedStorage';
 
 const initialFleetData = [
   {
@@ -225,14 +226,26 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
 
   // Maintenance records state
   const [maintenanceRecords, setMaintenanceRecords] = useState(getStoredMaintenanceRecords);
+  const [storageReady, setStorageReady] = useState(false);
 
   useEffect(() => {
-    saveStoredMaintenanceRecords(maintenanceRecords);
-  }, [maintenanceRecords]);
+    Promise.all([
+      loadSyncedCollection('jcbFleet', 'jcb_fleet_data'),
+      loadSyncedCollection('maintenanceRecords', 'jcb_maintenance_records')
+    ]).then(([savedFleet, savedRecords]) => {
+      if (savedFleet.length) setFleet(savedFleet);
+      if (savedRecords.length) setMaintenanceRecords(savedRecords);
+      setStorageReady(true);
+    }).catch(() => setStorageReady(true));
+  }, []);
 
   useEffect(() => {
-    saveStoredFleet(fleet);
-  }, [fleet]);
+    if (storageReady) saveStoredMaintenanceRecords(maintenanceRecords).catch(() => {});
+  }, [maintenanceRecords, storageReady]);
+
+  useEffect(() => {
+    if (storageReady) saveStoredFleet(fleet).catch(() => {});
+  }, [fleet, storageReady]);
 
   const [isAddJcbOpen, setIsAddJcbOpen] = useState(false);
   const [isMeterUpdateOpen, setIsMeterUpdateOpen] = useState(false);

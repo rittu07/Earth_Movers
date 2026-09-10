@@ -20,6 +20,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { formatJCBOverdueWhatsApp, openWhatsAppChat } from '../../utils/whatsapp';
+import { loadSyncedCollection, saveSyncedCollection } from '../../db/syncedStorage';
 
 const initialJcbVehiclesData = [
   {
@@ -235,24 +236,21 @@ const formatDisplayDate = (dateStr) => {
 };
 
 const JCBDocumentTracker = () => {
-  const [vehicles, setVehicles] = useState(() => {
-    try {
-      const saved = localStorage.getItem('jcb_vehicle_documents_data');
-      return saved ? JSON.parse(saved) : initialJcbVehiclesData;
-    } catch (e) {
-      return initialJcbVehiclesData;
-    }
-  });
+  const [vehicles, setVehicles] = useState(initialJcbVehiclesData);
+  const [storageReady, setStorageReady] = useState(false);
 
   const [selectedJcbId, setSelectedJcbId] = useState('jcb-1');
 
   useEffect(() => {
-    try {
-      localStorage.setItem('jcb_vehicle_documents_data', JSON.stringify(vehicles));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [vehicles]);
+    loadSyncedCollection('jcbDocuments', 'jcb_vehicle_documents_data').then((saved) => {
+      if (saved.length) setVehicles(saved);
+      setStorageReady(true);
+    }).catch(() => setStorageReady(true));
+  }, []);
+
+  useEffect(() => {
+    if (storageReady) saveSyncedCollection('jcbDocuments', 'jcbDocument', vehicles).catch(() => {});
+  }, [vehicles, storageReady]);
 
   const selectedVehicle = vehicles.find((v) => v.id === selectedJcbId) || vehicles[0];
 

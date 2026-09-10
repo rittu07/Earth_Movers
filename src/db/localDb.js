@@ -1,5 +1,5 @@
 const DB_NAME = 'earth-movers-local';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE_NAMES = [
   'customers',
   'transactions',
@@ -9,6 +9,10 @@ const STORE_NAMES = [
   'suppliers',
   'financeLoans',
   'staff',
+  'jcbFleet',
+  'maintenanceRecords',
+  'jcbDocuments',
+  'stockEntries',
   'syncQueue',
   'meta'
 ];
@@ -20,7 +24,6 @@ const openDb = () => new Promise((resolve, reject) => {
       if (!request.result.objectStoreNames.contains(name)) {
         request.result.createObjectStore(name, { keyPath: 'id' });
       }
-      request.transaction.objectStore(name).clear();
     });
   };
   request.onsuccess = () => resolve(request.result);
