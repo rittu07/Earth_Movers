@@ -84,9 +84,11 @@ function entityStatement(event, receivedAt) {
     if (key === 'paymentHistory') return JSON.stringify(data[key] || []);
     return data[key] ?? (['amount','quantity','pricePerLitre','totalCost','hourMeterReading','defaultCostPerBrick','principal','interestRate','months','monthlyInterest','totalInterest','totalAmount','returnedAmount','dueAmount'].includes(key) ? 0 : '');
   });
-  const allColumns = ['id', ...columns, 'created_at'];
-  const updateClauses = columns.map((col) => `${col}=excluded.${col}`).join(',');
-  return { sql: `INSERT INTO ${table} (${allColumns.join(',')}) VALUES (${allColumns.map(() => '?').join(',')}) ON CONFLICT(id) DO UPDATE SET ${updateClauses}`, bindings: [event.entityId, ...bindings, value(data, 'createdAt', receivedAt)] };
+  const hasUpdatedAt = event.entityType === 'supplier' || event.entityType === 'financeLoan';
+  const allColumns = ['id', ...columns, 'created_at', ...(hasUpdatedAt ? ['updated_at'] : [])];
+  const updateClauses = [...columns, ...(hasUpdatedAt ? ['updated_at'] : [])].map((col) => `${col}=excluded.${col}`).join(',');
+  const timestamps = [value(data, 'createdAt', receivedAt), ...(hasUpdatedAt ? [receivedAt] : [])];
+  return { sql: `INSERT INTO ${table} (${allColumns.join(',')}) VALUES (${allColumns.map(() => '?').join(',')}) ON CONFLICT(id) DO UPDATE SET ${updateClauses}`, bindings: [event.entityId, ...bindings, ...timestamps] };
 }
 
 app.post('/api/sync', async (c) => {
