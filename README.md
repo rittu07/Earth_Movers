@@ -38,6 +38,11 @@ A full-stack offline-first business ledger application for rural transport opera
 - **Reconnect Sync** — Syncs automatically when browser comes back online
 - **Conflict-Free** — Append-only event log with idempotent upserts (event_id dedup)
 
+### Operational Records
+- **Stock In** — Bricks, Sand, and Jalli stock-in records are saved to IndexedDB and synced to D1 `stock_entries` when the Stock In form is submitted
+- **JCB Operations** — Fleet, maintenance, document, diesel, and driving-hours records use the same local-first sync path
+- **Driving Hours** — Driver hours are stored locally and remotely in `driving_hours` for monthly summaries and Bata calculations
+
 ---
 
 ## Architecture
@@ -79,7 +84,7 @@ A full-stack offline-first business ledger application for rural transport opera
 │  customers, transactions, payments, expenses,     │
 │  diesel_logs, suppliers, finance_loans, staff,     │
 │  jcb_fleet, maintenance_records, jcb_documents,    │
-│  stock_entries, sync_events                         │
+│  stock_entries, driving_hours, sync_events          │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -117,9 +122,10 @@ A full-stack offline-first business ledger application for rural transport opera
 ### How Deployment Works
 
 1. `npm run build` — Vite builds the React app into `dist/`
-2. `npm run worker:deploy` — Wrangler uploads the Worker code from `worker/src/index.js` AND the `dist/` folder as static assets
-3. The Worker serves both the API (`/api/*`) and the React SPA (everything else) from the same URL
-4. The `ASSETS` binding in `wrangler.toml` tells Cloudflare to serve files from `dist/` as static assets
+2. `npm run db:migrate:remote` — Apply pending D1 migrations
+3. `npm run worker:deploy` — Wrangler uploads the Worker code from `worker/src/index.js` and the `dist/` folder as static assets
+4. The Worker serves both the API (`/api/*`) and the React SPA (everything else) from the same URL
+5. The `ASSETS` binding in `wrangler.toml` tells Cloudflare to serve files from `dist/` as static assets
 
 ### wrangler.toml Explained
 
@@ -249,6 +255,8 @@ CREATE TABLE sync_events (
 | `0001_initial.sql` | Core ledger, customers, transactions, payments, expenses, diesel, suppliers, finance, and sync events |
 | `0002_add_payment_history.sql` | Finance-loan repayment history |
 | `0003_add_operational_data.sql` | Staff, fleet, maintenance, document registry, and stock-in tables |
+| `0004_add_auth.sql` | Owner/manager users and hashed session storage |
+| `0005_add_driving_hours.sql` | Persistent driver driving-hours records |
 
 ---
 
@@ -290,6 +298,16 @@ cp .env.example .env
 npm run build
 npm run worker:deploy
 ```
+
+### Worker Secrets
+
+Store the setup key as a Wrangler secret. Never commit it or place it in frontend environment variables:
+
+```bash
+npx wrangler secret put AUTH_SETUP_KEY --config worker/wrangler.toml
+```
+
+`VITE_API_TOKEN` is not a confidential secret because frontend build variables are visible in browser JavaScript. Authentication is enforced by the Worker session token and role checks.
 
 ### Subsequent Deployments
 
@@ -339,6 +357,8 @@ Earth_Movers/
 │   │   ├── 0001_initial.sql               # Core schema
 │   │   └── 0002_add_payment_history.sql   # Finance loan payment history
 │   │   └── 0003_add_operational_data.sql  # Operational data schema
+│   │   └── 0004_add_auth.sql               # Authentication schema
+│   │   └── 0005_add_driving_hours.sql      # Driving-hours schema
 │   └── package.json
 ├── .env.example                           # Environment template
 ├── package.json                           # Scripts + dependencies
@@ -351,7 +371,7 @@ Earth_Movers/
 
 ### Backend & Sync
 - Created Hono Worker API with `POST /api/sync`, `GET /api/sync`, and entity read endpoints
-- Created D1 schema with all tables (customers, transactions, payments, expenses, diesel_logs, suppliers, finance_loans, staff, jcb_fleet, maintenance_records, jcb_documents, stock_entries, sync_events)
+- Created D1 schema with all tables (customers, transactions, payments, expenses, diesel_logs, suppliers, finance_loans, staff, driving_hours, jcb_fleet, maintenance_records, jcb_documents, stock_entries, sync_events)
 - Worker serves both frontend (via ASSETS binding) and API from the same URL
 - Fixed transaction SQL placeholder count mismatch (35 to 34)
 - Fixed Worker D1 upsert from `DO NOTHING` to `DO UPDATE SET` — updates now persist
@@ -359,9 +379,11 @@ Earth_Movers/
 - Added `payment_history` column to finance_loans (migration 0002)
 - Worker serializes `paymentHistory` as JSON for D1 storage
 - Added migration `0003_add_operational_data.sql` for staff, JCB fleet, maintenance records, vehicle documents, and stock entries
+- Added migrations `0004_add_auth.sql` and `0005_add_driving_hours.sql` for server authentication and persistent driver-hours records
 - Added Worker sync and read support for all operational entities
 - Corrected create/update/delete event handling so deleted entities are removed from D1
 - Operational modules now persist through IndexedDB and the Cloudflare sync queue instead of direct `localStorage` writes
+- Stock In forms for Bricks, Sand, and Jalli persist each submitted record directly to IndexedDB and D1; deletes are synchronized as well
 - Deployed applications use their Worker origin as the default API URL, so synchronization works without a production `.env` file
 
 ### Offline-First & Sync
@@ -371,6 +393,7 @@ Earth_Movers/
 - Added mobile sync: `visibilitychange`, `focus`, `pageshow` event listeners for background-to-foreground sync
 - Added 15-second throttle on sync to prevent rapid-fire requests
 - Immediate sync after every save; reconnect sync on `online` event
+- Pending sync events are bound to the authenticated account and local business data is cleared on logout
 
 ### Finance Loan Module
 - Full-screen "Give New Loan" form (replaces modal)
@@ -394,3 +417,50 @@ Earth_Movers/
 - `calculateSummaryMetrics()` — total income, expenses, outstanding across all transactions
 - Reports page, BusinessPerformance donut, RevenueChart all use real data
 - Dashboard overview metrics calculated from actual synced data
+
+## Authentication
+
+The app uses the Cloudflare Worker and D1 for server-side authentication. Passwords are PBKDF2-hashed with per-user salts in the Worker; plaintext passwords are never stored. Login returns a random bearer session token; only its SHA-256 hash is stored in D1. Sessions expire after 12 hours.
+
+Roles:
+
+- **Owner** — Full access, including Finance Loan records.
+- **Manager** — Operational access without Finance Loan access.
+
+Authorization is enforced by the Worker. Frontend route restrictions are only a UI convenience and are not the security boundary.
+
+On logout, the browser session, IndexedDB business data, and pending sync queue are cleared to prevent account data from carrying over to another login.
+
+### First-Time Authentication Setup
+
+After applying migrations, configure a one-time setup secret and create the two accounts:
+
+```bash
+npx wrangler secret put AUTH_SETUP_KEY --config worker/wrangler.toml
+curl -X POST https://earth-movers-api.loga.workers.dev/api/auth/setup \
+  -H "Content-Type: application/json" \
+  -H "X-Setup-Key: YOUR_SETUP_KEY" \
+  -d '{"owner":{"username":"owner","password":"CHANGE_THIS_OWNER_PASSWORD"},"manager":{"username":"manager","password":"CHANGE_THIS_MANAGER_PASSWORD"}}'
+```
+
+Use passwords of at least 8 characters. The setup endpoint permanently disables itself after the first two accounts are created. Never put real passwords in shell history, source files, or README documentation.
+
+## Security Controls
+
+- Exact-origin CORS using `ALLOWED_ORIGIN`; unknown browser origins are rejected.
+- Security response headers including CSP, HSTS, frame protection, referrer policy, and content-type protection.
+- Server-side role checks for Finance and sync writes.
+- Request and sync-event size limits.
+- Account-bound pending sync events.
+- Parameterized D1 queries and a static entity-to-table allowlist.
+- Expired sessions are removed during successful login.
+
+## Verification Commands
+
+```bash
+npm run lint
+npm run build
+npm run db:migrate:remote
+npm run worker:deploy
+curl -fsS https://earth-movers-api.loga.workers.dev/health
+```
