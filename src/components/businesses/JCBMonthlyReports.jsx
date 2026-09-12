@@ -5,14 +5,14 @@ import { formatCurrency } from '../../utils/formatCurrency';
 
 const JCBMonthlyReports = () => {
   const { jcbMonthlyHours = [], driverMonthlyReports = [], jcbVehicles = [] } = useBusiness();
-  const [selectedJcb, setSelectedJcb] = useState('JCB-01');
+  const [selectedJcb, setSelectedJcb] = useState('JCB 1');
   const [selectedMonth, setSelectedMonth] = useState('August 2026');
 
   // Filter selected machine monthly hours
   const currentMachineData = jcbMonthlyHours.find(
     (item) => item.vehicle?.split(' ')[0] === selectedJcb || item.shortName === selectedJcb
   ) || jcbMonthlyHours[0] || {
-    shortName: 'JCB-01',
+    shortName: 'JCB 1',
     january: 145,
     february: 132,
     march: 168,
@@ -106,7 +106,7 @@ const JCBMonthlyReports = () => {
             <div className="flex items-center justify-between pb-2 border-b border-amber-200">
               <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-amber-600" />
-                {currentMachineData.shortName || 'JCB-01'} Monthly Log
+                {currentMachineData.shortName || 'JCB 1'} Monthly Log
               </h4>
               <span className="text-[11px] font-bold text-amber-800 bg-amber-200/60 px-2.5 py-0.5 rounded-full">
                 2026 Year

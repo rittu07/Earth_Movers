@@ -88,7 +88,7 @@ const JCBDieselSummary = ({ onOpenAddDieselModal }) => {
             {formatCurrency(todayDieselCost || 3800)}
           </p>
           <span className="text-[11px] text-slate-500 font-medium mt-1 block">
-            JCB-01 Refill: 40 Litres @ ₹95/L
+            JCB 1 Refill: 40 Litres @ ₹95/L
           </span>
           <div className="absolute right-4 top-4 text-rose-100">
             <Fuel className="w-10 h-10" />
@@ -200,10 +200,10 @@ const JCBDieselSummary = ({ onOpenAddDieselModal }) => {
               className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
             >
               <option value="All">All Machines</option>
-              <option value="JCB-01">JCB-01</option>
-              <option value="JCB-02">JCB-02</option>
-              <option value="JCB-03">JCB-03</option>
-              <option value="JCB-04">JCB-04</option>
+              <option value="JCB 1">JCB 1</option>
+              <option value="JCB 2">JCB 2</option>
+              <option value="JCB 3">JCB 3</option>
+              <option value="JCB 4">JCB 4</option>
             </select>
           </div>
         </div>

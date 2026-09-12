@@ -443,7 +443,7 @@ const CustomerLedger = () => {
                         {item.isOutsourced && (
                           <div className="flex items-center justify-between text-orange-950 font-semibold bg-orange-50 p-1.5 rounded-lg border border-orange-200">
                              <span>Outsourced from: {getOutsourcedSupplierName(item)}</span>
-                            {Number(item.outsourcedDue) > 0 && <span className="text-rose-700 font-bold">Due: ₹{item.outsourcedDue}</span>}
+                             {Number(item.outsourcedDue) > 0 && <span className="text-amber-700 font-bold">Due: ₹{item.outsourcedDue}</span>}
                           </div>
                         )}
                       </div>

@@ -108,7 +108,7 @@ const StaffTable = ({
                       <div className="bg-white p-2.5 rounded-xl border border-slate-200">
                         <span className="text-[9px] font-extrabold text-slate-400 uppercase block">Bata Rate</span>
                         <span className="text-xs font-black text-blue-900 block mt-0.5">
-                          {s.bataRate > 0 ? `₹${s.bataRate}/${s.bataUnit || 'hr'}` : 'No Bata'}
+                          ₹{Number(s.bataRate) || 0} / {s.bataUnit || 'hr'}
                         </span>
                       </div>
 
@@ -261,20 +261,16 @@ const StaffTable = ({
 
                     {/* Bata Rate */}
                     <td className="py-4 px-4 text-center font-bold text-sm whitespace-nowrap">
-                      {s.bataRate > 0 ? (
-                        <span className="px-2.5 py-1 bg-blue-50 text-blue-900 border border-blue-200 rounded-lg text-xs font-black">
-                          ₹{s.bataRate} / {s.bataUnit || 'hr'}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 font-semibold text-xs">No Bata</span>
-                      )}
+                      <span className="px-2.5 py-1 bg-blue-50 text-blue-900 border border-blue-200 rounded-lg text-xs font-black">
+                        ₹{Number(s.bataRate) || 0} / {s.bataUnit || 'hr'}
+                      </span>
                     </td>
 
                     {/* Total Income (Base + Bata) */}
                     <td className="py-4 px-4 text-right whitespace-nowrap">
                       {(() => {
                         const baseSalary = s.monthlySalary || 0;
-                        const bataEarnings = (s.totalBataHours || 0) * (s.bataRate || 0);
+                        const bataEarnings = (s.totalBataHours || 0) * (Number(s.bataRate) || 0);
                         const totalIncome = baseSalary + bataEarnings;
                         return (
                           <div>

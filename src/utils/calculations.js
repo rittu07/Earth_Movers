@@ -211,7 +211,9 @@ export const calculateReportData = (
 
 export const calculateBusinessMetrics = (transactions = [], payments = [], expenses = [], businessId) => {
   const businessTransactions = transactions.filter((item) => item.businessId === businessId);
-  const businessExpenses = expenses.filter((item) => item.businessId === businessId);
+  const businessExpenses = expenses.filter(
+    (item) => item.businessId === businessId || item.businessName?.toLowerCase().includes(businessId)
+  );
   const today = new Date().toISOString().split('T')[0];
   const month = today.slice(0, 7);
   const todayTransactions = businessTransactions.filter((item) => item.date === today);

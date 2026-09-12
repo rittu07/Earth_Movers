@@ -25,8 +25,8 @@ import { loadSyncedCollection, saveSyncedCollection } from '../../db/syncedStora
 const initialJcbVehiclesData = [
   {
     id: 'jcb-1',
-    code: 'JCB-01',
-    regNo: 'TN-23-AX-1234',
+    code: 'JCB 1',
+    regNo: '',
     model: 'JCB 3DX',
     serialNo: 'JCB3DX-2024-98421',
     totalHours: 4528,
@@ -36,7 +36,7 @@ const initialJcbVehiclesData = [
         type: 'Insurance',
         docNo: 'INS-987654321',
         expiryDate: '2026-10-15',
-        fileName: 'insurance_policy_tn23ax1234.pdf'
+        fileName: 'insurance_policy_jcb1.pdf'
       },
       {
         id: 'doc-1-2',
@@ -50,28 +50,28 @@ const initialJcbVehiclesData = [
         type: 'Fitness/Permit',
         docNo: 'FIT-2026-99',
         expiryDate: '2026-09-20',
-        fileName: 'fitness_permit_tn23ax1234.pdf'
+        fileName: 'fitness_permit_jcb1.pdf'
       },
       {
         id: 'doc-1-4',
         type: 'Registration Certificate',
-        docNo: 'RC-TN23AX1234',
+        docNo: 'RC-JCB1',
         expiryDate: 'Lifetime',
-        fileName: 'rc_tn23ax1234.pdf'
+        fileName: 'rc_jcb1.pdf'
       },
       {
         id: 'doc-1-5',
         type: 'Pollution Certificate',
         docNo: 'PUC-8821',
         expiryDate: '2026-12-10',
-        fileName: 'puc_certificate_tn23ax1234.pdf'
+        fileName: 'puc_certificate_jcb1.pdf'
       }
     ]
   },
   {
     id: 'jcb-2',
-    code: 'JCB-02',
-    regNo: 'TN-23-BY-5678',
+    code: 'JCB 2',
+    regNo: '',
     model: 'JCB 3DX Super',
     serialNo: 'JCB3DX-2024-98422',
     totalHours: 4400,
@@ -79,44 +79,44 @@ const initialJcbVehiclesData = [
       {
         id: 'doc-2-1',
         type: 'Registration Certificate',
-        docNo: 'RC-TN23BY5678',
+        docNo: 'RC-JCB2',
         expiryDate: 'Lifetime',
-        fileName: 'rc_tn23by5678.pdf'
+        fileName: 'rc_jcb2.pdf'
       },
       {
         id: 'doc-2-2',
         type: 'Insurance',
         docNo: 'INS-987654322',
         expiryDate: '2026-09-18',
-        fileName: 'insurance_policy_tn23by5678.pdf'
+        fileName: 'insurance_policy_jcb2.pdf'
       },
       {
         id: 'doc-2-3',
         type: 'Warranty',
         docNo: 'WAR-3DX-552',
         expiryDate: '2027-01-15',
-        fileName: 'warranty_tn23by5678.pdf'
+        fileName: 'warranty_jcb2.pdf'
       },
       {
         id: 'doc-2-4',
         type: 'Fitness/Permit',
         docNo: 'FIT-2026-100',
         expiryDate: '2026-10-30',
-        fileName: 'fitness_tn23by5678.pdf'
+        fileName: 'fitness_jcb2.pdf'
       },
       {
         id: 'doc-2-5',
         type: 'Pollution Certificate',
         docNo: 'PUC-8822',
         expiryDate: '2026-11-05',
-        fileName: 'puc_tn23by5678.pdf'
+        fileName: 'puc_jcb2.pdf'
       }
     ]
   },
   {
     id: 'jcb-3',
-    code: 'JCB-03',
-    regNo: 'TN-23-CZ-9012',
+    code: 'JCB 3',
+    regNo: '',
     model: 'JCB 3DX Eco',
     serialNo: 'JCB3DX-2023-77109',
     totalHours: 4200,
@@ -124,44 +124,44 @@ const initialJcbVehiclesData = [
       {
         id: 'doc-3-1',
         type: 'Registration Certificate',
-        docNo: 'RC-TN23CZ9012',
+        docNo: 'RC-JCB3',
         expiryDate: 'Lifetime',
-        fileName: 'rc_tn23cz9012.pdf'
+        fileName: 'rc_jcb3.pdf'
       },
       {
         id: 'doc-3-2',
         type: 'Insurance',
         docNo: 'INS-987654323',
         expiryDate: '2026-08-30',
-        fileName: 'insurance_tn23cz9012.pdf'
+        fileName: 'insurance_jcb3.pdf'
       },
       {
         id: 'doc-3-3',
         type: 'Warranty',
         docNo: 'WAR-3DX-553',
         expiryDate: '2026-12-20',
-        fileName: 'warranty_tn23cz9012.pdf'
+        fileName: 'warranty_jcb3.pdf'
       },
       {
         id: 'doc-3-4',
         type: 'Fitness/Permit',
         docNo: 'FIT-2026-101',
         expiryDate: '2026-09-12',
-        fileName: 'fitness_tn23cz9012.pdf'
+        fileName: 'fitness_jcb3.pdf'
       },
       {
         id: 'doc-3-5',
         type: 'Pollution Certificate',
         docNo: 'PUC-8823',
         expiryDate: '2026-10-10',
-        fileName: 'puc_tn23cz9012.pdf'
+        fileName: 'puc_jcb3.pdf'
       }
     ]
   },
   {
     id: 'jcb-4',
-    code: 'JCB-04',
-    regNo: 'TN-23-DW-3456',
+    code: 'JCB 4',
+    regNo: '',
     model: 'JCB 3DX Plus',
     serialNo: 'JCB3DX-2024-11029',
     totalHours: 3900,
@@ -169,14 +169,14 @@ const initialJcbVehiclesData = [
       { id: 'doc-4-1', type: 'Insurance', docNo: 'INS-449102', expiryDate: '2026-11-12', fileName: 'ins_jcb4.pdf' },
       { id: 'doc-4-2', type: 'Warranty', docNo: 'WAR-449102', expiryDate: '2027-03-20', fileName: 'war_jcb4.pdf' },
       { id: 'doc-4-3', type: 'Fitness/Permit', docNo: 'FIT-449102', expiryDate: '2026-10-18', fileName: 'fit_jcb4.pdf' },
-      { id: 'doc-4-4', type: 'Registration Certificate', docNo: 'RC-TN23DW3456', expiryDate: 'Lifetime', fileName: 'rc_jcb4.pdf' },
+      { id: 'doc-4-4', type: 'Registration Certificate', docNo: 'RC-JCB4', expiryDate: 'Lifetime', fileName: 'rc_jcb4.pdf' },
       { id: 'doc-4-5', type: 'Pollution Certificate', docNo: 'PUC-449102', expiryDate: '2026-12-01', fileName: 'puc_jcb4.pdf' }
     ]
   },
   {
     id: 'jcb-5',
-    code: 'JCB-05',
-    regNo: 'TN-23-EV-7890',
+    code: 'JCB 5',
+    regNo: '',
     model: 'JCB 3DX',
     serialNo: 'JCB3DX-2023-55912',
     totalHours: 3200,
@@ -188,8 +188,8 @@ const initialJcbVehiclesData = [
   },
   {
     id: 'jcb-6',
-    code: 'JCB-06',
-    regNo: 'TN-23-FU-2468',
+    code: 'JCB 6',
+    regNo: '',
     model: 'JCB 3DX Xtra',
     serialNo: 'JCB3DX-2024-88410',
     totalHours: 2800,

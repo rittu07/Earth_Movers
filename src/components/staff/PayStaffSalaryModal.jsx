@@ -77,7 +77,7 @@ const PayStaffSalaryModal = ({ isOpen, onClose, selectedStaffMember = null }) =>
   useEffect(() => {
     if (currentStaff) {
       setMonthlyDeduction(currentStaff.monthlyDeduction || 0);
-      const staffRate = currentStaff.bataRate || 0;
+      const staffRate = Number(currentStaff.bataRate) || 0;
       setBataRate(staffRate);
       setBataUnitType(currentStaff.bataUnit || 'Per Hour');
       setBataUnits('');

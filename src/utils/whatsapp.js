@@ -44,8 +44,8 @@ export const formatTransactionWhatsApp = ({
  * Format WhatsApp message for JCB Oil Maintenance Overdue Alert
  */
 export const formatJCBOverdueWhatsApp = ({
-  code = 'JCB-01',
-  regNo = 'TN-23-AX-1234',
+  code = 'JCB 1',
+  regNo = '',
   totalHours = 1420,
   overdueServices = []
 }) => {
@@ -53,7 +53,7 @@ export const formatJCBOverdueWhatsApp = ({
     ? overdueServices.map((s) => `• ${s.name}: ${s.hoursRun}/${s.limit} hrs (${s.overdueHrs > 0 ? `OVERDUE by ${s.overdueHrs} hrs!` : 'Due Soon'})`).join('\n')
     : '• Service Recommended';
 
-  return `🚨 *JCB OIL SERVICE OVERDUE ALERT* 🚨\n\n🚜 *Equipment:* ${code} (${regNo})\n⏱ *Current Meter Hours:* ${totalHours} hrs\n\n⚠️ *Pending / Overdue Maintenance:*\n${serviceList}\n\n⚠️ Please schedule oil change & lubrication servicing immediately for ${COMPANY_NAME} fleet safety.`;
+  return `🚨 *JCB OIL SERVICE OVERDUE ALERT* 🚨\n\n🚜 *Equipment:* ${code}${regNo ? ` (${regNo})` : ''}\n⏱ *Current Meter Hours:* ${totalHours} hrs\n\n⚠️ *Pending / Overdue Maintenance:*\n${serviceList}\n\n⚠️ Please schedule oil change & lubrication servicing immediately for ${COMPANY_NAME} fleet safety.`;
 };
 
 /**
@@ -86,16 +86,14 @@ export const formatFinanceLoanWhatsApp = ({
   principal = 0,
   interestRate = 0,
   monthlyInterest = 0,
-  months = 1,
   startDate = '',
   paymentMethod = 'Cash',
-  reference = '',
-  totalAmount = 0
+  reference = ''
 }) => {
   const methodText = paymentMethod ? `\n💳 Payment Method: ${paymentMethod}` : '';
   const refText = reference ? ` (Ref: ${reference})` : '';
 
-  return `Hello ${borrowerName} 👋\n\nFinance Loan Record created with ${COMPANY_NAME}.\n📅 Start Date: ${startDate}\n\n💰 Principal Amount: ₹${Number(principal).toLocaleString('en-IN')}\n⚡ Interest Rate: ${interestRate}% / month (₹${Number(monthlyInterest).toLocaleString('en-IN')}/mo)\n⏱ Tenure: Month ${months}${methodText}${refText}\n\n📊 Total Amount Due (Month ${months}): ₹${Number(totalAmount).toLocaleString('en-IN')}\n\nThank you for choosing ${COMPANY_NAME}! 🙏`;
+  return `Hello ${borrowerName} 👋\n\nFinance Loan Record created with ${COMPANY_NAME}.\n📅 Start Date: ${startDate}\n\n💰 Principal Amount: ₹${Number(principal).toLocaleString('en-IN')}\n⚡ Interest Rate: ${interestRate}% / month (₹${Number(monthlyInterest).toLocaleString('en-IN')}/mo)${methodText}${refText}\n\nThank you for choosing ${COMPANY_NAME}! 🙏`;
 };
 
 /**
@@ -105,7 +103,6 @@ export const formatFinanceReturnPaymentWhatsApp = ({
   borrowerName = 'Borrower',
   amount = 0,
   discount = 0,
-  repaymentFor = 'Month 1 Interest',
   paymentMethod = 'Cash',
   reference = '',
   remainingDue = 0
@@ -115,7 +112,7 @@ export const formatFinanceReturnPaymentWhatsApp = ({
 
   const dueText = Number(remainingDue) <= 0 ? '₹0 (Fully Settled)' : `₹${Number(remainingDue).toLocaleString('en-IN')}`;
 
-  return `Hello ${borrowerName} 👋\n\nLoan Return Payment Received with thanks!\n\n💵 Return Amount Paid: ₹${Number(amount).toLocaleString('en-IN')}${methodText}${discountText}\n📌 Repayment For: ${repaymentFor}\n⏳ Remaining Balance Due: ${dueText}\n\nThank you for doing business with ${COMPANY_NAME}! 🙏`;
+  return `Hello ${borrowerName} 👋\n\nLoan Return Payment Received with thanks!\n\n💵 Return Amount Paid: ₹${Number(amount).toLocaleString('en-IN')}${methodText}${discountText}\n⏳ Remaining Balance Due: ${dueText}\n\nThank you for doing business with ${COMPANY_NAME}! 🙏`;
 };
 
 /**

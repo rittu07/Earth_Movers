@@ -66,7 +66,7 @@ const JCBRental = () => {
       />
 
       {/* Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xs">
           <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase">Today's Income</span>
           <p className="text-lg sm:text-xl font-extrabold text-amber-600 mt-0.5 sm:mt-1">
@@ -92,6 +92,13 @@ const JCBRental = () => {
           <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase">Monthly Revenue</span>
           <p className="text-lg sm:text-xl font-extrabold text-slate-900 mt-0.5 sm:mt-1">
             {formatCurrency(metrics.monthlyRevenue)}
+          </p>
+        </div>
+
+        <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xs col-span-2 sm:col-span-1">
+          <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase">Total Expenses</span>
+          <p className="text-lg sm:text-xl font-extrabold text-rose-600 mt-0.5 sm:mt-1">
+            {formatCurrency(metrics.totalExpenses)}
           </p>
         </div>
       </div>

@@ -171,7 +171,9 @@ const CustomerTable = ({ customers, onDelete }) => {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onDelete(cust);
+                            if (window.confirm(`Delete ${cust.name}?`)) {
+                              onDelete(cust);
+                            }
                           }}
                           className="p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl border border-rose-200 transition-colors cursor-pointer"
                           title="Delete Customer"
@@ -280,7 +282,11 @@ const CustomerTable = ({ customers, onDelete }) => {
                         {onDelete && (
                           <button
                             type="button"
-                            onClick={() => onDelete(cust)}
+                            onClick={() => {
+                              if (window.confirm(`Delete ${cust.name}?`)) {
+                                onDelete(cust);
+                              }
+                            }}
                             className="p-2 inline-flex items-center text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
                             title="Delete Customer"
                           >

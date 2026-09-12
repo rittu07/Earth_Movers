@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { X, Fuel, Gauge, Calendar, CreditCard, MapPin } from 'lucide-react';
 
-const AddDieselModal = ({ isOpen, onClose, defaultJcb = 'JCB-01 (TN-23-AX-1234)' }) => {
+const AddDieselModal = ({ isOpen, onClose, defaultJcb = 'JCB 1' }) => {
   const { jcbVehicles = [], addDieselLog } = useBusiness();
 
   const [jcbVehicle, setJcbVehicle] = useState(defaultJcb);

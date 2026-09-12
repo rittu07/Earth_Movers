@@ -35,8 +35,8 @@ import { saveSyncedCollection } from '../db/syncedStorage';
 export const initialFleetData = [
   {
     id: 'jcb-1',
-    code: 'JCB-01',
-    regNo: 'TN-23-AX-1234',
+    code: 'JCB 1',
+    regNo: '',
     totalHours: 4528,
     engineOilLastMeter: 4528,
     hydraulicOilLastMeter: 1700,
@@ -51,8 +51,8 @@ export const initialFleetData = [
   },
   {
     id: 'jcb-2',
-    code: 'JCB-02',
-    regNo: 'TN-23-BY-5678',
+    code: 'JCB 2',
+    regNo: '',
     totalHours: 4400,
     engineOilLastMeter: 4250,
     hydraulicOilLastMeter: 1500,
@@ -65,8 +65,8 @@ export const initialFleetData = [
   },
   {
     id: 'jcb-3',
-    code: 'JCB-03',
-    regNo: 'TN-23-CZ-9012',
+    code: 'JCB 3',
+    regNo: '',
     totalHours: 4200,
     engineOilLastMeter: 4000,
     hydraulicOilLastMeter: 1400,
@@ -78,8 +78,8 @@ export const initialFleetData = [
   },
   {
     id: 'jcb-4',
-    code: 'JCB-04',
-    regNo: 'TN-23-DW-3456',
+    code: 'JCB 4',
+    regNo: '',
     totalHours: 3900,
     engineOilLastMeter: 3640,
     hydraulicOilLastMeter: 1200,
@@ -91,8 +91,8 @@ export const initialFleetData = [
   },
   {
     id: 'jcb-5',
-    code: 'JCB-05',
-    regNo: 'TN-23-EV-7890',
+    code: 'JCB 5',
+    regNo: '',
     totalHours: 3200,
     engineOilLastMeter: 3050,
     hydraulicOilLastMeter: 1000,
@@ -102,8 +102,8 @@ export const initialFleetData = [
   },
   {
     id: 'jcb-6',
-    code: 'JCB-06',
-    regNo: 'TN-23-FU-2468',
+    code: 'JCB 6',
+    regNo: '',
     totalHours: 2800,
     engineOilLastMeter: 2650,
     hydraulicOilLastMeter: 800,
@@ -117,7 +117,7 @@ export const initialMaintenanceRecords = [
   {
     id: 'maint-0',
     jcbId: 'jcb-1',
-    jcbCode: 'JCB-01',
+    jcbCode: 'JCB 1',
     serviceType: 'Engine Oil',
     oilGrade: '15W-40',
     date: '2026-09-05',
@@ -134,7 +134,7 @@ export const initialMaintenanceRecords = [
   {
     id: 'maint-1',
     jcbId: 'jcb-1',
-    jcbCode: 'JCB-01',
+    jcbCode: 'JCB 1',
     serviceType: 'Engine Oil',
     oilGrade: '15W-40',
     date: '2026-09-01',
@@ -151,7 +151,7 @@ export const initialMaintenanceRecords = [
   {
     id: 'maint-2',
     jcbId: 'jcb-1',
-    jcbCode: 'JCB-01',
+    jcbCode: 'JCB 1',
     serviceType: 'Hydraulic Oil',
     oilGrade: 'Tellus 68',
     date: '2026-07-20',
@@ -168,7 +168,7 @@ export const initialMaintenanceRecords = [
   {
     id: 'maint-3',
     jcbId: 'jcb-1',
-    jcbCode: 'JCB-01',
+    jcbCode: 'JCB 1',
     serviceType: 'Air Filter',
     oilGrade: 'OEM Filter',
     date: '2026-06-15',

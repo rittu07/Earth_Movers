@@ -37,7 +37,7 @@ const getInitialStockRecords = (businessId) => {
         rate: 4500,
         rateUnit: 'per Unit',
         totalCost: 45000,
-        vehicle: 'TN-23-AX-1234',
+        vehicle: 'Lorry 1',
         quality: 'OK',
         damagedQty: 0,
         notes: 'Crusher morning shift washing output'
@@ -53,7 +53,7 @@ const getInitialStockRecords = (businessId) => {
         rate: 12000,
         rateUnit: 'per Load',
         totalCost: 60000,
-        vehicle: 'TN-23-BX-5678',
+        vehicle: 'Lorry 2',
         quality: 'OK',
         damagedQty: 0,
         notes: 'Direct river sand quarry load'
@@ -69,7 +69,7 @@ const getInitialStockRecords = (businessId) => {
         rate: 5000,
         rateUnit: 'per Unit',
         totalCost: 40000,
-        vehicle: 'TN-23-CX-9012',
+        vehicle: 'Lorry 3',
         quality: 'OK',
         damagedQty: 0,
         notes: 'Fine plastering sand batch'
@@ -90,7 +90,7 @@ const getInitialStockRecords = (businessId) => {
         rate: 3800,
         rateUnit: 'per Unit',
         totalCost: 45600,
-        vehicle: 'TN-23-AX-1234',
+        vehicle: 'Lorry 1',
         quality: 'OK',
         damagedQty: 0,
         notes: 'Primary jaw crusher output'
@@ -106,7 +106,7 @@ const getInitialStockRecords = (businessId) => {
         rate: 7500,
         rateUnit: 'per Load',
         totalCost: 60000,
-        vehicle: 'TN-23-BX-5678',
+        vehicle: 'Lorry 2',
         quality: 'OK',
         damagedQty: 0,
         notes: 'Outsourced heavy blue metal'
@@ -122,7 +122,7 @@ const getInitialStockRecords = (businessId) => {
         rate: 2200,
         rateUnit: 'per Unit',
         totalCost: 33000,
-        vehicle: 'TN-23-CX-9012',
+        vehicle: 'Lorry 3',
         quality: 'OK',
         damagedQty: 0,
         notes: 'Screening dust collection'
@@ -143,7 +143,7 @@ const getInitialStockRecords = (businessId) => {
       rate: 5000,
       rateUnit: 'per 1000',
       totalCost: 30000,
-      vehicle: 'TN-23-AX-1234',
+      vehicle: 'Lorry 1',
       quality: 'OK',
       damagedQty: 0,
       notes: 'Morning shift firing output'
@@ -159,7 +159,7 @@ const getInitialStockRecords = (businessId) => {
       rate: 5200,
       rateUnit: 'per 1000',
       totalCost: 20800,
-      vehicle: 'TN-23-BX-5678',
+      vehicle: 'Lorry 2',
       quality: 'OK',
       damagedQty: 0,
       notes: 'Outsourced supply load'
@@ -175,7 +175,7 @@ const getInitialStockRecords = (businessId) => {
       rate: 4800,
       rateUnit: 'per 1000',
       totalCost: 14400,
-      vehicle: 'TN-23-CX-9012',
+      vehicle: 'Lorry 3',
       quality: 'Damaged',
       damagedQty: 50,
       notes: 'Handling breakage during unloading'
@@ -862,9 +862,9 @@ const StockInTracker = ({ businessId = 'bricks', businessName = 'Bricks Supply' 
                     onChange={(e) => setVehicle(e.target.value)}
                     className="w-full p-3 bg-slate-800 border border-slate-700 rounded-2xl font-black text-white text-sm sm:text-base focus:outline-hidden focus:border-amber-500 cursor-pointer font-mono"
                   >
-                    <option value="TN-XX-1234">[ TN-XX-1234 ▼ ]</option>
-                    <option value="TN-23-AX-5678">[ TN-23-AX-5678 ▼ ]</option>
-                    <option value="TN-23-BX-9999">[ TN-23-BX-9999 ▼ ]</option>
+                    <option value="Lorry 1">Lorry 1</option>
+                    <option value="Lorry 2">Lorry 2</option>
+                    <option value="Lorry 3">Lorry 3</option>
                   </select>
                 </div>
               </div>

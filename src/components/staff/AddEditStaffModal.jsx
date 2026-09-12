@@ -31,18 +31,18 @@ const AddEditStaffModal = ({ isOpen, onClose, staffToEdit = null }) => {
       setName(staffToEdit.name || '');
       setPhone(staffToEdit.phone || '');
       setRole(staffToEdit.role || 'JCB Driver');
-      setMonthlySalary(staffToEdit.monthlySalary ? staffToEdit.monthlySalary.toString() : '');
-      setBataRate(staffToEdit.bataRate ? staffToEdit.bataRate.toString() : '');
+      setMonthlySalary(staffToEdit.monthlySalary !== undefined && staffToEdit.monthlySalary !== null ? staffToEdit.monthlySalary.toString() : '');
+      setBataRate(staffToEdit.bataRate !== undefined && staffToEdit.bataRate !== null && staffToEdit.bataRate !== '' ? staffToEdit.bataRate.toString() : '0');
       setBataUnit(staffToEdit.bataUnit || 'Per Hour');
-      setAdvanceAmount(staffToEdit.advanceAmount ? staffToEdit.advanceAmount.toString() : '');
-      setMonthlyDeduction(staffToEdit.monthlyDeduction ? staffToEdit.monthlyDeduction.toString() : '');
+      setAdvanceAmount(staffToEdit.advanceAmount !== undefined && staffToEdit.advanceAmount !== null ? staffToEdit.advanceAmount.toString() : '');
+      setMonthlyDeduction(staffToEdit.monthlyDeduction !== undefined && staffToEdit.monthlyDeduction !== null ? staffToEdit.monthlyDeduction.toString() : '');
       setNotes(staffToEdit.notes || '');
     } else {
       setName('');
       setPhone('');
       setRole('JCB Driver');
       setMonthlySalary('25000');
-      setBataRate('100');
+      setBataRate('0');
       setBataUnit('Per Hour');
       setAdvanceAmount('0');
       setMonthlyDeduction('0');

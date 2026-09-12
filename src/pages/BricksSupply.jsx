@@ -4,15 +4,19 @@ import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import TransactionTable from '../components/transactions/TransactionTable';
 import StockInTracker from '../components/businesses/StockInTracker';
+import ExpenseTable from '../components/expenses/ExpenseTable';
 import { formatCurrency } from '../utils/formatCurrency';
 import { calculateBusinessMetrics } from '../utils/calculations';
 import { exportBusinessStatementPdf } from '../utils/pdfGenerator';
-import { Boxes, PlusCircle, PackagePlus, FileText, Download } from 'lucide-react';
+import { Boxes, PlusCircle, PackagePlus, FileText, Download, Receipt } from 'lucide-react';
 
 const BricksSupply = () => {
   const { transactions, payments, expenses } = useBusiness();
-  const [activeTab, setActiveTab] = useState('sales'); // sales, stock_in
+  const [activeTab, setActiveTab] = useState('sales'); // sales, stock_in, expenses
   const bricksTrxs = transactions.filter((t) => t.businessId === 'bricks');
+  const bricksExpenses = expenses.filter(
+    (e) => e.businessId === 'bricks' || e.businessName?.toLowerCase().includes('brick')
+  );
 
   const metrics = calculateBusinessMetrics(transactions, payments, expenses, 'bricks');
 
@@ -54,7 +58,7 @@ const BricksSupply = () => {
       />
 
       {/* Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <span className="text-[11px] font-bold text-slate-400 uppercase">Today's Income</span>
           <p className="text-xl font-extrabold text-orange-600 mt-1">
@@ -80,6 +84,13 @@ const BricksSupply = () => {
           <span className="text-[11px] font-bold text-slate-400 uppercase">This Month's Revenue</span>
           <p className="text-xl font-extrabold text-slate-900 mt-1">
             {formatCurrency(metrics.monthlyRevenue)}
+          </p>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs col-span-2 sm:col-span-1">
+          <span className="text-[11px] font-bold text-slate-400 uppercase">Total Expenses</span>
+          <p className="text-xl font-extrabold text-rose-600 mt-1">
+            {formatCurrency(metrics.totalExpenses)}
           </p>
         </div>
       </div>
@@ -109,6 +120,18 @@ const BricksSupply = () => {
           <PackagePlus className="w-4 h-4 shrink-0" />
           <span>Stock In & Production History</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('expenses')}
+          className={`pb-2.5 sm:pb-3 transition-all relative flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
+            activeTab === 'expenses'
+              ? 'text-orange-600 border-b-2 border-orange-600 font-black'
+              : 'text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Receipt className="w-4 h-4 shrink-0" />
+          <span>EXPENSES ({bricksExpenses.length})</span>
+        </button>
       </div>
 
       {/* Tab Content */}
@@ -123,6 +146,23 @@ const BricksSupply = () => {
 
       {activeTab === 'stock_in' && (
         <StockInTracker businessId="bricks" businessName="Bricks Supply" />
+      )}
+
+      {activeTab === 'expenses' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider font-mono">
+              Bricks Supply Expense Log
+            </h3>
+            <Link
+              to="/expenses/add?business=bricks"
+              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl text-xs flex items-center gap-1.5 border border-rose-200 transition-all font-mono"
+            >
+              <PlusCircle className="w-3.5 h-3.5" /> + Add Bricks Expense
+            </Link>
+          </div>
+          <ExpenseTable expenses={bricksExpenses} />
+        </div>
       )}
     </div>
   );

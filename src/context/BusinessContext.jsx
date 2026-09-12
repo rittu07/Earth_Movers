@@ -325,7 +325,7 @@ export const BusinessProvider = ({ children }) => {
     // If JCB transaction, update JCB schedule, JCB monthly working hours & Driver reports
     if (trxData.businessId === 'jcb') {
       const dur = Number(trxData.duration) || Number(trxData.quantity) || 1;
-      const vehicleName = trxData.jcbVehicle || 'JCB-01 (TN-23-AX-1234)';
+      const vehicleName = trxData.jcbVehicle || 'JCB 1';
       const shortCode = vehicleName.split(' ')[0];
       const rawDriverName = (trxData.driverName || 'Kumar').split(' ')[0];
 
@@ -651,7 +651,7 @@ export const BusinessProvider = ({ children }) => {
 
     const newLog = {
       id: dslId,
-      jcbVehicle: data.jcbVehicle || 'JCB-01 (TN-23-AX-1234)',
+      jcbVehicle: data.jcbVehicle || 'JCB 1',
       date: todayStr,
       displayDate: formatDate(todayStr),
       quantity: qty,
@@ -1076,7 +1076,7 @@ export const BusinessProvider = ({ children }) => {
             ...s,
             ...updatedFields,
             monthlySalary: updatedFields.monthlySalary !== undefined ? Number(updatedFields.monthlySalary) : s.monthlySalary,
-            bataRate: updatedFields.bataRate !== undefined ? Number(updatedFields.bataRate) : s.bataRate,
+            bataRate: updatedFields.bataRate !== undefined ? (Number(updatedFields.bataRate) || 0) : (Number(s.bataRate) || 0),
             advanceAmount: updatedFields.advanceAmount !== undefined ? Number(updatedFields.advanceAmount) : s.advanceAmount,
             monthlyDeduction: updatedFields.monthlyDeduction !== undefined ? Number(updatedFields.monthlyDeduction) : s.monthlyDeduction,
             advanceRemaining: updatedFields.advanceRemaining !== undefined ? Number(updatedFields.advanceRemaining) : s.advanceRemaining

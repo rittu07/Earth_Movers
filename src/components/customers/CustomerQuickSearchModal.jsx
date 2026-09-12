@@ -5,12 +5,12 @@ import { Search, X, User, Phone, ArrowRight, Building, Clock, PlusCircle, Truck 
 import { formatCurrency } from '../../utils/formatCurrency';
 
 const defaultJcbFleet = [
-  { id: 'jcb-1', code: 'JCB-01', regNo: 'TN-23-AX-1234', totalHours: 1420, driver: 'Kumar', status: 'Active' },
-  { id: 'jcb-2', code: 'JCB-02', regNo: 'TN-23-BY-5678', totalHours: 1560, driver: 'Ravi', status: 'Active' },
-  { id: 'jcb-3', code: 'JCB-03', regNo: 'TN-23-CZ-9012', totalHours: 1680, driver: 'Ramesh', status: 'Active' },
-  { id: 'jcb-4', code: 'JCB-04', regNo: 'TN-23-DW-3456', totalHours: 1120, driver: 'Velu', status: 'Active' },
-  { id: 'jcb-5', code: 'JCB-05', regNo: 'TN-23-EV-7890', totalHours: 980, driver: 'Selvam', status: 'Active' },
-  { id: 'jcb-6', code: 'JCB-06', regNo: 'TN-23-FU-2468', totalHours: 850, driver: 'Saravanan', status: 'Active' }
+  { id: 'jcb-1', code: 'JCB 1', regNo: '', totalHours: 1420, driver: 'Kumar', status: 'Active' },
+  { id: 'jcb-2', code: 'JCB 2', regNo: '', totalHours: 1560, driver: 'Ravi', status: 'Active' },
+  { id: 'jcb-3', code: 'JCB 3', regNo: '', totalHours: 1680, driver: 'Ramesh', status: 'Active' },
+  { id: 'jcb-4', code: 'JCB 4', regNo: '', totalHours: 1120, driver: 'Velu', status: 'Active' },
+  { id: 'jcb-5', code: 'JCB 5', regNo: '', totalHours: 980, driver: 'Selvam', status: 'Active' },
+  { id: 'jcb-6', code: 'JCB 6', regNo: '', totalHours: 850, driver: 'Saravanan', status: 'Active' }
 ];
 
 const CustomerQuickSearchModal = () => {
@@ -74,13 +74,12 @@ const CustomerQuickSearchModal = () => {
       (s.phone && s.phone.includes(query))
   );
 
-  // Filter JCB machines matching reg number or code or driver
+  // Filter JCB machines matching code or driver
   const filteredJcbs = defaultJcbFleet.filter(
     (j) =>
       !query ||
       j.code.toLowerCase().includes(query) ||
-      j.regNo.toLowerCase().includes(query) ||
-      (cleanQuery && j.regNo.replace(/[^a-z0-9]/gi, '').toLowerCase().includes(cleanQuery)) ||
+      (j.regNo && j.regNo.toLowerCase().includes(query)) ||
       j.driver.toLowerCase().includes(query)
   );
 
@@ -391,7 +390,7 @@ const CustomerQuickSearchModal = () => {
                 <div className="py-12 text-center">
                   <User className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                   <p className="text-sm font-medium text-slate-600">No matching customer, supplier, or JCB machine found</p>
-                  <p className="text-xs text-slate-400 mt-1">Try searching with a name, mobile number, or JCB registration number (e.g. TN-23-AX-1234)</p>
+                  <p className="text-xs text-slate-400 mt-1">Try searching with a name, mobile number, or JCB machine (e.g. JCB 1)</p>
                 </div>
               )}
 

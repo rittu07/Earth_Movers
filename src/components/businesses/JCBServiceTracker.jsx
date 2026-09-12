@@ -41,8 +41,8 @@ import { useBusiness } from '../../context/BusinessContext';
 const initialFleetData = [
   {
     id: 'jcb-1',
-    code: 'JCB-01',
-    regNo: 'TN-23-AX-1234',
+    code: 'JCB 1',
+    regNo: '',
     totalHours: 4528,
     engineOilLastMeter: 4528, // Just serviced -> Due 4828 (300 hrs remaining)
     hydraulicOilLastMeter: 1700, // Due 4700 -> 172 hrs remaining
@@ -57,8 +57,8 @@ const initialFleetData = [
   },
   {
     id: 'jcb-2',
-    code: 'JCB-02',
-    regNo: 'TN-23-BY-5678',
+    code: 'JCB 2',
+    regNo: '',
     totalHours: 4400,
     engineOilLastMeter: 4250, // Due 4550 -> OK (150 hrs run)
     hydraulicOilLastMeter: 1500, // Due 4500 -> DUE (100 hrs remaining)
@@ -71,8 +71,8 @@ const initialFleetData = [
   },
   {
     id: 'jcb-3',
-    code: 'JCB-03',
-    regNo: 'TN-23-CZ-9012',
+    code: 'JCB 3',
+    regNo: '',
     totalHours: 4200,
     engineOilLastMeter: 4000, // Due 4300 -> OK (200 hrs run)
     hydraulicOilLastMeter: 1400, // Due 4400 -> OK (200 hrs remaining)
@@ -84,8 +84,8 @@ const initialFleetData = [
   },
   {
     id: 'jcb-4',
-    code: 'JCB-04',
-    regNo: 'TN-23-DW-3456',
+    code: 'JCB 4',
+    regNo: '',
     totalHours: 3900,
     engineOilLastMeter: 3640, // Due 3940 -> DUE SOON (260 hrs run)
     hydraulicOilLastMeter: 1200, // Due 4200 -> OK (300 hrs remaining)
@@ -97,8 +97,8 @@ const initialFleetData = [
   },
   {
     id: 'jcb-5',
-    code: 'JCB-05',
-    regNo: 'TN-23-EV-7890',
+    code: 'JCB 5',
+    regNo: '',
     totalHours: 3200,
     engineOilLastMeter: 3050,
     hydraulicOilLastMeter: 1000,
@@ -108,8 +108,8 @@ const initialFleetData = [
   },
   {
     id: 'jcb-6',
-    code: 'JCB-06',
-    regNo: 'TN-23-FU-2468',
+    code: 'JCB 6',
+    regNo: '',
     totalHours: 2800,
     engineOilLastMeter: 2650,
     hydraulicOilLastMeter: 800,
@@ -123,7 +123,7 @@ const initialMaintenanceRecords = [
   {
     id: 'maint-0',
     jcbId: 'jcb-1',
-    jcbCode: 'JCB-01',
+    jcbCode: 'JCB 1',
     serviceType: 'Engine Oil',
     oilGrade: '15W-40',
     date: '2026-09-05',
@@ -140,7 +140,7 @@ const initialMaintenanceRecords = [
   {
     id: 'maint-1',
     jcbId: 'jcb-1',
-    jcbCode: 'JCB-01',
+    jcbCode: 'JCB 1',
     serviceType: 'Engine Oil',
     oilGrade: '15W-40',
     date: '2026-09-01',
@@ -157,7 +157,7 @@ const initialMaintenanceRecords = [
   {
     id: 'maint-2',
     jcbId: 'jcb-1',
-    jcbCode: 'JCB-01',
+    jcbCode: 'JCB 1',
     serviceType: 'Hydraulic Oil',
     oilGrade: 'Tellus 68',
     date: '2026-07-20',
@@ -174,7 +174,7 @@ const initialMaintenanceRecords = [
   {
     id: 'maint-3',
     jcbId: 'jcb-1',
-    jcbCode: 'JCB-01',
+    jcbCode: 'JCB 1',
     serviceType: 'Air Filter',
     oilGrade: 'OEM Filter',
     date: '2026-06-15',
@@ -509,7 +509,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
     const newJcb = {
       id: `jcb-${Date.now()}`,
       code: newCode.toUpperCase().trim(),
-      regNo: newRegNo.toUpperCase().trim() || 'TN-23-NEW-000',
+      regNo: newRegNo.toUpperCase().trim() || '',
       totalHours: 0,
       engineOilLastMeter: 0,
       greasingLastMeter: 0,
@@ -1684,7 +1684,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                 <input
                   type="text"
                   required
-                  placeholder="e.g. JCB-07"
+                  placeholder="e.g. JCB 7"
                   value={newCode}
                   onChange={(e) => setNewCode(e.target.value)}
                   className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl font-black text-slate-900 focus:outline-hidden focus:border-amber-600 focus:bg-white text-base font-mono"
@@ -1697,7 +1697,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. TN-23-GW-1122"
+                  placeholder="Registration Number (Optional)"
                   value={newRegNo}
                   onChange={(e) => setNewRegNo(e.target.value)}
                   className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl font-black text-slate-900 focus:outline-hidden focus:border-amber-600 focus:bg-white text-base font-mono"

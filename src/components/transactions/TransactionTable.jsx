@@ -185,9 +185,9 @@ const TransactionTable = ({ transactions = [] }) => {
                         <span className="text-[9px] font-extrabold text-emerald-700 uppercase block">Paid</span>
                         <span className="text-xs font-black text-emerald-700 mt-0.5 block">{formatCurrency(trx.paid)}</span>
                       </div>
-                      <div className="bg-rose-50/80 p-2.5 rounded-xl border border-rose-200 text-center">
-                        <span className="text-[9px] font-extrabold text-rose-700 uppercase block">Due</span>
-                        <span className="text-xs font-black text-rose-700 mt-0.5 block">{formatCurrency(trx.due)}</span>
+                      <div className="bg-amber-50/80 p-2.5 rounded-xl border border-amber-200 text-center">
+                        <span className="text-[9px] font-extrabold text-amber-700 uppercase block">Due</span>
+                        <span className="text-xs font-black text-amber-700 mt-0.5 block">{formatCurrency(trx.due)}</span>
                       </div>
                     </div>
 

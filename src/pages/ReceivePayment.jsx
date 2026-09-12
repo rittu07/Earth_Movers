@@ -5,6 +5,7 @@ import PageHeader from '../components/layout/PageHeader';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatPaymentWhatsApp, openWhatsAppChat } from '../utils/whatsapp';
 import WhatsAppModal from '../components/common/WhatsAppModal';
+import SearchableCustomerSelect from '../components/common/SearchableCustomerSelect';
 import { Wallet, UserPlus, User, Phone, MapPin, MessageSquare, Send } from 'lucide-react';
 
 const ReceivePayment = () => {
@@ -140,29 +141,18 @@ const ReceivePayment = () => {
                     <UserPlus className="w-3.5 h-3.5" /> + Add New Customer
                   </button>
                 </div>
-                <input
-                  type="search"
-                  value={customerSearch}
-                  onChange={(e) => setCustomerSearch(e.target.value)}
-                  placeholder="Search customer name or mobile..."
-                  className="w-full mb-2 p-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:border-indigo-500"
+                <SearchableCustomerSelect
+                  customers={customers}
+                  selectedCustomerId={customerId}
+                  onChange={(id) => setCustomerId(id)}
+                  onAddNew={() => setIsNewCustomer(true)}
+                  getCustomerExtra={(cust) => {
+                    const balance = getCustomerFinancials(cust.id);
+                    return `Due: ${formatCurrency(balance.outstanding)}`;
+                  }}
+                  placeholder="Search or Select Customer"
+                  inputClassName="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:border-indigo-500"
                 />
-                <select
-                  value={customerId}
-                  onChange={(e) => setCustomerId(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:border-indigo-500"
-                  required
-                >
-                  {customers.filter((c) => {
-                    const query = customerSearch.trim().toLowerCase();
-                    return !query || c.name?.toLowerCase().includes(query) || c.phone?.toLowerCase().includes(query);
-                  }).map((c) => {
-                    const balance = getCustomerFinancials(c.id);
-                    return <option key={c.id} value={c.id}>
-                      {c.name} — Phone: {c.phone} (Due: {formatCurrency(balance.outstanding)})
-                    </option>
-                  })}
-                </select>
               </div>
             ) : (
               /* Dedicated Separate New Customer Inputs Section */

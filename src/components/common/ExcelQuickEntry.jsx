@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useBusiness } from '../../context/BusinessContext';
 import { Plus, Trash2, Save, User, Calendar, CreditCard, Layers, MessageSquare } from 'lucide-react';
 import { formatTransactionWhatsApp, openWhatsAppChat } from '../../utils/whatsapp';
+import SearchableCustomerSelect from './SearchableCustomerSelect';
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
@@ -14,13 +15,6 @@ const businessList = [
   { id: 'sand', name: 'Sand Supply' }
 ];
 
-const defaultDriversList = [
-  { id: 'd1', name: 'Driver Perumal', phone: '9876543210' },
-  { id: 'd2', name: 'Driver Murugan', phone: '9876543211' },
-  { id: 'd3', name: 'Driver Kumar', phone: '9876543212' },
-  { id: 'd4', name: 'Driver Raja', phone: '9876543213' },
-  { id: 'd5', name: 'Driver Selvam', phone: '9876543214' }
-];
 
 const createEmptyTxRow = (defaultBusId = 'bricks') => ({
   id: Date.now() + Math.random(),
@@ -45,9 +39,9 @@ const createEmptyTxRow = (defaultBusId = 'bricks') => ({
   isNewSupplier: false,
   supplierCost: '',
   supplierPaid: '',
-  jcbVehicle: 'JCB-01 (TN-23-AX-1234)',
-  driverName: 'Driver Perumal',
-  driverPhone: '9876543210',
+  jcbVehicle: 'JCB 1',
+  driverName: '',
+  driverPhone: '',
   isNewDriver: false,
   driverAmount: '',
   waterSource: 'Own Borewell (Plant 1)',
@@ -166,9 +160,9 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
           newRow.waterSource = lastRow.waterSource || 'Own Borewell (Plant 1)';
           newRow.deliveryPlace = lastRow.deliveryPlace || '';
         } else if (lastRow.businessId === 'jcb') {
-          newRow.jcbVehicle = lastRow.jcbVehicle || 'JCB-01 (TN-23-AX-1234)';
-          newRow.driverName = lastRow.driverName || 'Driver Perumal';
-          newRow.driverPhone = lastRow.driverPhone || '9876543210';
+          newRow.jcbVehicle = lastRow.jcbVehicle || 'JCB 1';
+          newRow.driverName = lastRow.driverName || '';
+          newRow.driverPhone = lastRow.driverPhone || '';
         }
       }
 
@@ -300,9 +294,9 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
         outsourcedCost: Number(r.supplierCost) || Number(r.supplierPaid) || 0,
         outsourcedPaid: Number(r.supplierPaid) || 0,
         outsourcedDue: Math.max(0, (Number(r.supplierCost) || Number(r.supplierPaid) || 0) - (Number(r.supplierPaid) || 0)),
-        jcbVehicle: r.businessId === 'jcb' ? (r.jcbVehicle || 'JCB-01 (TN-23-AX-1234)') : '',
-        driverName: r.businessId === 'jcb' ? (r.driverName || 'Driver Perumal') : (r.driverName || ''),
-         driverPhone: r.businessId === 'jcb' ? (r.driverPhone || '') : '',
+        jcbVehicle: r.businessId === 'jcb' ? (r.jcbVehicle || 'JCB 1') : '',
+        driverName: r.businessId === 'jcb' ? (r.driverName || '') : (r.driverName || ''),
+        driverPhone: r.businessId === 'jcb' ? (r.driverPhone || '') : '',
          staffId: staff.find((member) => member.name?.toLowerCase() === (r.driverName || '').toLowerCase())?.id || '',
         driverAmount: r.businessId === 'jcb' ? (Number(r.driverAmount) || 0) : (Number(r.driverAmount) || 0),
         duration: Number(r.quantity) || 0,
@@ -337,8 +331,8 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
             paid,
             due,
             date: r.date || getTodayString(),
-            jcbVehicle: r.businessId === 'jcb' ? (r.jcbVehicle || 'JCB-01 (TN-23-AX-1234)') : '',
-            driverName: r.businessId === 'jcb' ? (r.driverName || 'Driver Perumal') : (r.driverName || ''),
+            jcbVehicle: r.businessId === 'jcb' ? (r.jcbVehicle || 'JCB 1') : '',
+            driverName: r.businessId === 'jcb' ? (r.driverName || '') : (r.driverName || ''),
             driverPhone: r.businessId === 'jcb' ? (r.driverPhone || '') : '',
             driverAmount: r.businessId === 'jcb' ? (Number(r.driverAmount) || 0) : (Number(r.driverAmount) || 0),
           });
@@ -489,34 +483,14 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                     </div>
 
                     {!row.isNewCustomer ? (
-                      <>
-                      <input
-                        type="search"
-                        value={customerSearch[row.id] || ''}
-                        onChange={(e) => setCustomerSearch((prev) => ({ ...prev, [row.id]: e.target.value }))}
-                        placeholder="Search customer name or mobile..."
-                        className="w-full mb-2 p-2.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:outline-hidden focus:border-indigo-500"
+                      <SearchableCustomerSelect
+                        customers={customers}
+                        selectedCustomerId={row.customerId}
+                        onChange={(id) => handleTxChange(row.id, 'customerId', id)}
+                        onAddNew={() => handleTxChange(row.id, 'isNewCustomer', true)}
+                        placeholder="Search or Select Customer"
+                        inputClassName="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl text-base font-extrabold text-slate-900 focus:bg-white focus:border-indigo-500 focus:outline-hidden shadow-2xs"
                       />
-                      <select
-                        value={row.customerId}
-                        onChange={(e) => {
-                          handleTxChange(row.id, 'customerId', e.target.value);
-                          setCustomerSearch((prev) => ({ ...prev, [row.id]: '' }));
-                        }}
-                        className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl text-base font-extrabold text-slate-900 focus:bg-white focus:border-indigo-500 focus:outline-hidden shadow-2xs"
-                      >
-                        <option value="">-- Choose Customer --</option>
-                        <option value="__new__">+ Add New Customer</option>
-                        {customers.filter((c) => {
-                          const query = (customerSearch[row.id] || '').trim().toLowerCase();
-                          return !query || c.name?.toLowerCase().includes(query) || c.phone?.toLowerCase().includes(query);
-                        }).map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name} {c.phone ? `(${c.phone})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                      </>
                     ) : (
                       <div className="grid grid-cols-2 gap-2">
                         <input
@@ -945,16 +919,16 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                           🚜 Select JCB Machine *
                         </label>
                         <select
-                          value={row.jcbVehicle || 'JCB-01 (TN-23-AX-1234)'}
+                          value={row.jcbVehicle || 'JCB 1'}
                           onChange={(e) => handleTxChange(row.id, 'jcbVehicle', e.target.value)}
                           className="w-full p-3 bg-white border border-amber-400 rounded-xl text-sm font-black text-slate-900 focus:outline-hidden shadow-2xs"
                         >
-                          <option value="JCB-01 (TN-23-AX-1234)">JCB-01 (TN-23-AX-1234)</option>
-                          <option value="JCB-02 (TN-23-BY-5678)">JCB-02 (TN-23-BY-5678)</option>
-                          <option value="JCB-03 (TN-23-CZ-9012)">JCB-03 (TN-23-CZ-9012)</option>
-                          <option value="JCB-04 (TN-23-DW-3456)">JCB-04 (TN-23-DW-3456)</option>
-                          <option value="JCB-05 (TN-23-EV-7890)">JCB-05 (TN-23-EV-7890)</option>
-                          <option value="JCB-06 (TN-23-FU-2468)">JCB-06 (TN-23-FU-2468)</option>
+                          <option value="JCB 1">JCB 1</option>
+                          <option value="JCB 2">JCB 2</option>
+                          <option value="JCB 3">JCB 3</option>
+                          <option value="JCB 4">JCB 4</option>
+                          <option value="JCB 5">JCB 5</option>
+                          <option value="JCB 6">JCB 6</option>
                         </select>
                       </div>
 
@@ -962,40 +936,40 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                       <div className="sm:col-span-5">
                         <div className="flex items-center justify-between mb-1.5">
                           <label className="text-xs font-black text-amber-950 uppercase tracking-wider">
-                            👤 Select Driver *
+                            👤 Select Driver
                           </label>
                           <button
                             type="button"
                             onClick={() => handleTxChange(row.id, 'isNewDriver', !row.isNewDriver)}
                             className="text-xs text-indigo-700 font-extrabold hover:underline cursor-pointer"
                           >
-                            {row.isNewDriver ? 'Select Existing Driver' : '+ Add New Driver'}
+                            {row.isNewDriver ? 'Select from Staff' : '+ Enter Custom Driver'}
                           </button>
                         </div>
 
                         {!row.isNewDriver ? (
                           <select
-                            value={defaultDriversList.find((d) => d.name === row.driverName)?.id || (row.driverName ? 'custom' : '')}
+                            value={staff.find((s) => s.name === row.driverName)?.id || (row.driverName ? 'custom' : '')}
                             onChange={(e) => {
                               if (e.target.value === '__new__') {
                                 handleTxChange(row.id, 'isNewDriver', true);
                                 handleTxChange(row.id, 'driverName', '');
                                 handleTxChange(row.id, 'driverPhone', '');
                               } else {
-                                const found = defaultDriversList.find((d) => d.id === e.target.value);
+                                const found = staff.find((s) => s.id === e.target.value);
                                 if (found) {
                                   handleTxChange(row.id, 'driverName', found.name);
-                                  handleTxChange(row.id, 'driverPhone', found.phone);
+                                  handleTxChange(row.id, 'driverPhone', found.phone || '');
                                 }
                               }
                             }}
                             className="w-full p-3 bg-white border border-amber-400 rounded-xl text-sm font-black text-slate-900 focus:outline-hidden shadow-2xs"
                           >
-                            <option value="">-- Choose Driver --</option>
-                            <option value="__new__">+ Add New Driver (Name & Phone)</option>
-                            {defaultDriversList.map((d) => (
-                              <option key={d.id} value={d.id}>
-                                {d.name} ({d.phone})
+                            <option value="">-- Choose Driver (Optional) --</option>
+                            <option value="__new__">+ Enter Custom Driver</option>
+                            {staff.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.name} {s.phone ? `(${s.phone})` : ''} - {s.role || 'Staff'}
                               </option>
                             ))}
                           </select>
@@ -1005,14 +979,14 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                               type="text"
                               value={row.driverName}
                               onChange={(e) => handleTxChange(row.id, 'driverName', e.target.value)}
-                              placeholder="Driver Name *"
+                              placeholder="Driver Name"
                               className="w-full p-3 bg-white border border-amber-400 rounded-xl text-sm font-bold text-slate-900 focus:outline-hidden shadow-2xs"
                             />
                             <input
                               type="tel"
                               value={row.driverPhone}
                               onChange={(e) => handleTxChange(row.id, 'driverPhone', e.target.value)}
-                              placeholder="Phone Number *"
+                              placeholder="Phone Number"
                               className="w-full p-3 bg-white border border-amber-400 rounded-xl text-sm font-bold text-slate-900 focus:outline-hidden shadow-2xs"
                             />
                           </div>

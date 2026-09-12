@@ -114,7 +114,7 @@ const StaffLedger = () => {
 
   const baseSalary = staffMember.monthlySalary || 0;
   const netSalary = Math.max(0, baseSalary - (staffMember.monthlyDeduction || 0));
-  const bataEarnings = (staffMember.totalBataHours || 0) * (staffMember.bataRate || 0);
+  const bataEarnings = (staffMember.totalBataHours || 0) * (Number(staffMember.bataRate) || 0);
   const totalIncome = baseSalary + bataEarnings;
 
   // Date filtering

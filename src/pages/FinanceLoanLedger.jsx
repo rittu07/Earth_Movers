@@ -111,14 +111,12 @@ const FinanceLoanLedger = () => {
 
   // Share Statement via WhatsApp
   const handleShareWhatsApp = () => {
-    const phoneDigits = (loanCalculated.phone || '').replace(/\D/g, '');
     const message = `*🚜 LOGANATHAN FINANCE LOAN STATEMENT*\n\n` +
       `*Borrower:* ${loanCalculated.borrowerName}\n` +
       `*Loan ID:* ${loanCalculated.id}\n` +
       `*Start Date:* ${loanCalculated.startDate}\n` +
       `*Principal Amount:* ${formatCurrency(loanCalculated.principal)}\n` +
       `*Interest Rate:* ${loanCalculated.interestRate}%/mo (${formatCurrency(loanCalculated.monthlyInterest)}/mo)\n` +
-      `*Tenure:* Month ${loanCalculated.months}\n` +
       `--------------------------------\n` +
       `*Total Accrued Dues:* ${formatCurrency(loanCalculated.totalAmount)}\n` +
       `*Total Paid / Returned:* ${formatCurrency(loanCalculated.returnedAmount || 0)}\n` +
@@ -126,20 +124,16 @@ const FinanceLoanLedger = () => {
       `--------------------------------\n` +
       `Thank you! Contact us for any statement updates.`;
 
-    const waUrl = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(message)}`;
-    window.open(waUrl, '_blank');
+    openWhatsAppChat(loanCalculated.phone, message);
   };
 
   // Open Return Payment Modal
   const handleOpenReturnModal = () => {
     const firstUnsettled = getFirstUnsettledMonth(loanCalculated);
     const isAllSettled = isMonthSettled(loanCalculated, firstUnsettled);
-    const firstInt = (loanCalculated.monthBreakdown && loanCalculated.monthBreakdown[firstUnsettled - 1])
-      ? loanCalculated.monthBreakdown[firstUnsettled - 1].interestAccrued
-      : loanCalculated.monthlyInterest;
-    setReturnPayAmount((isAllSettled ? loanCalculated.dueAmount : firstInt || 2000).toString());
+    setReturnPayAmount((isAllSettled ? loanCalculated.dueAmount : loanCalculated.monthlyInterest || 2000).toString());
     setReturnPayMonths(loanCalculated.months.toString());
-    setReturnPayMonth(isAllSettled ? 'Full Settlement' : `Month ${firstUnsettled}`);
+    setReturnPayMonth(isAllSettled ? 'Full Settlement' : 'Return Payment');
     setReturnPayDate(new Date().toISOString().split('T')[0]);
     setReturnPayDiscount('');
     setIsReturnModalOpen(true);
@@ -157,7 +151,7 @@ const FinanceLoanLedger = () => {
     recordReturnPayment(
       loanCalculated.id,
       payAmt,
-      returnPayMonth || `Month ${newMonths}`,
+      returnPayMonth || 'Return Payment',
       newMonths,
       returnPayMethod,
       returnPayRef,
@@ -173,7 +167,6 @@ const FinanceLoanLedger = () => {
         borrowerName: loanCalculated.borrowerName,
         amount: payAmt,
         discount: discAmt,
-        repaymentFor: returnPayMonth || `Month ${newMonths}`,
         paymentMethod: returnPayMethod,
         reference: returnPayRef,
         remainingDue: remDue
@@ -484,52 +477,48 @@ const FinanceLoanLedger = () => {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1 text-xs">Repayment For *</label>
+                <label className="block font-bold text-slate-700 mb-1 text-xs">Repayment Type *</label>
                 <select
                   value={returnPayMonth}
                   onChange={(e) => {
                     const val = e.target.value;
                     setReturnPayMonth(val);
-                    if (val.startsWith('Month ')) {
-                      const m = parseInt(val.split(' ')[1], 10);
-                      if (m && !isNaN(m)) {
-                        setReturnPayMonths(m.toString());
-                        const mInt = (loanCalculated.monthBreakdown && loanCalculated.monthBreakdown[m - 1])
-                          ? loanCalculated.monthBreakdown[m - 1].interestAccrued
-                          : loanCalculated.monthlyInterest;
-                        setReturnPayAmount(mInt.toString());
-                      }
-                    } else if (val === 'Full Settlement') {
+                    if (val === 'Full Settlement') {
                       setReturnPayAmount(loanCalculated.dueAmount.toString());
                     }
                   }}
                   required
                   className="w-full p-3 bg-white border border-slate-200 rounded-xl font-semibold text-slate-900 text-xs"
                 >
-                  <option value="">-- Select Repayment --</option>
-                  {Array.from(
-                    { length: Math.max(Number(returnPayMonths) || 1, loanCalculated.months || 1) },
-                    (_, i) => {
-                      const monthNum = i + 1;
-                      const settled = isMonthSettled(loanCalculated, monthNum);
-                      if (settled) return null;
-                      const mInt = (loanCalculated.monthBreakdown && loanCalculated.monthBreakdown[i])
-                        ? loanCalculated.monthBreakdown[i].interestAccrued
-                        : loanCalculated.monthlyInterest;
-                      return (
-                        <option key={monthNum} value={`Month ${monthNum}`}>
-                          Month {monthNum} Interest ({formatCurrency(mInt)})
-                        </option>
-                      );
-                    }
-                  )}
+                  <option value="Return Payment">Return Payment</option>
                   <option value="Full Settlement">Full Remaining Settlement</option>
-                  <option value="Partial Principal Return">Partial Principal Return</option>
                 </select>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1 text-xs">Return Amount Paid (₹) *</label>
+                <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
+                  <label className="block font-bold text-slate-700 text-xs">Return Amount Paid (₹) *</label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setReturnPayAmount(loanCalculated.monthlyInterest.toString())}
+                      className="text-[11px] font-bold text-emerald-600 hover:underline cursor-pointer"
+                    >
+                      Fill Monthly Int ({formatCurrency(loanCalculated.monthlyInterest)})
+                    </button>
+                    <span className="text-slate-300">•</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReturnPayAmount(loanCalculated.dueAmount.toString());
+                        setReturnPayMonth('Full Settlement');
+                      }}
+                      className="text-[11px] font-bold text-amber-700 hover:underline cursor-pointer"
+                    >
+                      Fill Full Due ({formatCurrency(loanCalculated.dueAmount)})
+                    </button>
+                  </div>
+                </div>
                 <input
                   type="number"
                   required

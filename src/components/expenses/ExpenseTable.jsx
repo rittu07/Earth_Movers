@@ -141,12 +141,12 @@ const ExpenseTable = ({ expenses }) => {
           <thead className="bg-slate-100/90 text-slate-700 font-black border-b border-slate-200">
             <tr>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Date</th>
-              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Category</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Business</th>
+              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Expense Category</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Description</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-right">Amount</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Payment Method</th>
-              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-center">Action</th>
+              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-center">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium">
@@ -164,15 +164,15 @@ const ExpenseTable = ({ expenses }) => {
                     {exp.displayDate}
                   </td>
 
+                  <td className="py-4 px-4 font-bold text-slate-900 text-sm whitespace-nowrap">
+                    {exp.businessName || 'General Expense'}
+                  </td>
+
                   <td className="py-4 px-4 whitespace-nowrap">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black bg-rose-50 text-rose-800 border border-rose-200">
                       <Tag className="w-3.5 h-3.5" />
                       {exp.category}
                     </span>
-                  </td>
-
-                  <td className="py-4 px-4 font-bold text-slate-900 text-sm whitespace-nowrap">
-                    {exp.businessName}
                   </td>
 
                   <td className="py-4 px-4 text-slate-900 font-bold text-sm">

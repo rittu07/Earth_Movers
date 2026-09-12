@@ -138,10 +138,10 @@ export const initialTransactions = [
     paymentMethod: 'UPI',
     date: '2026-08-11',
     displayDate: '11 Aug 2026, 03:15 PM',
-    driverName: 'Murugan (Driver)',
+    driverName: 'Murugan',
     driverPhone: '9845012345',
     driverAmount: 500,
-    jcbVehicle: 'JCB-01 (TN-23-AX-1234)',
+    jcbVehicle: 'JCB 1',
     notes: 'Site cleaning Tambaram'
   },
   {
@@ -205,10 +205,10 @@ export const initialTransactions = [
     paymentMethod: 'Cash',
     date: '2026-08-09',
     displayDate: '09 Aug 2026, 02:00 PM',
-    driverName: 'Kannan (Driver)',
+    driverName: 'Kannan',
     driverPhone: '9789012345',
     driverAmount: 600,
-    jcbVehicle: 'JCB-02 (TN-23-BY-5678)',
+    jcbVehicle: 'JCB 2',
     notes: 'Foundation digging work'
   },
   {
@@ -293,22 +293,22 @@ export const initialExpenses = [
 ];
 
 export const initialJcbVehicles = [
-  'JCB-01 (TN-23-AX-1234)',
-  'JCB-02 (TN-23-BY-5678)',
-  'JCB-03 (TN-23-CZ-9012)',
-  'JCB-04 (TN-23-DW-3456)',
-  'JCB-05 (TN-23-EV-7890)',
-  'JCB-06 (TN-23-FU-2468)'
+  'JCB 1',
+  'JCB 2',
+  'JCB 3',
+  'JCB 4',
+  'JCB 5',
+  'JCB 6'
 ];
 
 export const initialJcbJobs = [
   {
     id: 'JCB-JOB-1',
-    jcbVehicle: 'JCB-01 (TN-23-AX-1234)',
+    jcbVehicle: 'JCB 1',
     customerId: 'cust-1',
     customerName: 'Person A',
     phone: '9876543210',
-    driverName: 'Murugan (Driver)',
+    driverName: 'Murugan',
     driverAmount: 500,
     startTime: '08:00',
     endTime: '11:00',
@@ -323,11 +323,11 @@ export const initialJcbJobs = [
   },
   {
     id: 'JCB-JOB-2',
-    jcbVehicle: 'JCB-02 (TN-23-BY-5678)',
+    jcbVehicle: 'JCB 2',
     customerId: 'cust-2',
     customerName: 'Person B',
     phone: '9988776655',
-    driverName: 'Kannan (Driver)',
+    driverName: 'Kannan',
     driverAmount: 600,
     startTime: '13:00',
     endTime: '17:00',
@@ -342,11 +342,11 @@ export const initialJcbJobs = [
   },
   {
     id: 'JCB-JOB-3',
-    jcbVehicle: 'JCB-03 (TN-23-CZ-9012)',
+    jcbVehicle: 'JCB 3',
     customerId: 'cust-3',
     customerName: 'Person C',
     phone: '9123456780',
-    driverName: 'Ramesh (Driver)',
+    driverName: 'Ramesh',
     driverAmount: 550,
     startTime: '09:00',
     endTime: '13:00',
@@ -361,11 +361,11 @@ export const initialJcbJobs = [
   },
   {
     id: 'JCB-JOB-4',
-    jcbVehicle: 'JCB-04 (TN-23-DW-3456)',
+    jcbVehicle: 'JCB 4',
     customerId: 'cust-4',
     customerName: 'Person D',
     phone: '9898989898',
-    driverName: 'Velu (Driver)',
+    driverName: 'Velu',
     driverAmount: 500,
     startTime: '10:00',
     endTime: '14:00',
@@ -380,11 +380,11 @@ export const initialJcbJobs = [
   },
   {
     id: 'JCB-JOB-5',
-    jcbVehicle: 'JCB-05 (TN-23-EV-7890)',
+    jcbVehicle: 'JCB 5',
     customerId: 'cust-5',
     customerName: 'Person F',
     phone: '9123456780',
-    driverName: 'Selvam (Driver)',
+    driverName: 'Selvam',
     driverAmount: 600,
     startTime: '14:00',
     endTime: '18:00',
@@ -399,11 +399,11 @@ export const initialJcbJobs = [
   },
   {
     id: 'JCB-JOB-6',
-    jcbVehicle: 'JCB-06 (TN-23-FU-2468)',
+    jcbVehicle: 'JCB 6',
     customerId: 'cust-1',
     customerName: 'Person A',
     phone: '9876543210',
-    driverName: 'Saravanan (Driver)',
+    driverName: 'Saravanan',
     driverAmount: 500,
     startTime: '11:00',
     endTime: '15:00',
@@ -421,7 +421,7 @@ export const initialJcbJobs = [
 export const initialDieselLogs = [
   {
     id: 'DSL-101',
-    jcbVehicle: 'JCB-01 (TN-23-AX-1234)',
+    jcbVehicle: 'JCB 1',
     date: '2026-08-14',
     displayDate: '14 Aug 2026',
     quantity: 40,
@@ -434,7 +434,7 @@ export const initialDieselLogs = [
   },
   {
     id: 'DSL-102',
-    jcbVehicle: 'JCB-02 (TN-23-BY-5678)',
+    jcbVehicle: 'JCB 2',
     date: '2026-08-13',
     displayDate: '13 Aug 2026',
     quantity: 45,
@@ -447,7 +447,7 @@ export const initialDieselLogs = [
   },
   {
     id: 'DSL-103',
-    jcbVehicle: 'JCB-01 (TN-23-AX-1234)',
+    jcbVehicle: 'JCB 1',
     date: '2026-08-10',
     displayDate: '10 Aug 2026',
     quantity: 50,
@@ -460,7 +460,7 @@ export const initialDieselLogs = [
   },
   {
     id: 'DSL-104',
-    jcbVehicle: 'JCB-03 (TN-23-CZ-9012)',
+    jcbVehicle: 'JCB 3',
     date: '2026-08-12',
     displayDate: '12 Aug 2026',
     quantity: 55,
@@ -473,7 +473,7 @@ export const initialDieselLogs = [
   },
   {
     id: 'DSL-105',
-    jcbVehicle: 'JCB-04 (TN-23-DW-3456)',
+    jcbVehicle: 'JCB 4',
     date: '2026-08-11',
     displayDate: '11 Aug 2026',
     quantity: 42,
@@ -487,24 +487,24 @@ export const initialDieselLogs = [
 ];
 
 export const initialJcbMonthlyHours = [
-  { vehicle: 'JCB-01 (TN-23-AX-1234)', shortName: 'JCB-01', january: 145, february: 132, march: 168, april: 151, may: 142, june: 160, july: 155, august: 142 },
-  { vehicle: 'JCB-02 (TN-23-BY-5678)', shortName: 'JCB-02', january: 150, february: 140, march: 175, april: 160, may: 156, june: 168, july: 162, august: 156 },
-  { vehicle: 'JCB-03 (TN-23-CZ-9012)', shortName: 'JCB-03', january: 138, february: 128, march: 160, april: 148, may: 150, june: 154, july: 149, august: 140 },
-  { vehicle: 'JCB-04 (TN-23-DW-3456)', shortName: 'JCB-04', january: 142, february: 135, march: 162, april: 155, may: 148, june: 158, july: 152, august: 145 },
-  { vehicle: 'JCB-05 (TN-23-EV-7890)', shortName: 'JCB-05', january: 130, february: 122, march: 150, april: 140, may: 138, june: 145, july: 140, august: 135 },
-  { vehicle: 'JCB-06 (TN-23-FU-2468)', shortName: 'JCB-06', january: 125, february: 118, march: 145, april: 138, may: 132, june: 140, july: 136, august: 130 }
+  { vehicle: 'JCB 1', shortName: 'JCB 1', january: 145, february: 132, march: 168, april: 151, may: 142, june: 160, july: 155, august: 142 },
+  { vehicle: 'JCB 2', shortName: 'JCB 2', january: 150, february: 140, march: 175, april: 160, may: 156, june: 168, july: 162, august: 156 },
+  { vehicle: 'JCB 3', shortName: 'JCB 3', january: 138, february: 128, march: 160, april: 148, may: 150, june: 154, july: 149, august: 140 },
+  { vehicle: 'JCB 4', shortName: 'JCB 4', january: 142, february: 135, march: 162, april: 155, may: 148, june: 158, july: 152, august: 145 },
+  { vehicle: 'JCB 5', shortName: 'JCB 5', january: 130, february: 122, march: 150, april: 140, may: 138, june: 145, july: 140, august: 135 },
+  { vehicle: 'JCB 6', shortName: 'JCB 6', january: 125, february: 118, march: 145, april: 138, may: 132, june: 140, july: 136, august: 130 }
 ];
 
 export const initialDriverMonthlyReports = [
-  { driverName: 'Perumal', jcbVehicle: 'JCB-01 (TN-23-AX-1234)', monthlyHours: 140, workingDays: 24, month: 'August 2026' },
-  { driverName: 'Kumar', jcbVehicle: 'JCB-01 (TN-23-AX-1234)', monthlyHours: 142, workingDays: 24, month: 'August 2026' },
-  { driverName: 'Ravi', jcbVehicle: 'JCB-02 (TN-23-BY-5678)', monthlyHours: 156, workingDays: 26, month: 'August 2026' },
-  { driverName: 'Murugan', jcbVehicle: 'JCB-01 (TN-23-AX-1234)', monthlyHours: 138, workingDays: 23, month: 'August 2026' },
-  { driverName: 'Kannan', jcbVehicle: 'JCB-02 (TN-23-BY-5678)', monthlyHours: 145, workingDays: 25, month: 'August 2026' },
-  { driverName: 'Ramesh', jcbVehicle: 'JCB-03 (TN-23-CZ-9012)', monthlyHours: 160, workingDays: 27, month: 'August 2026' },
-  { driverName: 'Velu', jcbVehicle: 'JCB-04 (TN-23-DW-3456)', monthlyHours: 150, workingDays: 25, month: 'August 2026' },
-  { driverName: 'Selvam', jcbVehicle: 'JCB-05 (TN-23-EV-7890)', monthlyHours: 138, workingDays: 23, month: 'August 2026' },
-  { driverName: 'Saravanan', jcbVehicle: 'JCB-06 (TN-23-FU-2468)', monthlyHours: 130, workingDays: 22, month: 'August 2026' }
+  { driverName: 'Perumal', jcbVehicle: 'JCB 1', monthlyHours: 140, workingDays: 24, month: 'August 2026' },
+  { driverName: 'Kumar', jcbVehicle: 'JCB 1', monthlyHours: 142, workingDays: 24, month: 'August 2026' },
+  { driverName: 'Ravi', jcbVehicle: 'JCB 2', monthlyHours: 156, workingDays: 26, month: 'August 2026' },
+  { driverName: 'Murugan', jcbVehicle: 'JCB 1', monthlyHours: 138, workingDays: 23, month: 'August 2026' },
+  { driverName: 'Kannan', jcbVehicle: 'JCB 2', monthlyHours: 145, workingDays: 25, month: 'August 2026' },
+  { driverName: 'Ramesh', jcbVehicle: 'JCB 3', monthlyHours: 160, workingDays: 27, month: 'August 2026' },
+  { driverName: 'Velu', jcbVehicle: 'JCB 4', monthlyHours: 150, workingDays: 25, month: 'August 2026' },
+  { driverName: 'Selvam', jcbVehicle: 'JCB 5', monthlyHours: 138, workingDays: 23, month: 'August 2026' },
+  { driverName: 'Saravanan', jcbVehicle: 'JCB 6', monthlyHours: 130, workingDays: 22, month: 'August 2026' }
 ];
 
 export const weeklyPerformanceData = [
@@ -646,7 +646,7 @@ export const initialStaff = [
     phone: '9876543210',
     role: 'JCB Driver',
     monthlySalary: 25000,
-    bataRate: 100,
+    bataRate: 0,
     bataUnit: 'Per Hour',
     advanceAmount: 100000,
     monthlyDeduction: 10000,
@@ -661,7 +661,7 @@ export const initialStaff = [
     phone: '9876543211',
     role: 'Tractor Driver',
     monthlySalary: 22000,
-    bataRate: 300,
+    bataRate: 0,
     bataUnit: 'Per Trip',
     advanceAmount: 50000,
     monthlyDeduction: 5000,
