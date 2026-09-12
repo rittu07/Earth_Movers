@@ -22,21 +22,6 @@ const defaultDriversList = [
   { id: 'd5', name: 'Driver Selvam', phone: '9876543214' }
 ];
 
-const calcHoursFromTime = (startStr, endStr) => {
-  if (!startStr || !endStr) return null;
-  const [sH, sM] = startStr.split(':').map(Number);
-  const [eH, eM] = endStr.split(':').map(Number);
-  if (isNaN(sH) || isNaN(sM) || isNaN(eH) || isNaN(eM)) return null;
-
-  let startMin = sH * 60 + sM;
-  let endMin = eH * 60 + eM;
-  if (endMin < startMin) {
-    endMin += 24 * 60;
-  }
-  const diffHours = (endMin - startMin) / 60;
-  return Number(diffHours.toFixed(1));
-};
-
 const createEmptyTxRow = (defaultBusId = 'bricks') => ({
   id: Date.now() + Math.random(),
   date: getTodayString(),
@@ -47,7 +32,7 @@ const createEmptyTxRow = (defaultBusId = 'bricks') => ({
   isNewCustomer: false,
   itemService: defaultBusId === 'jcb' ? 'JCB Earthmoving' : defaultBusId === 'water' ? 'Water Tanker' : defaultBusId === 'jalli' ? '20mm Jalli' : defaultBusId === 'sand' ? 'M-Sand' : 'Red Bricks',
   quantity: '5',
-  unit: defaultBusId === 'jcb' ? 'Hours' : defaultBusId === 'water' ? 'Loads' : 'Lorry',
+  unit: defaultBusId === 'jcb' ? 'Hours' : defaultBusId === 'water' ? 'Loads' : 'Tractor',
   rate: '',
   paid: '',
   paymentMethod: 'Cash',
@@ -65,8 +50,6 @@ const createEmptyTxRow = (defaultBusId = 'bricks') => ({
   driverPhone: '9876543210',
   isNewDriver: false,
   driverAmount: '',
-  startTime: '09:00',
-  endTime: '14:00',
   waterSource: 'Own Borewell (Plant 1)',
   deliveryPlace: '',
   isCustomWaterSource: false
@@ -84,15 +67,17 @@ const createEmptyExpRow = (defaultBusId = 'jcb') => ({
 });
 
 const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null }) => {
-  const { customers, businesses, suppliers, addCustomer, addSupplier, addTransaction, addExpense, showToast } = useBusiness();
+  const { customers, businesses, suppliers, staff = [], addCustomer, addSupplier, addTransaction, addExpense, showToast } = useBusiness();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState(initialMode);
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const initialBusId = defaultBusinessId || 'bricks';
 
   const [txRows, setTxRows] = useState([createEmptyTxRow(initialBusId)]);
   const [expRows, setExpRows] = useState([createEmptyExpRow(defaultBusinessId || 'jcb')]);
+  const [customerSearch, setCustomerSearch] = useState({});
 
   // Row edit handlers
   const handleTxChange = (id, field, value) => {
@@ -100,15 +85,6 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
       prev.map((row) => {
         if (row.id === id) {
           const updated = { ...row, [field]: value };
-
-          if (field === 'startTime' || field === 'endTime') {
-            const sTime = field === 'startTime' ? value : updated.startTime;
-            const eTime = field === 'endTime' ? value : updated.endTime;
-            const calculatedHrs = calcHoursFromTime(sTime, eTime);
-            if (calculatedHrs !== null && calculatedHrs > 0) {
-              updated.quantity = calculatedHrs.toString();
-            }
-          }
 
           if (field === 'customerId') {
             if (value === '__new__') {
@@ -129,7 +105,7 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
           if (field === 'businessId') {
             if (value === 'bricks') {
               updated.itemService = 'Red Bricks';
-              updated.unit = 'Lorry';
+               updated.unit = 'Tractor';
             } else if (value === 'jcb') {
               updated.itemService = 'JCB Earthmoving';
               updated.unit = 'Hours';
@@ -139,10 +115,10 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
               updated.waterSource = updated.waterSource || 'Own Borewell (Plant 1)';
             } else if (value === 'jalli') {
               updated.itemService = '20mm Jalli';
-              updated.unit = 'Lorry';
+               updated.unit = 'Tractor';
             } else if (value === 'sand') {
               updated.itemService = 'M-Sand';
-              updated.unit = 'Lorry';
+               updated.unit = 'Tractor';
             }
           }
 
@@ -225,6 +201,7 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
 
   // Save Handlers
   const handleSaveTransactions = () => {
+    if (isSaving) return;
     const validRows = txRows.filter(
       (r) => (r.customerId !== '' || r.customerName.trim() !== '') && (Number(r.rate) > 0 || Number(r.quantity) > 0)
     );
@@ -234,18 +211,22 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
       return;
     }
 
+    setIsSaving(true);
     let count = 0;
+    const createdCustomers = new Map();
     validRows.forEach((r) => {
       let custId = r.customerId;
       let custName = r.customerName;
       let phone = r.customerPhone || '';
 
       if (r.isNewCustomer && r.customerName.trim()) {
-        const newCust = addCustomer({
+        const customerKey = `${r.customerPhone.trim()}|${r.customerName.trim().toLowerCase()}`;
+        const newCust = createdCustomers.get(customerKey) || addCustomer({
           name: r.customerName.trim(),
           phone: r.customerPhone.trim() || '0000000000',
           address: ''
         });
+        createdCustomers.set(customerKey, newCust);
         custId = newCust.id;
         custName = newCust.name;
         phone = newCust.phone;
@@ -263,20 +244,35 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
       const paid = Number(r.paid) || 0;
       const selBus = businesses.find((b) => b.id === r.businessId) || businesses[0];
 
-      let supName = r.supplierName || '';
+       let supId = r.supplierId || '';
+       let supName = r.supplierName || '';
       let supPhone = r.supplierPhone || '';
-      if (r.sourcingType === 'outsourced' && r.isNewSupplier && r.supplierName.trim()) {
-        const newSup = addSupplier({
-          name: r.supplierName.trim(),
-          phone: r.supplierPhone.trim() || ''
-        });
-        supName = newSup.name;
-        supPhone = newSup.phone;
+       if (r.businessId === 'water' && r.supplierName.trim() && !supId) {
+         const newSup = addSupplier({
+           name: r.supplierName.trim(),
+           phone: r.supplierPhone.trim() || ''
+         });
+          if (newSup) {
+            supName = newSup.name;
+            supPhone = newSup.phone;
+            supId = newSup.id;
+          }
+       } else if (r.sourcingType === 'outsourced' && r.isNewSupplier && r.supplierName.trim()) {
+         const newSup = addSupplier({
+           name: r.supplierName.trim(),
+           phone: r.supplierPhone.trim() || ''
+         });
+         if (newSup) {
+           supName = newSup.name;
+           supPhone = newSup.phone;
+           supId = newSup.id;
+         }
       } else if (r.sourcingType === 'outsourced' && r.supplierId) {
         const foundSup = suppliers.find((s) => s.id === r.supplierId);
         if (foundSup) {
-          supName = foundSup.name;
-          supPhone = foundSup.phone || '';
+           supName = foundSup.name;
+           supPhone = foundSup.phone || '';
+           supId = foundSup.id;
         }
       }
 
@@ -286,7 +282,7 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
         phone,
         businessId: selBus.id,
         businessName: selBus.name,
-        itemService: r.itemService || 'General Order',
+         itemService: r.itemService === 'Custom Sand' ? (r.customSandType || 'Custom Sand') : (r.itemService || 'General Order'),
         quantity: qty,
         unit: r.unit || 'Units',
         rate,
@@ -297,7 +293,8 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
         reference: r.reference || '',
         date: r.date || getTodayString(),
         notes: r.notes || '',
-        isOutsourced: r.sourcingType === 'outsourced',
+         isOutsourced: r.sourcingType === 'outsourced' || r.businessId === 'water' && Boolean(supId),
+         supplierId: supId,
         outsourcedSupplier: supName,
         outsourcedPhone: supPhone,
         outsourcedCost: Number(r.supplierCost) || Number(r.supplierPaid) || 0,
@@ -305,11 +302,11 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
         outsourcedDue: Math.max(0, (Number(r.supplierCost) || Number(r.supplierPaid) || 0) - (Number(r.supplierPaid) || 0)),
         jcbVehicle: r.businessId === 'jcb' ? (r.jcbVehicle || 'JCB-01 (TN-23-AX-1234)') : '',
         driverName: r.businessId === 'jcb' ? (r.driverName || 'Driver Perumal') : (r.driverName || ''),
-        driverPhone: r.businessId === 'jcb' ? (r.driverPhone || '') : '',
+         driverPhone: r.businessId === 'jcb' ? (r.driverPhone || '') : '',
+         staffId: staff.find((member) => member.name?.toLowerCase() === (r.driverName || '').toLowerCase())?.id || '',
         driverAmount: r.businessId === 'jcb' ? (Number(r.driverAmount) || 0) : (Number(r.driverAmount) || 0),
-        startTime: r.businessId === 'jcb' ? (r.startTime || '') : '',
-        endTime: r.businessId === 'jcb' ? (r.endTime || '') : '',
-        waterSource: r.businessId === 'water' ? (r.waterSource || 'Own Borewell (Plant 1)') : '',
+        duration: Number(r.quantity) || 0,
+         waterSource: '',
         deliveryPlace: r.businessId === 'water' ? (r.deliveryPlace || '') : ''
       });
       count++;
@@ -344,15 +341,14 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
             driverName: r.businessId === 'jcb' ? (r.driverName || 'Driver Perumal') : (r.driverName || ''),
             driverPhone: r.businessId === 'jcb' ? (r.driverPhone || '') : '',
             driverAmount: r.businessId === 'jcb' ? (Number(r.driverAmount) || 0) : (Number(r.driverAmount) || 0),
-            startTime: r.businessId === 'jcb' ? (r.startTime || '') : '',
-            endTime: r.businessId === 'jcb' ? (r.endTime || '') : ''
           });
           openWhatsAppChat(targetPhone, waMsg);
         }
       });
     }
 
-    navigate('/transactions');
+    navigate('/');
+    setIsSaving(false);
   };
 
   const handleSaveExpenses = () => {
@@ -493,19 +489,34 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                     </div>
 
                     {!row.isNewCustomer ? (
+                      <>
+                      <input
+                        type="search"
+                        value={customerSearch[row.id] || ''}
+                        onChange={(e) => setCustomerSearch((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                        placeholder="Search customer name or mobile..."
+                        className="w-full mb-2 p-2.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:outline-hidden focus:border-indigo-500"
+                      />
                       <select
                         value={row.customerId}
-                        onChange={(e) => handleTxChange(row.id, 'customerId', e.target.value)}
+                        onChange={(e) => {
+                          handleTxChange(row.id, 'customerId', e.target.value);
+                          setCustomerSearch((prev) => ({ ...prev, [row.id]: '' }));
+                        }}
                         className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl text-base font-extrabold text-slate-900 focus:bg-white focus:border-indigo-500 focus:outline-hidden shadow-2xs"
                       >
                         <option value="">-- Choose Customer --</option>
                         <option value="__new__">+ Add New Customer</option>
-                        {customers.map((c) => (
+                        {customers.filter((c) => {
+                          const query = (customerSearch[row.id] || '').trim().toLowerCase();
+                          return !query || c.name?.toLowerCase().includes(query) || c.phone?.toLowerCase().includes(query);
+                        }).map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.name} {c.phone ? `(${c.phone})` : ''}
                           </option>
                         ))}
                       </select>
+                      </>
                     ) : (
                       <div className="grid grid-cols-2 gap-2">
                         <input
@@ -553,15 +564,23 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                           <div className="grid grid-cols-2 gap-2">
                             {/* P-Sand or M-Sand Selection */}
                             <select
-                              value={['M-Sand', 'P-Sand', 'River Sand', 'Fine P-Sand'].includes(row.itemService) ? row.itemService : 'M-Sand'}
+                               value={['M-Sand', 'P-Sand', 'Custom Sand'].includes(row.itemService) ? row.itemService : 'M-Sand'}
                               onChange={(e) => handleTxChange(row.id, 'itemService', e.target.value)}
                               className="w-full p-3.5 bg-blue-50 border-2 border-blue-400 rounded-2xl text-base font-black text-blue-950 focus:bg-white focus:outline-hidden shadow-2xs cursor-pointer"
                             >
-                              <option value="M-Sand">M-Sand</option>
-                              <option value="P-Sand">P-Sand</option>
-                              <option value="River Sand">River Sand</option>
-                              <option value="Fine P-Sand">Fine P-Sand</option>
-                            </select>
+                               <option value="M-Sand">M-Sand</option>
+                               <option value="P-Sand">P-Sand</option>
+                               <option value="Custom Sand">+ Add Custom Sand</option>
+                             </select>
+                             {row.itemService === 'Custom Sand' && (
+                               <input
+                                 type="text"
+                                 placeholder="Enter custom sand type"
+                                 value={row.customSandType || ''}
+                                 onChange={(e) => handleTxChange(row.id, 'customSandType', e.target.value)}
+                                 className="col-span-2 w-full p-3.5 bg-white border-2 border-blue-400 rounded-2xl text-base font-bold text-slate-900"
+                               />
+                             )}
 
                             {/* Sourcing Type */}
                             <select
@@ -801,54 +820,61 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                         </>
                       )}
                     </div>
-                  ) : row.businessId === 'water' ? (
-                    <div className="sm:col-span-4">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-sm font-black text-blue-950 flex items-center gap-1">
-                          💧 Water Source & Site *
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => handleTxChange(row.id, 'isCustomWaterSource', !row.isCustomWaterSource)}
-                          className="text-xs text-blue-600 font-extrabold hover:underline cursor-pointer"
-                        >
-                          {row.isCustomWaterSource ? 'Select Preset Source' : '+ Custom Source'}
-                        </button>
-                      </div>
+                   ) : row.businessId === 'water' ? (
+                     <div className="sm:col-span-4">
+                       <div className="flex items-center justify-between mb-1.5">
+                         <label className="text-sm font-black text-blue-950 flex items-center gap-1">
+                           🚚 Supplier *
+                         </label>
+                         <button
+                           type="button"
+                           onClick={() => {
+                             handleTxChange(row.id, 'sourcingType', 'outsourced');
+                             handleTxChange(row.id, 'isNewSupplier', true);
+                           }}
+                           className="text-xs text-blue-600 font-extrabold hover:underline cursor-pointer"
+                         >
+                           + New Supplier
+                         </button>
+                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        {!row.isCustomWaterSource ? (
-                          <select
-                            value={row.waterSource || 'Own Borewell (Plant 1)'}
-                            onChange={(e) => {
-                              if (e.target.value === '__custom__') {
-                                handleTxChange(row.id, 'isCustomWaterSource', true);
-                                handleTxChange(row.id, 'waterSource', '');
-                              } else {
-                                handleTxChange(row.id, 'waterSource', e.target.value);
-                              }
-                            }}
-                            className="w-full p-3.5 bg-blue-50 border-2 border-blue-400 rounded-2xl text-sm font-black text-blue-950 focus:bg-white focus:outline-hidden shadow-2xs cursor-pointer"
-                          >
-                            <option value="Own Borewell (Plant 1)">Own Borewell (Plant 1)</option>
-                            <option value="Own Borewell (Plant 2)">Own Borewell (Plant 2)</option>
-                            <option value="Panchayat Well Sourcing">Panchayat Well Sourcing</option>
-                            <option value="River Water Source">River Water Source</option>
-                            <option value="Quarry Water Sourcing">Quarry Water Sourcing</option>
-                            <option value="Outsourced Tanker Supplier">Outsourced Tanker Supplier</option>
-                            <option value="__custom__">+ Custom Water Source...</option>
-                          </select>
-                        ) : (
-                          <input
-                            type="text"
-                            value={row.waterSource || ''}
-                            onChange={(e) => handleTxChange(row.id, 'waterSource', e.target.value)}
-                            placeholder="Enter Water Source *"
-                            className="w-full p-3.5 bg-white border-2 border-blue-400 rounded-2xl text-sm font-bold text-slate-900 focus:outline-hidden shadow-2xs"
-                          />
-                        )}
-
-                        <input
+                       <div className="space-y-2">
+                         {!row.isNewSupplier ? (
+                           <select
+                             value={row.supplierId}
+                             onChange={(e) => {
+                               if (e.target.value === '__new__') {
+                                 handleTxChange(row.id, 'supplierId', '');
+                                 handleTxChange(row.id, 'isNewSupplier', true);
+                                 handleTxChange(row.id, 'sourcingType', 'outsourced');
+                               } else {
+                                 handleTxChange(row.id, 'supplierId', e.target.value);
+                                 handleTxChange(row.id, 'isNewSupplier', false);
+                               }
+                             }}
+                             className="w-full p-3.5 bg-blue-50 border-2 border-blue-400 rounded-2xl text-sm font-black text-blue-950 focus:bg-white focus:outline-hidden shadow-2xs cursor-pointer"
+                           >
+                             <option value="">-- Choose Supplier --</option>
+                             <option value="__new__">+ New Supplier</option>
+                             {suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name} {supplier.phone ? `(${supplier.phone})` : ''}</option>)}
+                           </select>
+                         ) : (
+                           <div className="grid grid-cols-2 gap-2">
+                             <input type="text" value={row.supplierName} onChange={(e) => handleTxChange(row.id, 'supplierName', e.target.value)} placeholder="Supplier Name *" className="w-full p-3.5 bg-white border-2 border-blue-400 rounded-2xl text-sm font-bold text-slate-900" />
+                             <input type="tel" value={row.supplierPhone} onChange={(e) => handleTxChange(row.id, 'supplierPhone', e.target.value)} placeholder="Supplier Phone" className="w-full p-3.5 bg-white border border-slate-300 rounded-2xl text-sm font-bold text-slate-900" />
+                           </div>
+                         )}
+                         <div className="grid grid-cols-2 gap-2 bg-blue-50/70 p-2 rounded-2xl border border-blue-200">
+                           <div>
+                             <label className="block text-[11px] font-black text-blue-900 uppercase mb-1">💳 Paid to Supplier (₹)</label>
+                             <input type="number" min="0" value={row.supplierPaid} onChange={(e) => handleTxChange(row.id, 'supplierPaid', e.target.value)} placeholder="0" className="w-full p-2.5 bg-white border border-blue-300 rounded-xl text-base font-black text-emerald-700" />
+                           </div>
+                           <div>
+                             <label className="block text-[11px] font-black text-blue-900 uppercase mb-1">💰 Supplier Cost (₹)</label>
+                             <input type="number" min="0" value={row.supplierCost} onChange={(e) => handleTxChange(row.id, 'supplierCost', e.target.value)} placeholder="Cost" className="w-full p-2.5 bg-white border border-blue-300 rounded-xl text-base font-black text-slate-900" />
+                           </div>
+                         </div>
+                         <input
                           type="text"
                           value={row.deliveryPlace || ''}
                           onChange={(e) => handleTxChange(row.id, 'deliveryPlace', e.target.value)}
@@ -909,7 +935,7 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                   </div>
                 </div>
 
-                {/* JCB Specific Details (Machine Picker, Driver Picker with Name/Phone, Driver Bata, Start/End Time) */}
+                 {/* JCB Specific Details (Machine Picker, Driver Picker with Name/Phone, Driver Bata) */}
                 {row.businessId === 'jcb' && (
                   <div className="bg-amber-50/90 p-4 rounded-2xl border-2 border-amber-300/90 space-y-4 animate-in fade-in shadow-2xs">
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
@@ -1006,6 +1032,7 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                           className="w-full p-3 bg-white border border-amber-400 rounded-xl text-sm font-black text-amber-950 focus:outline-hidden shadow-2xs"
                         />
                       </div>
+
                     </div>
                   </div>
                 )}
@@ -1152,11 +1179,12 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
             <button
               type="button"
               onClick={handleSaveTransactions}
-              className="px-3.5 sm:px-6 py-2.5 sm:py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-md text-xs sm:text-base flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0"
+              disabled={isSaving}
+              className="px-3.5 sm:px-6 py-2.5 sm:py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-black rounded-2xl shadow-md text-xs sm:text-base flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shrink-0"
             >
               <Save className="w-4 sm:w-5 h-4 sm:h-5" />
-              <span className="hidden md:inline">Save Transactions</span>
-              <span className="md:hidden">Save</span>
+              <span className="hidden md:inline">{isSaving ? 'Saving...' : 'Save Transactions'}</span>
+              <span className="md:hidden">{isSaving ? 'Saving' : 'Save'}</span>
             </button>
           </div>
         ) : (

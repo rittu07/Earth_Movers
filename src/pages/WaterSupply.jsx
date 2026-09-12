@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import TransactionTable from '../components/transactions/TransactionTable';
+import SupplierSection from '../components/suppliers/SupplierSection';
 import { formatCurrency } from '../utils/formatCurrency';
 import { calculateBusinessMetrics } from '../utils/calculations';
 import { exportBusinessStatementPdf } from '../utils/pdfGenerator';
-import { Droplets, PlusCircle, Download } from 'lucide-react';
+import { PlusCircle, Download } from 'lucide-react';
 
 const WaterSupply = () => {
   const { transactions, payments, expenses } = useBusiness();
@@ -83,6 +84,8 @@ const WaterSupply = () => {
         </h3>
         <TransactionTable transactions={waterTrxs} />
       </div>
+
+      <SupplierSection />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import { useAuth } from '../../context/AuthContext';
 import { X, Home, Building2, Landmark, BarChart3, Activity } from 'lucide-react';
 
 const MobileNav = ({ isOpen, onClose }) => {
@@ -34,6 +35,7 @@ const MobileNav = ({ isOpen, onClose }) => {
 };
 
 export const MobileBottomBar = () => {
+  const { role } = useAuth();
   return (
     <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 z-40 px-1 flex items-center justify-around shadow-lg">
       <NavLink
@@ -61,17 +63,19 @@ export const MobileBottomBar = () => {
         <span>Business</span>
       </NavLink>
 
-      <NavLink
-        to="/finance"
-        className={({ isActive }) =>
-          `flex flex-col items-center gap-0.5 text-[11px] font-black transition-colors ${
-            isActive ? 'text-amber-600' : 'text-slate-600 hover:text-slate-900'
-          }`
-        }
-      >
-        <Landmark className="w-5 h-5 text-amber-600 stroke-[2.5]" />
-        <span className="text-amber-700 font-extrabold">Finance</span>
-      </NavLink>
+      {role === 'owner' && (
+        <NavLink
+          to="/finance"
+          className={({ isActive }) =>
+            `flex flex-col items-center gap-0.5 text-[11px] font-black transition-colors ${
+              isActive ? 'text-amber-600' : 'text-slate-600 hover:text-slate-900'
+            }`
+          }
+        >
+          <Landmark className="w-5 h-5 text-amber-600 stroke-[2.5]" />
+          <span className="text-amber-700 font-extrabold">Finance</span>
+        </NavLink>
+      )}
 
       <NavLink
         to="/expenses"

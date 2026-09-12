@@ -13,3 +13,6 @@ migrations_dir = "migrations"
 directory = "../dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
+
+[vars]
+ALLOWED_ORIGIN = "https://earth-movers-api.loga.workers.dev"

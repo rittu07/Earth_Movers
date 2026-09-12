@@ -6,7 +6,7 @@ import StatusBadge from '../components/common/StatusBadge';
 import EditTransactionModal from '../components/common/EditTransactionModal';
 import EditPaymentModal from '../components/common/EditPaymentModal';
 import { formatCurrency } from '../utils/formatCurrency';
-import { getDateRange, isDateInRange } from '../utils/calculations';
+import { getDateRange, getOutsourcedSupplierName, isDateInRange } from '../utils/calculations';
 import { exportToPdf } from '../utils/pdfGenerator';
 import {
   Phone,
@@ -130,11 +130,24 @@ const CustomerLedger = () => {
 
   const handleDelete = (item) => {
     if (item.type === 'Transaction') {
-      if (window.confirm(`Delete transaction entry ${item.id}? This will adjust customer outstanding due.`)) {
+      const details = [
+        customer.name,
+        item.business || 'Unknown business',
+        item.description || 'Transaction',
+        formatCurrency(item.amount || 0),
+        item.date || 'No date'
+      ].join(' | ');
+      if (window.confirm(`Delete this transaction?\n\n${details}\n\nThis will adjust the customer outstanding balance.`)) {
         deleteTransaction(item.id);
       }
     } else if (item.type === 'Payment') {
-      if (window.confirm(`Delete payment entry ${item.id}? This will adjust customer outstanding due.`)) {
+      const details = [
+        customer.name,
+        'Payment',
+        formatCurrency(item.paid || item.amount || 0),
+        item.date || 'No date'
+      ].join(' | ');
+      if (window.confirm(`Delete this payment?\n\n${details}\n\nThis will adjust the customer outstanding balance.`)) {
         deletePayment(item.id);
       }
     }
@@ -429,7 +442,7 @@ const CustomerLedger = () => {
                         )}
                         {item.isOutsourced && (
                           <div className="flex items-center justify-between text-orange-950 font-semibold bg-orange-50 p-1.5 rounded-lg border border-orange-200">
-                            <span>Supplier: {item.outsourcedSupplier || 'Chamber'}</span>
+                             <span>Outsourced from: {getOutsourcedSupplierName(item)}</span>
                             {Number(item.outsourcedDue) > 0 && <span className="text-rose-700 font-bold">Due: ₹{item.outsourcedDue}</span>}
                           </div>
                         )}

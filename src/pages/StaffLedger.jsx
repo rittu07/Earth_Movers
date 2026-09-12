@@ -52,7 +52,7 @@ const getTypeBadge = (category) => {
 
 const StaffLedger = () => {
   const { id } = useParams();
-  const { staff = [], getStaffById, getStaffLedger } = useBusiness();
+  const { staff = [], drivingHours = [], getStaffById, getStaffLedger } = useBusiness();
 
   const [activeTab, setActiveTab] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
@@ -63,6 +63,16 @@ const StaffLedger = () => {
   const [isAdvanceModalOpen, setIsAdvanceModalOpen] = useState(false);
 
   const staffMember = getStaffById(id);
+  const driverHours = drivingHours.filter((record) => record.staffId === staffMember?.id || (!record.staffId && record.driverName?.toLowerCase() === staffMember?.name?.toLowerCase()));
+  const filteredDrivingHours = driverHours.filter((record) => {
+    if (dateFilter === 'custom' && customDate) return record.date === customDate;
+    if (dateFilter === 'month') return record.date?.startsWith(new Date().toISOString().slice(0, 7));
+    return true;
+  });
+  const drivingSummary = {
+    days: new Set(filteredDrivingHours.map((record) => record.date)).size,
+    hours: filteredDrivingHours.reduce((sum, record) => sum + (Number(record.duration) || 0), 0)
+  };
 
   if (!staffMember) {
     return (
@@ -239,6 +249,12 @@ const StaffLedger = () => {
             All Activity ({ledgerHistory.length})
           </button>
           <button
+            onClick={() => setActiveTab('driving')}
+            className={`pb-3 transition-all relative whitespace-nowrap cursor-pointer ${activeTab === 'driving' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500 hover:text-slate-900'}`}
+          >
+            Driving Hours ({driverHours.length})
+          </button>
+          <button
             onClick={() => setActiveTab('salary')}
             className={`pb-3 transition-all relative whitespace-nowrap cursor-pointer ${
               activeTab === 'salary'
@@ -285,8 +301,18 @@ const StaffLedger = () => {
         </div>
       </div>
 
+      {activeTab === 'driving' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white rounded-2xl border border-slate-200 p-4"><span className="text-xs font-black text-slate-500 uppercase">Total days worked</span><p className="text-2xl font-black text-slate-900 mt-1">{drivingSummary.days}</p></div>
+            <div className="bg-white rounded-2xl border border-slate-200 p-4"><span className="text-xs font-black text-slate-500 uppercase">Total hours driven</span><p className="text-2xl font-black text-indigo-600 mt-1">{drivingSummary.hours.toFixed(1)}</p></div>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto"><table className="w-full text-left text-xs"><thead className="bg-slate-50 font-black uppercase text-slate-500"><tr><th className="p-3">Date</th><th className="p-3">JCB</th><th className="p-3">Start</th><th className="p-3">End</th><th className="p-3 text-right">Hours</th></tr></thead><tbody className="divide-y divide-slate-100">{filteredDrivingHours.sort((a, b) => String(b.date).localeCompare(String(a.date))).map((record) => <tr key={record.id}><td className="p-3">{record.date}</td><td className="p-3">{record.jcbVehicle}</td><td className="p-3">{record.startTime}</td><td className="p-3">{record.endTime}</td><td className="p-3 text-right font-black">{record.duration}</td></tr>)}</tbody></table></div>
+        </div>
+      )}
+
       {/* MOBILE INLINE EXPANDABLE CARDS (Visible on screens < md) */}
-      <div className="md:hidden space-y-3">
+      <div className={`md:hidden space-y-3 ${activeTab === 'driving' ? 'hidden' : ''}`}>
         {filteredItems.length === 0 ? (
           <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 text-xs font-medium">
             No records match the tab selection.
@@ -377,7 +403,7 @@ const StaffLedger = () => {
       </div>
 
       {/* DESKTOP DETAILED LEDGER TABLE (Visible on screens >= md) */}
-      <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
+      <div className={`hidden md:block overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs ${activeTab === 'driving' ? 'hidden' : ''}`}>
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-100/90 text-slate-700 font-black border-b border-slate-200">
             <tr>

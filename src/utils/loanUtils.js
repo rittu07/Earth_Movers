@@ -36,12 +36,26 @@ export const calculateElapsedMonths = (startDate, asOfDate = null) => {
 };
 
 /**
- * Recalculates dynamic loan values using Compound Interest formula per month.
- * If a customer misses a monthly interest payment, the unpaid interest compounds into the next month's starting principal balance.
- * Example: Principal ₹1,00,000 @ 2%/mo
- * - Month 1: Interest = ₹2,000. Balance at end of Month 1 = ₹1,02,000.
- * - If Month 1 is unpaid: Month 2 Interest = ₹1,02,000 * 2% = ₹2,040.
- * - Accrued Total Interest = ₹4,040. Total Payable = ₹1,04,040.
+ * Sums all recorded return payments (amount + discount) from payment history.
+ * ALWAYS recalculated from the payment history so new payments are never missed.
+ */
+export const getTotalReturnedAmount = (loan) => {
+  const paymentHistory = (loan && loan.paymentHistory) || [];
+  return paymentHistory.reduce(
+    (sum, p) => sum + (Number(p.amount) || 0) + (Number(p.discount) || 0),
+    0
+  );
+};
+
+/**
+ * Recalculates dynamic loan values using monthly compound interest.
+ * Each month's interest is calculated on the previous month's balance.
+ * Total Payable = Principal + Simple Interest
+ * Remaining Due = max(0, Total Payable - Total Returned Payments)
+ *
+ * Example: Principal ₹1,00,000 @ 2%/mo for 3 months
+ * - Total Payable = ₹1,00,000 × 1.02³
+ * - Payment of ₹2,000 reduces Remaining Due to ₹1,04,000
  */
 export const getLoanCalculatedDetails = (loan) => {
   if (!loan) return null;
@@ -49,93 +63,56 @@ export const getLoanCalculatedDetails = (loan) => {
   const principal = Number(loan.principal) || 0;
   const rate = Number(loan.interestRate) || 0;
   const startDateStr = loan.startDate || new Date().toISOString().split('T')[0];
-  const startObj = new Date(startDateStr);
   const autoElapsed = calculateElapsedMonths(startDateStr);
-  
+
   const storedMonths = Number(loan.months) || 1;
   const isManual = Boolean(loan.isManualMonths);
   const months = isManual ? Math.max(1, storedMonths) : Math.max(storedMonths, autoElapsed);
 
-  const isExtended = autoElapsed > 1;
-  const isAutoUpdated = !isManual && autoElapsed > storedMonths;
+  // Always recalculate from payment history (do NOT trust stored returnedAmount,
+  // which goes stale after subsequent payments).
+  const paymentHistory = (loan.paymentHistory || []).map((payment, index) => ({
+    ...payment,
+    id: payment.id || `${loan.id}-return-${index}`
+  }));
+  const normalizedLoan = { ...loan, paymentHistory };
+  const returnedAmount = getTotalReturnedAmount(normalizedLoan);
 
-  const paymentHistory = loan.paymentHistory || [];
-  const returnedAmount = Number(loan.returnedAmount) || paymentHistory.reduce((sum, p) => sum + (Number(p.amount) || 0) + (Number(p.discount) || 0), 0);
-
-  // Month-by-Month Compounding Calculation
-  let runningBalance = principal;
-  let totalInterest = 0;
-
-  // Track payments chronologically
-  const sortedPayments = [...paymentHistory].map((p, idx) => ({
-    amount: (Number(p.amount) || 0) + (Number(p.discount) || 0),
-    cashAmount: Number(p.amount) || 0,
-    discountAmount: Number(p.discount) || 0,
-    date: p.date || startDateStr,
-    month: p.month || '',
-    id: idx
-  })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-  let unappliedPayments = sortedPayments.map(p => ({ ...p }));
+  // Compound the balance month by month so every later month's interest
+  // includes the interest accrued in prior months.
   const monthBreakdown = [];
-
+  let runningBalance = principal;
   for (let m = 1; m <= months; m++) {
-    const cycleEndDate = new Date(startObj);
-    if (!isNaN(startObj.getTime())) {
-      cycleEndDate.setMonth(cycleEndDate.getMonth() + m);
-    }
-    const cycleEndDateStr = !isNaN(cycleEndDate.getTime()) ? cycleEndDate.toISOString().split('T')[0] : startDateStr;
-
-    // Start-of-month balance is runningBalance
-    const startBal = runningBalance;
-
-    // Interest accrued for month m on start-of-month balance (0 if settled)
-    const monthInt = startBal > 0 ? Math.round((startBal * rate) / 100) : 0;
-    totalInterest += monthInt;
-
-    const grossBal = startBal + monthInt;
-
-    // Find payments made on or before cycleEndDateStr that haven't been applied yet,
-    // or payments explicitly tagged for Month m
-    let monthPaid = 0;
-    for (let p of unappliedPayments) {
-      const isExplicitMonthMatch = p.month && new RegExp(`\\bMonth\\s*${m}\\b`, 'i').test(p.month);
-      const isDateMatch = p.date <= cycleEndDateStr;
-
-      if (p.amount > 0 && (isExplicitMonthMatch || isDateMatch)) {
-        const payToApply = Math.min(p.amount, Math.max(0, grossBal - monthPaid));
-        monthPaid += payToApply;
-        p.amount -= payToApply;
-      }
-    }
-
-    // End-of-month balance (compounds into start-of-month balance for month m+1)
-    runningBalance = Math.max(0, grossBal - monthPaid);
-
+    const startBalance = runningBalance;
+    const interestAccrued = Math.round((startBalance * rate) / 100);
+    runningBalance = startBalance + interestAccrued;
     monthBreakdown.push({
       monthNum: m,
-      startBalance: startBal,
-      interestAccrued: monthInt,
-      paid: monthPaid,
+      startBalance,
+      interestAccrued,
+      paid: 0,
       endBalance: runningBalance
     });
   }
-
-  const totalAmount = principal + totalInterest;
+  const monthlyInterest = monthBreakdown[0]?.interestAccrued || 0;
+  const totalAmount = runningBalance;
+  const totalInterest = totalAmount - principal;
   const dueAmount = Math.max(0, totalAmount - returnedAmount);
-  const currentMonthlyInterest = monthBreakdown.length > 0
-    ? monthBreakdown[monthBreakdown.length - 1].interestAccrued
-    : Math.round((principal * rate) / 100);
 
-  const status = (dueAmount === 0 && (returnedAmount > 0 || loan.status === 'Settled'))
-    ? 'Settled'
-    : (loan.status || 'Active');
+  const isExtended = autoElapsed > 1;
+  const isAutoUpdated = !isManual && autoElapsed > storedMonths;
+
+  const fullyPaidByPayments = returnedAmount > 0 && dueAmount <= 0;
+  const previouslySettled = loan.status === 'Settled';
+  const isSettled = fullyPaidByPayments || previouslySettled;
+  const status = isSettled ? 'Settled' : (loan.status && loan.status !== 'Settled' ? loan.status : 'Active');
+  const effectiveDue = isSettled ? 0 : dueAmount;
 
   return {
-    ...loan,
+    ...normalizedLoan,
     principal,
     interestRate: rate,
-    monthlyInterest: currentMonthlyInterest,
+    monthlyInterest,
     months,
     autoElapsed,
     isExtended,
@@ -144,7 +121,7 @@ export const getLoanCalculatedDetails = (loan) => {
     totalInterest,
     totalAmount,
     returnedAmount,
-    dueAmount,
+    dueAmount: effectiveDue,
     status,
     monthBreakdown,
     isCompound: true
@@ -170,23 +147,14 @@ export const getLoanDueDateInfo = (loanCalculated) => {
   }
 
   const totalMonths = loanCalculated.months || 1;
-  const monthBreakdown = loanCalculated.monthBreakdown || [];
-  let targetMonthNum = 1;
-  for (let m = 1; m <= totalMonths; m++) {
-    const mb = monthBreakdown[m - 1];
-    if (!mb || mb.endBalance > 0) {
-      targetMonthNum = m;
-      break;
-    }
-    targetMonthNum = m;
-  }
+  let targetMonthNum = totalMonths;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   const targetDueDate = new Date(start);
   targetDueDate.setMonth(targetDueDate.getMonth() + targetMonthNum);
   const targetDueDateStr = targetDueDate.toISOString().split('T')[0];
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
 
   const due = new Date(targetDueDate);
   due.setHours(0, 0, 0, 0);
@@ -201,5 +169,3 @@ export const getLoanDueDateInfo = (loanCalculated) => {
     isSettled: false
   };
 };
-
-

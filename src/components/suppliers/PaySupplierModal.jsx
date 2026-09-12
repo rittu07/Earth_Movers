@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
+import { formatCurrency } from '../../utils/formatCurrency';
 import { Wallet, X, DollarSign, Calendar, CreditCard, FileText, Building2 } from 'lucide-react';
 
 const PaySupplierModal = ({ isOpen, onClose, preselectedSupplierId = '' }) => {
-  const { suppliers = [], addSupplier, addSupplierPayment, showToast } = useBusiness();
+  const { suppliers = [], addSupplier, addSupplierPayment, getSupplierFinancials, showToast } = useBusiness();
 
   const [supplierId, setSupplierId] = useState(preselectedSupplierId || (suppliers[0]?.id || ''));
   const [isNewSupplier, setIsNewSupplier] = useState(false);
@@ -18,6 +19,7 @@ const PaySupplierModal = ({ isOpen, onClose, preselectedSupplierId = '' }) => {
   if (!isOpen) return null;
 
   const selectedSupplier = suppliers.find((s) => s.id === supplierId) || suppliers[0];
+  const selectedBalance = selectedSupplier ? getSupplierFinancials(selectedSupplier.id).outstanding : 0;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -113,11 +115,11 @@ const PaySupplierModal = ({ isOpen, onClose, preselectedSupplierId = '' }) => {
               >
                 <option value="">-- Choose Supplier --</option>
                 <option value="__new__">+ Add New Supplier</option>
-                {suppliers.map((sup) => (
-                  <option key={sup.id} value={sup.id}>
-                    {sup.name} ({sup.phone || 'No phone'})
-                  </option>
-                ))}
+                 {suppliers.map((sup) => (
+                   <option key={sup.id} value={sup.id}>
+                     {sup.name} — Phone: {sup.phone || 'No phone'} (Pay: {formatCurrency(getSupplierFinancials(sup.id).outstanding)})
+                   </option>
+                 ))}
               </select>
             ) : (
               <div className="grid grid-cols-2 gap-2">
@@ -140,7 +142,9 @@ const PaySupplierModal = ({ isOpen, onClose, preselectedSupplierId = '' }) => {
             )}
           </div>
 
-          {/* Amount */}
+           <p className="text-xs font-bold text-rose-600">Current amount to pay: {formatCurrency(selectedBalance)}</p>
+
+           {/* Amount */}
           <div>
             <label className="block font-bold text-slate-700 mb-1">Payment Amount (₹) *</label>
             <div className="relative">

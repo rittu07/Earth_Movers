@@ -5,7 +5,7 @@ import PageHeader from '../components/layout/PageHeader';
 import { formatCurrency } from '../utils/formatCurrency';
 import { exportToPdf } from '../utils/pdfGenerator';
 import { BookOpen, Search, Download, ChevronDown, Eye } from 'lucide-react';
-import { getDateRange, isDateInRange } from '../utils/calculations';
+import { getDateRange, getOutsourcedSupplierName, isDateInRange } from '../utils/calculations';
 
 const Ledger = () => {
   const { transactions, payments, customers, businesses, showToast } = useBusiness();
@@ -27,7 +27,9 @@ const Ledger = () => {
       businessId: t.businessId,
       businessName: t.businessName,
       type: 'Transaction',
-      description: `${t.itemService} (${t.quantity} ${t.unit})`,
+      isOutsourced: t.isOutsourced,
+      outsourcedSupplier: t.outsourcedSupplier,
+      description: `${t.itemService} (${t.quantity} ${t.unit})${t.isOutsourced ? ` • Outsourced from: ${getOutsourcedSupplierName(t)}` : ''}`,
       debit: t.amount,
       credit: t.paid,
       balance: t.due
@@ -193,9 +195,14 @@ const Ledger = () => {
                       <h4 className="text-xs font-black text-slate-900 leading-tight truncate">
                         {ev.customerName.split('(')[0]}
                       </h4>
-                      <p className="text-[11px] font-black text-indigo-900 mt-0.5 truncate">
-                        {ev.type} • {ev.businessName}
-                      </p>
+                       <p className="text-[11px] font-black text-indigo-900 mt-0.5 truncate">
+                         {ev.type} • {ev.businessName}
+                       </p>
+                       {ev.isOutsourced && (
+                         <p className="text-[10px] font-black text-amber-700 truncate">
+                           Outsourced from: {getOutsourcedSupplierName(ev)}
+                         </p>
+                       )}
                       <span className="text-[10px] text-slate-400 font-medium">{ev.displayDate}</span>
                     </div>
                   </div>

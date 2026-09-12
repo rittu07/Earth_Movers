@@ -1,5 +1,5 @@
 const DB_NAME = 'earth-movers-local';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const STORE_NAMES = [
   'customers',
   'transactions',
@@ -9,6 +9,7 @@ const STORE_NAMES = [
   'suppliers',
   'financeLoans',
   'staff',
+  'drivingHours',
   'jcbFleet',
   'maintenanceRecords',
   'jcbDocuments',
@@ -58,3 +59,13 @@ export const putManyLocal = async (storeName, values) => {
 };
 
 export const getMeta = async (id) => getAllLocal('meta').then((items) => items.find((item) => item.id === id));
+
+export const clearLocalData = async () => {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAMES, 'readwrite');
+    STORE_NAMES.forEach((name) => transaction.objectStore(name).clear());
+    transaction.oncomplete = () => { db.close(); resolve(); };
+    transaction.onerror = () => { db.close(); reject(transaction.error); };
+  });
+};

@@ -3,20 +3,173 @@ import { cors } from 'hono/cors';
 
 const app = new Hono();
 const MAX_EVENTS = 100;
+const MAX_REQUEST_BYTES = 512 * 1024;
+const MAX_EVENT_BYTES = 128 * 1024;
+const MAX_ID_LENGTH = 128;
+const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
-app.use('*', cors({ origin: '*' }));
+app.use('*', cors({
+  origin: (origin, c) => {
+    const allowedOrigin = c.env.ALLOWED_ORIGIN;
+    return allowedOrigin && origin === allowedOrigin ? allowedOrigin : '';
+  },
+  allowHeaders: ['Content-Type', 'Authorization', 'X-API-Token', 'X-Setup-Key'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+}));
+
+app.use('*', async (c, next) => {
+  await next();
+  c.header('X-Content-Type-Options', 'nosniff');
+  c.header('X-Frame-Options', 'DENY');
+  c.header('Referrer-Policy', 'no-referrer');
+  c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  c.header('Content-Security-Policy', "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+  if (new URL(c.req.url).protocol === 'https:') c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+});
 
 app.use('/api/*', async (c, next) => {
-  const configuredToken = c.env.API_TOKEN;
-  if (configuredToken && c.req.header('Authorization') !== `Bearer ${configuredToken}`) {
-    return c.json({ error: 'Unauthorized' }, 401);
+  const path = c.req.path;
+  const contentLength = Number(c.req.header('Content-Length') || 0);
+  if (contentLength > MAX_REQUEST_BYTES) return c.json({ error: 'Request too large' }, 413);
+
+  if (path === '/api/auth/login' || path === '/api/auth/setup') {
+    return next();
   }
+
+  const user = await getSessionUser(c);
+  if (!user) return c.json({ error: 'Authentication required' }, 401);
+  c.set('user', user);
   await next();
 });
 
 const now = () => new Date().toISOString();
 const value = (object, key, fallback = '') => object[key] ?? fallback;
 const number = (object, key, fallback = 0) => Number(object[key] ?? fallback) || 0;
+
+const bytesToBase64 = (bytes) => btoa(String.fromCharCode(...bytes));
+const base64ToBytes = (value) => Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
+const bytesToHex = (bytes) => Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+
+const randomBase64 = (length = 32) => {
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  return bytesToBase64(bytes);
+};
+
+const sha256 = async (value) => {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return bytesToHex(new Uint8Array(digest));
+};
+
+const hashPassword = async (password, salt) => {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: base64ToBytes(salt), iterations: 100000, hash: 'SHA-256' },
+    key,
+    256
+  );
+  return bytesToHex(new Uint8Array(bits));
+};
+
+const safeUsername = (value) => String(value || '').trim().toLowerCase();
+const validPassword = (value) => typeof value === 'string' && value.length >= 8 && value.length <= 128;
+
+async function getSessionUser(c) {
+  const authorization = c.req.header('Authorization') || '';
+  const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+  if (!token || !c.env.DB) return null;
+
+  const tokenHash = await sha256(token);
+  const session = await c.env.DB.prepare(
+    `SELECT s.expires_at, u.id, u.username, u.role
+     FROM auth_sessions s JOIN auth_users u ON u.id = s.user_id
+     WHERE s.token_hash = ?`
+  ).bind(tokenHash).first();
+  if (!session || new Date(session.expires_at).getTime() <= Date.now()) {
+    if (session) await c.env.DB.prepare('DELETE FROM auth_sessions WHERE token_hash = ?').bind(tokenHash).run();
+    return null;
+  }
+  return { id: session.id, username: session.username, role: session.role };
+}
+
+const publicUser = (user) => ({ id: user.id, username: user.username, role: user.role });
+
+app.post('/api/auth/setup', async (c) => {
+  if (!c.env.AUTH_SETUP_KEY || c.req.header('X-Setup-Key') !== c.env.AUTH_SETUP_KEY) {
+    return c.json({ error: 'Invalid setup key' }, 401);
+  }
+
+  try {
+
+  const body = await c.req.json().catch(() => null);
+  const owner = body?.owner;
+  const manager = body?.manager;
+  if (!owner || !manager || !validPassword(owner.password) || !validPassword(manager.password)) {
+    return c.json({ error: 'Owner and manager usernames and passwords are required; passwords must be 8-128 characters' }, 400);
+  }
+
+  const existing = await c.env.DB.prepare('SELECT COUNT(*) AS count FROM auth_users').first();
+  if (Number(existing?.count || 0) > 0) return c.json({ error: 'Authentication is already configured' }, 409);
+
+  const users = [
+    { id: crypto.randomUUID(), username: safeUsername(owner.username), password: owner.password, role: 'owner' },
+    { id: crypto.randomUUID(), username: safeUsername(manager.username), password: manager.password, role: 'manager' }
+  ];
+  if (users.some((user) => !user.username || user.username.length > 64) || users[0].username === users[1].username) {
+    return c.json({ error: 'Owner and manager usernames must be unique and valid' }, 400);
+  }
+
+  const timestamp = now();
+  const statements = [];
+  for (const user of users) {
+    const salt = randomBase64(16);
+    const passwordHash = await hashPassword(user.password, salt);
+    statements.push(c.env.DB.prepare(
+      'INSERT INTO auth_users (id, username, password_hash, password_salt, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).bind(user.id, user.username, passwordHash, salt, user.role, timestamp, timestamp));
+  }
+    await c.env.DB.batch(statements);
+    return c.json({ created: users.map(publicUser) }, 201);
+  } catch (error) {
+    console.error('Authentication setup failed', error);
+    return c.json({ error: 'Authentication setup failed' }, 500);
+  }
+});
+
+app.post('/api/auth/login', async (c) => {
+  const body = await c.req.json().catch(() => null);
+  const username = safeUsername(body?.username);
+  const password = body?.password;
+  const requestedRole = body?.role;
+  if (!username || !validPassword(password) || !['owner', 'manager'].includes(requestedRole)) {
+    return c.json({ error: 'Invalid username, password, or role' }, 400);
+  }
+
+  const user = await c.env.DB.prepare(
+    'SELECT id, username, password_hash, password_salt, role FROM auth_users WHERE username = ?'
+  ).bind(username).first();
+  if (!user || user.role !== requestedRole) return c.json({ error: 'Invalid credentials' }, 401);
+
+  const passwordHash = await hashPassword(password, user.password_salt);
+  if (passwordHash !== user.password_hash) return c.json({ error: 'Invalid credentials' }, 401);
+
+  await c.env.DB.prepare('DELETE FROM auth_sessions WHERE expires_at <= ?').bind(now()).run();
+  const rawToken = randomBase64(32);
+  const tokenHash = await sha256(rawToken);
+  const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+  await c.env.DB.prepare(
+    'INSERT INTO auth_sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)'
+  ).bind(tokenHash, user.id, expiresAt, now()).run();
+  return c.json({ token: rawToken, expiresAt, user: publicUser(user) });
+});
+
+app.get('/api/auth/me', (c) => c.json({ user: publicUser(c.get('user')) }));
+
+app.post('/api/auth/logout', async (c) => {
+  const token = (c.req.header('Authorization') || '').slice(7);
+  if (token) await c.env.DB.prepare('DELETE FROM auth_sessions WHERE token_hash = ?').bind(await sha256(token)).run();
+  return c.json({ ok: true });
+});
 
 const tableFor = {
   customer: 'customers',
@@ -27,13 +180,27 @@ const tableFor = {
   supplier: 'suppliers',
   financeLoan: 'finance_loans',
   staff: 'staff',
+  drivingHour: 'driving_hours',
   jcbFleet: 'jcb_fleet',
   maintenanceRecord: 'maintenance_records',
   jcbDocument: 'jcb_documents',
   stockEntry: 'stock_entries'
 };
 
-const jsonEntityTypes = new Set(['staff', 'jcbFleet', 'maintenanceRecord', 'jcbDocument', 'stockEntry']);
+const jsonEntityTypes = new Set(['staff', 'drivingHour', 'jcbFleet', 'maintenanceRecord', 'jcbDocument', 'stockEntry']);
+const allowedOperations = new Set(['create', 'update', 'delete']);
+const canWriteEntity = (user, entityType) => user.role === 'owner' || entityType !== 'financeLoan';
+
+const validEvent = (event) => {
+  if (!event || typeof event !== 'object' || Array.isArray(event)) return false;
+  if (!event.eventId || typeof event.eventId !== 'string' || event.eventId.length > MAX_ID_LENGTH) return false;
+  if (!event.entityType || typeof event.entityType !== 'string' || !tableFor[event.entityType]) return false;
+  if (!event.entityId || typeof event.entityId !== 'string' || event.entityId.length > MAX_ID_LENGTH) return false;
+  if (!allowedOperations.has(event.operation || 'create')) return false;
+  if (event.operation !== 'delete' && (!event.payload || typeof event.payload !== 'object' || Array.isArray(event.payload))) return false;
+  if (event.clientId && (typeof event.clientId !== 'string' || event.clientId.length > MAX_ID_LENGTH)) return false;
+  return JSON.stringify(event).length <= MAX_EVENT_BYTES;
+};
 
 function entityStatement(event, receivedAt) {
   const data = event.payload;
@@ -101,8 +268,16 @@ app.post('/api/sync', async (c) => {
   const accepted = [];
   const rejected = [];
   for (const event of events) {
-    if (!event?.eventId || !event?.entityType || !event?.entityId || !event?.payload) {
+    if (!validEvent(event)) {
       rejected.push({ eventId: event?.eventId || null, reason: 'Invalid event' });
+      continue;
+    }
+    if (event.accountId !== c.get('user').id) {
+      rejected.push({ eventId: event.eventId, reason: 'Event account does not match session' });
+      continue;
+    }
+    if (!canWriteEntity(c.get('user'), event.entityType)) {
+      rejected.push({ eventId: event.eventId, reason: 'Managers cannot access finance records' });
       continue;
     }
     const existing = await c.env.DB.prepare('SELECT event_id FROM sync_events WHERE event_id = ?').bind(event.eventId).first();
@@ -120,9 +295,10 @@ app.post('/api/sync', async (c) => {
 app.get('/api/sync', async (c) => {
   const since = c.req.query('since') || '';
   const clientId = c.req.query('clientId');
+  const financeFilter = c.get('user').role === 'manager' ? " AND entity_type != 'financeLoan'" : '';
   const query = clientId
-    ? 'SELECT * FROM sync_events WHERE client_id != ? AND received_at > ? ORDER BY received_at LIMIT 500'
-    : 'SELECT * FROM sync_events WHERE received_at > ? ORDER BY received_at LIMIT 500';
+    ? `SELECT * FROM sync_events WHERE client_id != ? AND received_at > ?${financeFilter} ORDER BY received_at LIMIT 500`
+    : `SELECT * FROM sync_events WHERE received_at > ?${financeFilter} ORDER BY received_at LIMIT 500`;
   const result = clientId ? await c.env.DB.prepare(query).bind(clientId, since).all() : await c.env.DB.prepare(query).bind(since).all();
   return c.json({ events: result.results || [], nextSince: now() });
 });
@@ -134,6 +310,9 @@ for (const [path, table] of Object.entries(tableFor)) {
       ? 'staff'
       : `${path.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}s`;
   app.get(`/api/${endpoint}`, async (c) => {
+    if (path === 'financeLoan' && c.get('user').role !== 'owner') {
+      return c.json({ error: 'Finance access is restricted to owners' }, 403);
+    }
     const result = await c.env.DB.prepare(`SELECT * FROM ${table} ORDER BY rowid DESC LIMIT 500`).all();
     return c.json({ data: result.results || [] });
   });

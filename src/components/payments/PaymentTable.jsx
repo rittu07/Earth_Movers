@@ -12,10 +12,17 @@ const PaymentTable = ({ payments }) => {
   const [editingPayment, setEditingPayment] = useState(null);
   const navigate = useNavigate();
 
-  const handleDelete = (id, e) => {
+  const handleDelete = (pay, e) => {
     if (e) e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this payment record? This will update customer outstanding balance.')) {
-      deletePayment(id);
+    const details = [
+      pay.customerName || 'Unknown customer',
+      'Payment',
+      formatCurrency(pay.amount || 0),
+      pay.method || 'Cash',
+      pay.date || 'No date'
+    ].join(' | ');
+    if (window.confirm(`Delete this payment?\n\n${details}\n\nThis will adjust the customer outstanding balance.`)) {
+      deletePayment(pay.id);
     }
   };
 
@@ -137,7 +144,7 @@ const PaymentTable = ({ payments }) => {
                       </button>
                       <button
                         type="button"
-                        onClick={(e) => handleDelete(pay.id, e)}
+                         onClick={(e) => handleDelete(pay, e)}
                         className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" /> Delete
@@ -235,7 +242,7 @@ const PaymentTable = ({ payments }) => {
 
                       <button
                         type="button"
-                        onClick={(e) => handleDelete(pay.id, e)}
+                         onClick={(e) => handleDelete(pay, e)}
                         className="p-2 inline-flex items-center text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
                         title="Delete Payment"
                       >

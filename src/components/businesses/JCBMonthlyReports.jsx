@@ -5,12 +5,12 @@ import { formatCurrency } from '../../utils/formatCurrency';
 
 const JCBMonthlyReports = () => {
   const { jcbMonthlyHours = [], driverMonthlyReports = [], jcbVehicles = [] } = useBusiness();
-  const [selectedJcb, setSelectedJcb] = useState('JCB-01 (TN-23-AX-1234)');
+  const [selectedJcb, setSelectedJcb] = useState('JCB-01');
   const [selectedMonth, setSelectedMonth] = useState('August 2026');
 
   // Filter selected machine monthly hours
   const currentMachineData = jcbMonthlyHours.find(
-    (item) => item.vehicle === selectedJcb || item.shortName === selectedJcb
+    (item) => item.vehicle?.split(' ')[0] === selectedJcb || item.shortName === selectedJcb
   ) || jcbMonthlyHours[0] || {
     shortName: 'JCB-01',
     january: 145,
@@ -64,11 +64,12 @@ const JCBMonthlyReports = () => {
               onChange={(e) => setSelectedJcb(e.target.value)}
               className="px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-hidden focus:border-amber-500"
             >
-              {jcbVehicles.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
+               {jcbVehicles.map((v) => {
+                 const code = v.split(' ')[0];
+                 return <option key={code} value={code}>
+                  {code}
+                 </option>;
+               })}
             </select>
           </div>
         </div>

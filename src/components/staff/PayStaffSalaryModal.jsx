@@ -7,6 +7,7 @@ const PayStaffSalaryModal = ({ isOpen, onClose, selectedStaffMember = null }) =>
     staff = [],
     jcbJobs = [],
     transactions = [],
+    drivingHours = [],
     driverMonthlyReports = [],
     payStaffSalary,
     getStaffSalaryPaidForMonth,
@@ -107,6 +108,12 @@ const PayStaffSalaryModal = ({ isOpen, onClose, selectedStaffMember = null }) =>
     const monthKey = selectedMonthObj?.key || '';
     const monthLabel = selectedMonthObj?.label || '';
 
+    const matchingDrivingHours = drivingHours.filter((record) => {
+      const sameDriver = record.staffId === currentStaff.id || (record.driverName || '').toLowerCase().includes(firstName);
+      return sameDriver && String(record.date || '').startsWith(monthKey);
+    });
+    const recordedHours = matchingDrivingHours.reduce((sum, record) => sum + (Number(record.duration) || 0), 0);
+
     // Transactions
     const matchingTrxs = transactions.filter((t) => {
       if (t.businessId !== 'jcb') return false;
@@ -123,7 +130,8 @@ const PayStaffSalaryModal = ({ isOpen, onClose, selectedStaffMember = null }) =>
     // Jobs
     const matchingJobs = jcbJobs.filter((j) => {
       const dName = (j.driverName || '').toLowerCase();
-      return dName.includes(firstName) || firstName.includes(dName.split(' ')[0]);
+      const nameMatch = dName.includes(firstName) || firstName.includes(dName.split(' ')[0]);
+      return nameMatch && (!j.date || j.date.startsWith(monthKey));
     });
 
     const jobHours = matchingJobs.reduce((sum, j) => sum + (Number(j.duration) || Number(j.quantity) || 0), 0);
@@ -139,7 +147,7 @@ const PayStaffSalaryModal = ({ isOpen, onClose, selectedStaffMember = null }) =>
     });
 
     const reportHours = matchingReport ? Number(matchingReport.monthlyHours) || 0 : 0;
-    const totalHours = Math.max(reportHours, trxHours + jobHours, trxHours, jobHours);
+    const totalHours = Math.max(recordedHours, reportHours, trxHours, jobHours);
     const totalBataFromLog = trxBata + jobBata;
     const vehicle = matchingReport?.jcbVehicle || matchingTrxs[0]?.jcbVehicle || matchingJobs[0]?.jcbVehicle || '';
 
@@ -152,7 +160,7 @@ const PayStaffSalaryModal = ({ isOpen, onClose, selectedStaffMember = null }) =>
       vehicle,
       matchingJobsCount: matchingJobs.length + matchingTrxs.length
     };
-  }, [currentStaff, selectedMonthObj, transactions, jcbJobs, driverMonthlyReports]);
+  }, [currentStaff, selectedMonthObj, transactions, jcbJobs, drivingHours, driverMonthlyReports]);
 
   if (!isOpen) return null;
 

@@ -4,7 +4,7 @@ import { useBusiness } from '../../context/BusinessContext';
 
 const STAFF_ROLES = [
   'JCB Driver',
-  'Lorry Driver',
+  'Tractor Driver',
   'Manager',
   'Supervisor',
   'JCB Operator',

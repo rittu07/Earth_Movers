@@ -9,10 +9,17 @@ const ExpenseTable = ({ expenses }) => {
   const [expandedId, setExpandedId] = useState(null);
   const [editingExpense, setEditingExpense] = useState(null);
 
-  const handleDelete = (id, e) => {
+  const handleDelete = (expense, e) => {
     if (e) e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this expense record?')) {
-      deleteExpense(id);
+    const details = [
+      expense.businessName || expense.businessId || 'General',
+      expense.category || 'Expense',
+      expense.description || 'Expense record',
+      formatCurrency(expense.amount || 0),
+      expense.date || 'No date'
+    ].join(' | ');
+    if (window.confirm(`Delete this expense?\n\n${details}`)) {
+      deleteExpense(expense.id);
     }
   };
 
@@ -114,7 +121,7 @@ const ExpenseTable = ({ expenses }) => {
                       </button>
                       <button
                         type="button"
-                        onClick={(e) => handleDelete(exp.id, e)}
+                         onClick={(e) => handleDelete(exp, e)}
                         className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" /> Delete
@@ -196,7 +203,7 @@ const ExpenseTable = ({ expenses }) => {
 
                       <button
                         type="button"
-                        onClick={(e) => handleDelete(exp.id, e)}
+                         onClick={(e) => handleDelete(exp, e)}
                         className="p-2 inline-flex items-center text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
                         title="Delete Expense"
                       >

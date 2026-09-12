@@ -1,12 +1,21 @@
 export const SERVICE_INTERVALS = {
   'Engine Oil': 300,
   'Hydraulic Oil': 3000,
-  'Air Filter': 500,
-  'Filter': 500,
+  'Air Filter': 300,
+  'Filter': 300,
   'Greasing': 300,
+  'Lubrication Oil': 300,
   'Bearing Oil': 300,
   'Transmission Oil': 1000,
   'Others': 500
+};
+
+export const DEFAULT_SERVICE_INTERVALS = {
+  'Engine Oil': 300,
+  'Hydraulic Oil': 3000,
+  'Air Filter': 300,
+  'Greasing': 300,
+  'Lubrication Oil': 300
 };
 
 export const DEFAULT_OIL_GRADES = {
@@ -15,6 +24,7 @@ export const DEFAULT_OIL_GRADES = {
   'Air Filter': 'OEM Grade Filter',
   'Filter': 'OEM Grade Filter',
   'Greasing': 'AP-3 Grease',
+  'Lubrication Oil': '80W-90',
   'Bearing Oil': '15W-40',
   'Transmission Oil': '80W-90',
   'Others': 'N/A'
@@ -175,7 +185,17 @@ export const initialMaintenanceRecords = [
 ];
 
 export const getStoredFleet = () => {
-  return initialFleetData;
+  return initialFleetData.map((machine) => ({
+    ...machine,
+    totalHours: 0,
+    engineOilLastMeter: 0,
+    hydraulicOilLastMeter: 0,
+    filterLastMeter: 0,
+    greasingLastMeter: 0,
+    lubricationOilLastMeter: 0,
+    serviceIntervals: { ...DEFAULT_SERVICE_INTERVALS, ...(machine.serviceIntervals || {}) },
+    serviceHistory: []
+  }));
 };
 
 export const saveStoredFleet = (fleet) => {

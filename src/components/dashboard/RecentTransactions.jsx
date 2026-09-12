@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useBusiness } from '../../context/BusinessContext';
 import StatusBadge from '../common/StatusBadge';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { getOutsourcedSupplierName } from '../../utils/calculations';
 import { ArrowUpRight } from 'lucide-react';
 
 const getShortDesc = (trx) => {
@@ -16,7 +17,7 @@ const getShortDesc = (trx) => {
     return trx.quantity ? `Water • ${trx.quantity} Loads` : 'Water';
   }
   if (trx.businessId === 'jalli') {
-    return trx.quantity ? `Jalli • ${trx.quantity} ${trx.unit || 'Lorry'}` : 'Jalli';
+    return trx.quantity ? `Jalli • ${trx.quantity} ${trx.unit || 'Tractor'}` : 'Jalli';
   }
   return trx.businessName ? trx.businessName.replace(' Supply', '').replace(' Rental', '').replace(' Service', '') : 'Sale';
 };
@@ -53,9 +54,14 @@ const RecentTransactions = () => {
                 <h4 className="text-sm sm:text-base font-black text-slate-900 leading-tight truncate">
                   {trx.customerName}
                 </h4>
-                <p className="text-xs sm:text-sm font-black text-indigo-900 mt-0.5 truncate">
-                  {getShortDesc(trx)}
-                </p>
+                 <p className="text-xs sm:text-sm font-black text-indigo-900 mt-0.5 truncate">
+                   {getShortDesc(trx)}
+                 </p>
+                 {trx.isOutsourced && (
+                   <p className="text-[11px] font-black text-amber-700 mt-0.5 truncate">
+                     Outsourced from: {getOutsourcedSupplierName(trx)}
+                   </p>
+                 )}
                 <span className="text-[11px] text-slate-400 font-medium">{trx.displayDate}</span>
               </div>
             </div>

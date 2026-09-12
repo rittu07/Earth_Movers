@@ -15,16 +15,19 @@ import {
   Receipt,
   MessageSquare,
   Building2,
-  ChevronDown
+  ChevronDown,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 
 import PaySupplierModal from '../components/suppliers/PaySupplierModal';
 
 const SupplierLedger = () => {
   const { id } = useParams();
-  const { getSupplierById, getSupplierLedger, showToast } = useBusiness();
+  const { getSupplierById, getSupplierLedger, getSupplierFinancials, updateTransaction, deleteTransaction, showToast } = useBusiness();
   const [activeTab, setActiveTab] = useState('all');
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [monthFilter, setMonthFilter] = useState('');
 
   const supplier = getSupplierById(id);
 
@@ -45,14 +48,16 @@ const SupplierLedger = () => {
   const totalSupplies = ledgerItems.filter((i) => i.type === 'Supply Entry');
   const totalPayments = ledgerItems.filter((i) => i.type === 'Payment Made');
 
-  const totalSupplyAmount = totalSupplies.reduce((sum, i) => sum + i.amount, 0);
-  const totalPaidAmount = totalPayments.reduce((sum, i) => sum + i.paid, 0);
-  const remainingDue = Math.max(0, totalSupplyAmount - totalPaidAmount);
+  const supplierFinancials = getSupplierFinancials(supplier.id);
+  const totalSupplyAmount = supplierFinancials.totalPurchase;
+  const totalPaidAmount = supplierFinancials.paidAmount;
+  const remainingDue = supplierFinancials.outstanding;
 
   const filteredItems = ledgerItems.filter((item) => {
     if (activeTab === 'supplies' && item.type !== 'Supply Entry') return false;
     if (activeTab === 'payments' && item.type !== 'Payment Made') return false;
     if (activeTab === 'outstanding' && item.due <= 0) return false;
+    if (monthFilter && !String(item.date || '').startsWith(monthFilter)) return false;
     return true;
   });
 
@@ -242,50 +247,36 @@ const SupplierLedger = () => {
         </button>
       </div>
 
-      {/* Supplier Ledger List */}
-      <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <label className="text-xs font-bold text-slate-600">Filter month</label>
+        <input type="month" value={monthFilter} onChange={(event) => setMonthFilter(event.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold" />
+        {monthFilter && <button onClick={() => setMonthFilter('')} className="text-xs font-bold text-indigo-600">Clear</button>}
+      </div>
+
+      {/* Supplier Ledger Table */}
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
         {filteredItems.length === 0 ? (
           <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 text-xs font-medium">
             No ledger records found.
           </div>
         ) : (
-          filteredItems.map((item) => (
-            <div
-              key={item.id}
-              className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-2xs flex items-center justify-between gap-3"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className={`w-10 h-10 rounded-xl font-black flex items-center justify-center text-sm shrink-0 ${
-                    item.type === 'Payment Made'
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-amber-100 text-amber-900'
-                  }`}
-                >
-                  {supplier.name.charAt(0)}
-                </div>
-                <div className="min-w-0">
-                  <h4 className="text-xs font-black text-slate-900 leading-tight truncate">
-                    {item.description}
-                  </h4>
-                  <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
-                    {item.business} • {item.displayDate}
-                  </p>
-                </div>
-              </div>
-
-              <div className="text-right shrink-0">
-                <div className="text-sm font-black text-slate-900">
-                  {formatCurrency(item.amount || item.paid)}
-                </div>
-                {item.due > 0 && (
-                  <span className="text-[10px] text-rose-600 font-bold block">
-                    To Pay: {formatCurrency(item.due)}
-                  </span>
-                )}
-              </div>
-            </div>
-          ))
+          <table className="w-full text-left text-xs min-w-[850px]">
+            <thead className="bg-slate-50 text-slate-500 uppercase font-black tracking-wider"><tr><th className="p-3">Date</th><th className="p-3">Type</th><th className="p-3">Business</th><th className="p-3">Description</th><th className="p-3 text-right">Bill Amount</th><th className="p-3 text-right">Amount Paid</th><th className="p-3 text-right">Remaining Due</th><th className="p-3">Action</th></tr></thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredItems.map((item) => <tr key={item.id}>
+                <td className="p-3 whitespace-nowrap font-semibold text-slate-600">{item.displayDate}</td>
+                <td className="p-3 font-bold">{item.type}</td>
+                <td className="p-3 font-semibold">{item.business}</td>
+                <td className="p-3 font-bold">{item.description}</td>
+                <td className="p-3 text-right font-black">{formatCurrency(item.amount || 0)}</td>
+                <td className="p-3 text-right font-black text-emerald-600">{formatCurrency(item.paid || 0)}</td>
+                <td className="p-3 text-right font-black text-rose-600">{formatCurrency(item.due || 0)}</td>
+                <td className="p-3 whitespace-nowrap">
+                  {item.type === 'Supply Entry' && <><button title="Edit" onClick={() => { const cost = window.prompt('Supplier cost', String(item.amount)); if (cost !== null) updateTransaction(item.id, { outsourcedCost: Number(cost), outsourcedDue: Math.max(0, Number(cost) - Number(item.paid || 0)) }); }} className="p-1 text-amber-600"><Pencil className="w-4 h-4" /></button><button title="Delete" onClick={() => window.confirm(`Delete this supplier transaction?\n\n${supplier.name} | ${item.business} | ${item.description} | ${formatCurrency(item.amount || 0)} | ${item.displayDate || item.date || 'No date'}`) && deleteTransaction(item.id)} className="p-1 text-rose-600"><Trash2 className="w-4 h-4" /></button></>}
+                </td>
+              </tr>)}
+            </tbody>
+          </table>
         )}
       </div>
 

@@ -28,12 +28,15 @@ import {
 import { formatJCBOverdueWhatsApp, openWhatsAppChat } from '../../utils/whatsapp';
 import { formatCurrency } from '../../utils/formatCurrency';
 import {
+  DEFAULT_SERVICE_INTERVALS,
+  SERVICE_INTERVALS,
   getStoredFleet,
   saveStoredFleet,
   getStoredMaintenanceRecords,
   saveStoredMaintenanceRecords
 } from '../../data/jcbServiceData';
 import { loadSyncedCollection } from '../../db/syncedStorage';
+import { useBusiness } from '../../context/BusinessContext';
 
 const initialFleetData = [
   {
@@ -187,23 +190,13 @@ const initialMaintenanceRecords = [
   }
 ];
 
-const SERVICE_INTERVALS = {
-  'Engine Oil': 300,
-  'Hydraulic Oil': 3000,
-  'Air Filter': 500,
-  'Filter': 500,
-  'Greasing': 300,
-  'Bearing Oil': 300,
-  'Transmission Oil': 1000,
-  'Others': 500
-};
-
 const DEFAULT_OIL_GRADES = {
   'Engine Oil': '15W-40',
   'Hydraulic Oil': 'Tellus 68',
   'Air Filter': 'OEM Grade Filter',
   'Filter': 'OEM Grade Filter',
   'Greasing': 'AP-3 Grease',
+  'Lubrication Oil': '80W-90',
   'Bearing Oil': '15W-40',
   'Transmission Oil': '80W-90',
   'Others': 'N/A'
@@ -219,7 +212,31 @@ const formatDisplayDate = (dateStr) => {
   return `${day}/${month}/${year}`;
 };
 
+const normalizeMachine = (machine) => ({
+  ...machine,
+  serviceIntervals: { ...DEFAULT_SERVICE_INTERVALS, ...(machine.serviceIntervals || {}) },
+  lubricationOilLastMeter: machine.lubricationOilLastMeter ?? machine.totalHours
+});
+
+const getServiceLastMeter = (machine, serviceType) => ({
+  'Engine Oil': machine.engineOilLastMeter,
+  'Hydraulic Oil': machine.hydraulicOilLastMeter,
+  'Air Filter': machine.filterLastMeter,
+  'Greasing': machine.greasingLastMeter,
+  'Lubrication Oil': machine.lubricationOilLastMeter
+}[serviceType] ?? 0);
+
+const getServiceInterval = (machine, serviceType) => Number(
+  machine.serviceIntervals?.[serviceType] || DEFAULT_SERVICE_INTERVALS[serviceType] || SERVICE_INTERVALS[serviceType] || 300
+);
+
+const getRentalHours = (transactions, machine) => transactions
+  .filter((transaction) => transaction.businessId === 'jcb' && transaction.jcbVehicle &&
+    (transaction.jcbVehicle === machine.code || transaction.jcbVehicle.startsWith(`${machine.code} `)))
+  .reduce((total, transaction) => total + (Number(transaction.duration) || Number(transaction.quantity) || 0), 0);
+
 const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClosed }) => {
+  const { transactions = [] } = useBusiness();
   const navigate = useNavigate();
   const [fleet, setFleet] = useState(getStoredFleet);
   const [selectedJcbId, setSelectedJcbId] = useState('jcb-1');
@@ -233,7 +250,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
       loadSyncedCollection('jcbFleet', 'jcb_fleet_data'),
       loadSyncedCollection('maintenanceRecords', 'jcb_maintenance_records')
     ]).then(([savedFleet, savedRecords]) => {
-      if (savedFleet.length) setFleet(savedFleet);
+      if (savedFleet.length) setFleet(savedFleet.map(normalizeMachine));
       if (savedRecords.length) setMaintenanceRecords(savedRecords);
       setStorageReady(true);
     }).catch(() => setStorageReady(true));
@@ -248,9 +265,34 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
   }, [fleet, storageReady]);
 
   const [isAddJcbOpen, setIsAddJcbOpen] = useState(false);
-  const [isMeterUpdateOpen, setIsMeterUpdateOpen] = useState(false);
   const [isAddMaintenanceOpen, setIsAddMaintenanceOpen] = useState(false);
+  const [isIntervalSettingsOpen, setIsIntervalSettingsOpen] = useState(false);
+  const [intervalDraft, setIntervalDraft] = useState(DEFAULT_SERVICE_INTERVALS);
   const [viewingRecord, setViewingRecord] = useState(null);
+
+  const openIntervalSettings = () => {
+    setIntervalDraft({
+      ...DEFAULT_SERVICE_INTERVALS,
+      ...(selectedMachine?.serviceIntervals || {})
+    });
+    setIsIntervalSettingsOpen(true);
+  };
+
+  const saveIntervalSettings = (event) => {
+    event.preventDefault();
+    const nextIntervals = Object.fromEntries(
+      Object.keys(DEFAULT_SERVICE_INTERVALS).map((serviceType) => [
+        serviceType,
+        Math.max(1, Number(intervalDraft[serviceType]) || DEFAULT_SERVICE_INTERVALS[serviceType])
+      ])
+    );
+    setFleet((previous) => previous.map((machine) => (
+      machine.id === selectedMachine.id
+        ? { ...machine, serviceIntervals: nextIntervals }
+        : machine
+    )));
+    setIsIntervalSettingsOpen(false);
+  };
 
   useEffect(() => {
     if (autoOpenAddMaintenance) {
@@ -265,15 +307,17 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
   const [newTotalHours, setNewTotalHours] = useState('');
 
   // Meter Update Form State
-  const [updatedHours, setUpdatedHours] = useState('');
-
   // Add Maintenance Form State (Multi-Service Support)
-  const selectedMachine = fleet.find((m) => m.id === selectedJcbId) || fleet[0];
+  const selectedMachineBase = fleet.find((m) => m.id === selectedJcbId) || fleet[0];
+  const selectedMachine = selectedMachineBase
+    ? { ...selectedMachineBase, totalHours: getRentalHours(transactions, selectedMachineBase) }
+    : null;
   const [maintJcbId, setMaintJcbId] = useState('jcb-1');
   const [maintServiceDate, setMaintServiceDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [maintHourMeter, setMaintHourMeter] = useState('4528');
+  const [maintHourMeter, setMaintHourMeter] = useState('0');
   const [maintServiceProvider, setMaintServiceProvider] = useState('');
   const [maintInvoiceName, setMaintInvoiceName] = useState('');
+  const [maintInvoiceData, setMaintInvoiceData] = useState('');
   const [maintGeneralRemarks, setMaintGeneralRemarks] = useState('');
 
   // Service items list state (supports multiple services simultaneously)
@@ -283,7 +327,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
       serviceType: 'Engine Oil',
       oilGrade: '15W-40',
       quantity: '20',
-      cost: '8500',
+       cost: '0',
       remarks: ''
     }
   ]);
@@ -293,7 +337,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
       const copy = [...prev];
       const defaultGrade = type === 'Others' ? 'N/A' : (DEFAULT_OIL_GRADES[type] || '15W-40');
       const defaultQty = type === 'Others' ? '0' : (type === 'Air Filter' || type === 'Filter' ? '1' : '20');
-      const defaultCost = type === 'Engine Oil' ? '8500' : type === 'Hydraulic Oil' ? '12000' : type === 'Air Filter' ? '3200' : type === 'Greasing' ? '1500' : '2500';
+       const defaultCost = '0';
 
       copy[index] = {
         ...copy[index],
@@ -317,7 +361,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
   const addServiceItem = (type = 'Engine Oil') => {
     const defaultGrade = type === 'Others' ? 'N/A' : (DEFAULT_OIL_GRADES[type] || '15W-40');
     const defaultQty = type === 'Others' ? '0' : (type === 'Air Filter' || type === 'Filter' ? '1' : '20');
-    const defaultCost = type === 'Engine Oil' ? '8500' : type === 'Hydraulic Oil' ? '12000' : type === 'Air Filter' ? '3200' : type === 'Greasing' ? '1500' : '2500';
+     const defaultCost = '0';
 
     setServiceItems((prev) => [
       ...prev,
@@ -339,9 +383,9 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
 
   const applyFullServicePackage = () => {
     setServiceItems([
-      { id: `item-${Date.now()}-1`, serviceType: 'Engine Oil', oilGrade: '15W-40', quantity: '20', cost: '8500', remarks: 'Routine engine oil service' },
-      { id: `item-${Date.now()}-2`, serviceType: 'Air Filter', oilGrade: 'OEM Grade Filter', quantity: '1', cost: '3200', remarks: 'Air filter replacement' },
-      { id: `item-${Date.now()}-3`, serviceType: 'Greasing', oilGrade: 'AP-3 Grease', quantity: '1', cost: '1500', remarks: 'Chassis greasing' }
+       { id: `item-${Date.now()}-1`, serviceType: 'Engine Oil', oilGrade: '15W-40', quantity: '20', cost: '0', remarks: 'Routine engine oil service' },
+       { id: `item-${Date.now()}-2`, serviceType: 'Air Filter', oilGrade: 'OEM Grade Filter', quantity: '1', cost: '0', remarks: 'Air filter replacement' },
+       { id: `item-${Date.now()}-3`, serviceType: 'Greasing', oilGrade: 'AP-3 Grease', quantity: '1', cost: '0', remarks: 'Chassis greasing' }
     ]);
   };
 
@@ -376,11 +420,12 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
     let updatedBrg = targetMachine.greasingLastMeter;
     let updatedHyd = targetMachine.hydraulicOilLastMeter;
     let updatedFlt = targetMachine.filterLastMeter;
+    let updatedLub = targetMachine.lubricationOilLastMeter ?? targetMachine.totalHours;
 
     serviceItems.forEach((item, idx) => {
       const type = item.serviceType || 'Engine Oil';
       const costNum = Number(item.cost) || 0;
-      const interval = SERVICE_INTERVALS[type] || 300;
+       const interval = getServiceInterval(targetMachine, type);
       const nextDueNum = hourMeterNum + interval;
       const gradeVal = type === 'Others' ? 'N/A' : (item.oilGrade?.trim() || DEFAULT_OIL_GRADES[type] || '15W-40');
       const qtyVal = type === 'Others' ? '-' : (item.quantity || '0');
@@ -408,6 +453,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
         cost: costNum,
         serviceProvider: maintServiceProvider.trim() || 'JCB Authorized Service',
         invoiceName: maintInvoiceName || 'service_invoice.pdf',
+        invoiceData: maintInvoiceData || '',
         nextDue: nextDueNum,
         remarks: combinedRemarks,
         notes: combinedRemarks || `${type} service record`,
@@ -419,7 +465,8 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
       if (type === 'Engine Oil') updatedEng = hourMeterNum;
       if (type === 'Greasing' || type === 'Bearing Oil') updatedBrg = hourMeterNum;
       if (type === 'Hydraulic Oil') updatedHyd = hourMeterNum;
-      if (type === 'Air Filter' || type === 'Filter') updatedFlt = hourMeterNum;
+       if (type === 'Air Filter' || type === 'Filter') updatedFlt = hourMeterNum;
+       if (type === 'Lubrication Oil') updatedLub = hourMeterNum;
 
       newLogs.push({
         date: formatDisplayDate(maintServiceDate),
@@ -441,10 +488,10 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
           ...m,
           engineOilLastMeter: updatedEng,
           greasingLastMeter: updatedBrg,
-          hydraulicOilLastMeter: updatedHyd,
-          filterLastMeter: updatedFlt,
-          totalHours: Math.max(m.totalHours, hourMeterNum),
-          serviceHistory: [...newLogs, ...(m.serviceHistory || [])]
+           hydraulicOilLastMeter: updatedHyd,
+           filterLastMeter: updatedFlt,
+           lubricationOilLastMeter: updatedLub,
+           serviceHistory: [...newLogs, ...(m.serviceHistory || [])]
         };
       })
     );
@@ -459,16 +506,17 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
     e.preventDefault();
     if (!newCode.trim()) return;
 
-    const meterVal = Number(newTotalHours) || 0;
     const newJcb = {
       id: `jcb-${Date.now()}`,
       code: newCode.toUpperCase().trim(),
       regNo: newRegNo.toUpperCase().trim() || 'TN-23-NEW-000',
-      totalHours: meterVal,
-      engineOilLastMeter: meterVal,
-      greasingLastMeter: meterVal,
-      hydraulicOilLastMeter: meterVal,
-      filterLastMeter: meterVal,
+      totalHours: 0,
+      engineOilLastMeter: 0,
+      greasingLastMeter: 0,
+      hydraulicOilLastMeter: 0,
+      filterLastMeter: 0,
+      lubricationOilLastMeter: 0,
+      serviceIntervals: { ...DEFAULT_SERVICE_INTERVALS },
       serviceHistory: []
     };
 
@@ -480,33 +528,10 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
     setIsAddJcbOpen(false);
   };
 
-  // Helper to update current meter reading
-  const handleMeterUpdateSubmit = (e) => {
-    e.preventDefault();
-    if (!updatedHours) return;
-    const newMeter = Number(updatedHours);
-
-    setFleet(
-      fleet.map((m) => (m.id === selectedJcbId ? { ...m, totalHours: newMeter } : m))
-    );
-    setIsMeterUpdateOpen(false);
-    setUpdatedHours('');
-  };
-
   // Service Status Evaluator for Machine Matrix
   const evaluateServiceStatus = (machine, serviceType) => {
     const curr = machine.totalHours;
-    let dueMeter = 0;
-
-    if (serviceType === 'Engine Oil') {
-      dueMeter = (machine.engineOilLastMeter || 0) + 300;
-    } else if (serviceType === 'Hydraulic') {
-      dueMeter = (machine.hydraulicOilLastMeter || 0) + 3000;
-    } else if (serviceType === 'Filters') {
-      dueMeter = (machine.filterLastMeter || 0) + 500;
-    } else if (serviceType === 'Greasing') {
-      dueMeter = (machine.greasingLastMeter || 0) + 300;
-    }
+    const dueMeter = getServiceLastMeter(machine, serviceType) + getServiceInterval(machine, serviceType);
 
     if (curr >= dueMeter) return { status: 'OVERDUE', type: 'overdue', dueMeter, diff: curr - dueMeter };
     if (curr >= dueMeter - 50) return { status: 'DUE', type: 'due', dueMeter, diff: dueMeter - curr };
@@ -543,10 +568,16 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
   const getServiceCardDetails = (serviceKey, name, interval) => {
     const curr = selectedMachine.totalHours;
     let lastMeter = 0;
-    if (serviceKey === 'engine') lastMeter = selectedMachine.engineOilLastMeter || 0;
-    if (serviceKey === 'hydraulic') lastMeter = selectedMachine.hydraulicOilLastMeter || 0;
-    if (serviceKey === 'filter') lastMeter = selectedMachine.filterLastMeter || 0;
-    if (serviceKey === 'greasing') lastMeter = selectedMachine.greasingLastMeter || 0;
+    const serviceTypeByKey = {
+      engine: 'Engine Oil',
+      hydraulic: 'Hydraulic Oil',
+      filter: 'Air Filter',
+      greasing: 'Greasing',
+      lubrication: 'Lubrication Oil'
+    };
+    const serviceType = serviceTypeByKey[serviceKey] || name;
+    lastMeter = getServiceLastMeter(selectedMachine, serviceType);
+    interval = getServiceInterval(selectedMachine, serviceType);
 
     const dueMeter = lastMeter + interval;
     const hoursRun = Math.max(0, curr - lastMeter);
@@ -578,7 +609,8 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
     return {
       name,
       curr,
-      dueMeter,
+       dueMeter,
+       interval,
       hoursRun,
       hrsRemaining,
       progressPct,
@@ -591,24 +623,26 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
     };
   };
 
-  const engCard = getServiceCardDetails('engine', 'Engine Oil', 300);
-  const hydCard = getServiceCardDetails('hydraulic', 'Hydraulic Oil', 3000);
-  const fltCard = getServiceCardDetails('filter', 'Air Filter', 500);
-  const grsCard = getServiceCardDetails('greasing', 'Greasing', 300);
+  const engCard = getServiceCardDetails('engine', 'Engine Oil', getServiceInterval(selectedMachine, 'Engine Oil'));
+  const hydCard = getServiceCardDetails('hydraulic', 'Hydraulic Oil', getServiceInterval(selectedMachine, 'Hydraulic Oil'));
+  const fltCard = getServiceCardDetails('filter', 'Air Filter', getServiceInterval(selectedMachine, 'Air Filter'));
+  const grsCard = getServiceCardDetails('greasing', 'Greasing', getServiceInterval(selectedMachine, 'Greasing'));
+  const lubCard = getServiceCardDetails('lubrication', 'Lubrication Oil', getServiceInterval(selectedMachine, 'Lubrication Oil'));
 
   const handleSendWhatsAppAlert = (phoneNum = '9876543210') => {
     const overdueServices = [];
-    if (engCard.isOverdue) overdueServices.push({ name: 'Engine Oil', hoursRun: engCard.hoursRun, limit: 300, overdueHrs: engCard.curr - engCard.dueMeter });
-    if (hydCard.isOverdue) overdueServices.push({ name: 'Hydraulic Oil', hoursRun: hydCard.hoursRun, limit: 3000, overdueHrs: hydCard.curr - hydCard.dueMeter });
-    if (fltCard.isOverdue) overdueServices.push({ name: 'Air Filter', hoursRun: fltCard.hoursRun, limit: 500, overdueHrs: fltCard.curr - fltCard.dueMeter });
-    if (grsCard.isOverdue) overdueServices.push({ name: 'Greasing', hoursRun: grsCard.hoursRun, limit: 300, overdueHrs: grsCard.curr - grsCard.dueMeter });
+     if (engCard.isOverdue) overdueServices.push({ name: 'Engine Oil', hoursRun: engCard.hoursRun, limit: engCard.interval, overdueHrs: engCard.curr - engCard.dueMeter });
+     if (hydCard.isOverdue) overdueServices.push({ name: 'Hydraulic Oil', hoursRun: hydCard.hoursRun, limit: hydCard.interval, overdueHrs: hydCard.curr - hydCard.dueMeter });
+     if (fltCard.isOverdue) overdueServices.push({ name: 'Air Filter', hoursRun: fltCard.hoursRun, limit: fltCard.interval, overdueHrs: fltCard.curr - fltCard.dueMeter });
+     if (grsCard.isOverdue) overdueServices.push({ name: 'Greasing', hoursRun: grsCard.hoursRun, limit: grsCard.interval, overdueHrs: grsCard.curr - grsCard.dueMeter });
+     if (lubCard.isOverdue) overdueServices.push({ name: 'Lubrication Oil', hoursRun: lubCard.hoursRun, limit: lubCard.interval, overdueHrs: lubCard.curr - lubCard.dueMeter });
 
     const msg = formatJCBOverdueWhatsApp({
       code: selectedMachine.code,
       regNo: selectedMachine.regNo,
       totalHours: selectedMachine.totalHours,
       overdueServices: overdueServices.length > 0 ? overdueServices : [
-        { name: 'Engine Oil', hoursRun: engCard.hoursRun, limit: 300, overdueHrs: 0 }
+         { name: 'Engine Oil', hoursRun: engCard.hoursRun, limit: engCard.interval, overdueHrs: 0 }
       ]
     });
     openWhatsAppChat(phoneNum, msg);
@@ -642,7 +676,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
           {fleet.map((m) => {
             const isSelected = m.id === selectedJcbId;
             const engRes = evaluateServiceStatus(m, 'Engine Oil');
-            const fltRes = evaluateServiceStatus(m, 'Filters');
+             const fltRes = evaluateServiceStatus(m, 'Air Filter');
             const isOverdue = engRes.type === 'overdue' || fltRes.type === 'overdue';
 
             return (
@@ -687,17 +721,20 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
               <tr className="bg-slate-100 text-slate-800 font-mono uppercase font-black text-xs sm:text-sm border-b border-slate-200">
                 <th className="py-2.5 px-3 sm:py-4 sm:px-6 border-r border-slate-200 whitespace-nowrap">JCB</th>
                 <th className="py-2.5 px-3 sm:py-4 sm:px-6 border-r border-slate-200 whitespace-nowrap">ENGINE OIL</th>
-                <th className="py-2.5 px-3 sm:py-4 sm:px-6 border-r border-slate-200 whitespace-nowrap">HYDRAULIC</th>
-                <th className="py-2.5 px-3 sm:py-4 sm:px-6 border-r border-slate-200 whitespace-nowrap">FILTERS</th>
-                <th className="py-2.5 px-3 sm:py-4 sm:px-6 whitespace-nowrap">GREASING</th>
+                <th className="py-2.5 px-3 sm:py-4 sm:px-6 border-r border-slate-200 whitespace-nowrap">HYDRAULIC OIL</th>
+                <th className="py-2.5 px-3 sm:py-4 sm:px-6 border-r border-slate-200 whitespace-nowrap">AIR FILTER</th>
+                <th className="py-2.5 px-3 sm:py-4 sm:px-6 border-r border-slate-200 whitespace-nowrap">GREASING</th>
+                <th className="py-2.5 px-3 sm:py-4 sm:px-6 whitespace-nowrap">LUBRICATION OIL</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 font-mono text-xs sm:text-base">
               {fleet.map((m) => {
-                const engStatus = evaluateServiceStatus(m, 'Engine Oil');
-                const hydStatus = evaluateServiceStatus(m, 'Hydraulic');
-                const fltStatus = evaluateServiceStatus(m, 'Filters');
-                const grsStatus = evaluateServiceStatus(m, 'Greasing');
+                const meterMachine = { ...m, totalHours: getRentalHours(transactions, m) };
+                const engStatus = evaluateServiceStatus(meterMachine, 'Engine Oil');
+                 const hydStatus = evaluateServiceStatus(meterMachine, 'Hydraulic Oil');
+                 const fltStatus = evaluateServiceStatus(meterMachine, 'Air Filter');
+                 const grsStatus = evaluateServiceStatus(meterMachine, 'Greasing');
+                 const lubStatus = evaluateServiceStatus(meterMachine, 'Lubrication Oil');
                 const isSelected = m.id === selectedJcbId;
 
                 return (
@@ -723,9 +760,12 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                     <td className="py-2.5 px-3 sm:py-4 sm:px-6 border-r border-slate-200 whitespace-nowrap">
                       {renderStatusBadge(fltStatus.type)}
                     </td>
-                    <td className="py-2.5 px-3 sm:py-4 sm:px-6 whitespace-nowrap">
-                      {renderStatusBadge(grsStatus.type)}
-                    </td>
+                     <td className="py-2.5 px-3 sm:py-4 sm:px-6 whitespace-nowrap">
+                       {renderStatusBadge(grsStatus.type)}
+                     </td>
+                     <td className="py-2.5 px-3 sm:py-4 sm:px-6 whitespace-nowrap">
+                       {renderStatusBadge(lubStatus.type)}
+                     </td>
                   </tr>
                 );
               })}
@@ -744,9 +784,6 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
               <span className="bg-amber-600 text-white font-black text-xs sm:text-sm px-3.5 py-1 rounded-full uppercase tracking-wider shadow-xs">
                 {selectedMachine.code}
               </span>
-              <h2 className="text-2xl sm:text-4xl font-mono font-black tracking-tight text-slate-900">
-                {selectedMachine.regNo}
-              </h2>
             </div>
             <p className="text-xs sm:text-sm text-slate-600 font-semibold">
               Real-time service intervals, oil grade specs & hour meter log
@@ -780,23 +817,46 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              setUpdatedHours(selectedMachine.totalHours.toString());
-              setIsMeterUpdateOpen(true);
-            }}
-            className="w-full xs:w-auto justify-center px-4 py-2.5 sm:px-5 sm:py-3 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl sm:rounded-2xl text-xs sm:text-sm flex items-center gap-2 shadow-md shadow-amber-600/20 transition-all cursor-pointer shrink-0"
-          >
-            Update Meter ⏱️
-          </button>
+          <span className="text-xs font-bold text-slate-500">Calculated from rental entries</span>
         </div>
 
         {/* NEXT SERVICES PROGRESS SECTION */}
         <div className="space-y-4 sm:space-y-5">
-          <h4 className="text-xs sm:text-base font-mono font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-            <Wrench className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
-            NEXT SERVICES
-          </h4>
+           <div className="flex items-center justify-between gap-3">
+             <h4 className="text-xs sm:text-base font-mono font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+               <Wrench className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
+               NEXT SERVICES
+             </h4>
+             <button
+               type="button"
+               onClick={openIntervalSettings}
+               className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[11px] sm:text-xs font-black font-mono flex items-center gap-1.5 cursor-pointer"
+             >
+               Edit Service Intervals
+             </button>
+           </div>
+
+           {isIntervalSettingsOpen && (
+             <form onSubmit={saveIntervalSettings} className="bg-amber-50 border border-amber-200 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+               {Object.keys(DEFAULT_SERVICE_INTERVALS).map((serviceType) => (
+                 <label key={serviceType} className="text-[11px] font-black text-slate-700 font-mono">
+                   {serviceType} (hrs)
+                   <input
+                     type="number"
+                     min="1"
+                     required
+                     value={intervalDraft[serviceType]}
+                     onChange={(event) => setIntervalDraft((previous) => ({ ...previous, [serviceType]: event.target.value }))}
+                     className="mt-1 w-full p-2.5 bg-white border border-amber-300 rounded-xl text-sm font-black text-slate-900"
+                   />
+                 </label>
+               ))}
+               <div className="sm:col-span-2 lg:col-span-5 flex justify-end gap-2">
+                 <button type="button" onClick={() => setIsIntervalSettingsOpen(false)} className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-black cursor-pointer">Cancel</button>
+                 <button type="submit" className="px-3 py-2 bg-amber-600 text-white rounded-xl text-xs font-black cursor-pointer">Save Intervals</button>
+               </div>
+             </form>
+           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
             
@@ -891,7 +951,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
               </button>
             </div>
 
-            {/* 4. Greasing */}
+             {/* 4. Greasing */}
             <div className="bg-slate-50 p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-slate-200 space-y-3 sm:space-y-4 shadow-xs">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs sm:text-base font-mono font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5 sm:gap-2">
@@ -918,10 +978,35 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                 className={`w-full py-2.5 sm:py-3 px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer font-mono ${grsCard.buttonStyle}`}
               >
                 [Schedule Service]
-              </button>
-            </div>
+               </button>
+             </div>
 
-          </div>
+             {/* 5. Lubrication Oil */}
+             <div className="bg-slate-50 p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-slate-200 space-y-3 sm:space-y-4 shadow-xs">
+               <div className="flex items-center justify-between gap-2">
+                 <span className="text-xs sm:text-base font-mono font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5 sm:gap-2">
+                   <Droplet className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 shrink-0" /> LUBRICATION OIL
+                 </span>
+                 {renderStatusBadge(lubCard.statusType, lubCard.isOverdue ? 'OVERDUE' : lubCard.isDueSoon ? 'DUE' : `${lubCard.hrsRemaining} hrs remaining`)}
+               </div>
+               <div className="space-y-1.5 sm:space-y-2">
+                 <div className="w-full bg-slate-200 h-3.5 sm:h-4 rounded-full overflow-hidden p-0.5 border border-slate-300">
+                   <div className={`h-full ${lubCard.barColor} rounded-full transition-all duration-500`} style={{ width: `${lubCard.progressPct}%` }} />
+                 </div>
+                 <div className="flex justify-between text-xs font-mono font-black text-slate-700 pt-0.5">
+                   <span>Due: {lubCard.dueMeter?.toLocaleString()} hrs</span>
+                   <span className="text-amber-700">Current: {lubCard.curr?.toLocaleString()} hrs</span>
+                 </div>
+               </div>
+               <button
+                 onClick={() => openAddMaintenanceModal(selectedMachine.id, 'Lubrication Oil')}
+                 className={`w-full py-2.5 sm:py-3 px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer font-mono ${lubCard.buttonStyle}`}
+               >
+                 [Schedule Service]
+               </button>
+             </div>
+
+           </div>
         </div>
 
         {/* SERVICE HISTORY TABLE FOR SELECTED MACHINE (Includes Oil Grade) */}
@@ -960,7 +1045,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                       </td>
                       <td className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-amber-700 font-black whitespace-nowrap">{log.meter?.toLocaleString()}</td>
                       <td className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right text-emerald-700 font-black whitespace-nowrap">
-                        {formatCurrency(log.cost || 8500)}
+                         {formatCurrency(log.cost || 0)}
                       </td>
                     </tr>
                   ))
@@ -1101,7 +1186,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                         onChange={(e) => {
                           setMaintJcbId(e.target.value);
                           const target = fleet.find(m => m.id === e.target.value);
-                          if (target) setMaintHourMeter(target.totalHours.toString());
+                           if (target) setMaintHourMeter(String(getRentalHours(transactions, target)));
                         }}
                         className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-black text-amber-700 text-sm focus:outline-hidden focus:border-amber-600 cursor-pointer font-mono"
                       >
@@ -1162,8 +1247,17 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                           type="file"
                           className="hidden"
                           onChange={(e) => {
-                            if (e.target.files && e.target.files[0]) {
-                              setMaintInvoiceName(e.target.files[0].name);
+                             if (e.target.files && e.target.files[0]) {
+                               const file = e.target.files[0];
+                               setMaintInvoiceName(file.name);
+                               if (file.size > 80000) {
+                                 setMaintInvoiceData('');
+                                 window.alert('Please choose a file smaller than 80 KB to keep it viewable and synchronized.');
+                                 return;
+                               }
+                               const reader = new FileReader();
+                               reader.onload = () => setMaintInvoiceData(String(reader.result || ''));
+                               reader.readAsDataURL(file);
                             }
                           }}
                         />
@@ -1205,7 +1299,8 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                   {/* List of Service Item Cards */}
                   <div className="space-y-3">
                     {serviceItems.map((item, index) => {
-                      const interval = SERVICE_INTERVALS[item.serviceType] || 300;
+                       const activeMachine = fleet.find((machine) => machine.id === maintJcbId) || selectedMachine;
+                       const interval = Number(activeMachine?.serviceIntervals?.[item.serviceType] || SERVICE_INTERVALS[item.serviceType] || 300);
                       const nextDue = (Number(maintHourMeter) || 0) + interval;
 
                       return (
@@ -1253,6 +1348,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                                 <option value="Hydraulic Oil">Hydraulic Oil</option>
                                 <option value="Air Filter">Air Filter</option>
                                 <option value="Greasing">Greasing</option>
+                                <option value="Lubrication Oil">Lubrication Oil</option>
                                 <option value="Filter">Filter</option>
                                 <option value="Bearing Oil">Bearing Oil</option>
                                 <option value="Transmission Oil">Transmission Oil</option>
@@ -1300,10 +1396,10 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                                 <input
                                   type="number"
                                   required
-                                  placeholder="e.g. 8500"
+                                  placeholder="e.g. 0"
                                   value={item.cost}
                                   onChange={(e) => handleUpdateItemField(index, 'cost', e.target.value)}
-                                  className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 text-xs focus:outline-hidden focus:border-amber-600"
+                                  className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-mono font-black text-slate-900 text-base focus:outline-hidden focus:border-amber-600"
                                 />
                               </div>
                             </div>
@@ -1402,6 +1498,13 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                         className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg cursor-pointer font-bold"
                       >
                         + Greasing
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => addServiceItem('Lubrication Oil')}
+                        className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-300 rounded-lg cursor-pointer font-bold"
+                      >
+                        + Lubrication Oil
                       </button>
                     </div>
                   </div>
@@ -1516,10 +1619,20 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                 </div>
                 <div className="flex justify-between items-center font-mono">
                   <span className="text-slate-600 font-bold">Invoice:</span>
-                  <span className="text-xs sm:text-sm text-amber-700 font-black underline cursor-pointer flex items-center gap-1">
-                    <Paperclip className="w-4 h-4" />
-                    {viewingRecord.invoiceName || 'invoice.pdf'}
-                  </span>
+                     {viewingRecord.invoiceData ? (
+                       <a
+                         href={viewingRecord.invoiceData}
+                         target="_blank"
+                         rel="noreferrer"
+                         className="text-xs sm:text-sm text-amber-700 font-black underline cursor-pointer flex items-center gap-1"
+                       >
+                         <Eye className="w-4 h-4" /> View Invoice
+                       </a>
+                     ) : (
+                       <span className="text-xs sm:text-sm text-slate-500 font-black flex items-center gap-1">
+                         <Paperclip className="w-4 h-4" /> {viewingRecord.invoiceName || 'No file data saved'}
+                       </span>
+                     )}
                 </div>
               </div>
             </div>
@@ -1618,57 +1731,6 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                   className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-2xl shadow-md shadow-amber-600/20 cursor-pointer text-sm"
                 >
                   Save JCB Machine
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Meter Reading Update Modal */}
-      {isMeterUpdateOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200 font-sans">
-          <div className="bg-white text-slate-900 border border-slate-200 rounded-3xl max-w-sm w-full p-6 sm:p-7 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                <Gauge className="w-5 h-5 text-amber-600" />
-                Update Meter: {selectedMachine.code}
-              </h3>
-              <button
-                onClick={() => setIsMeterUpdateOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleMeterUpdateSubmit} className="space-y-4 text-xs sm:text-sm">
-              <div>
-                <label className="block font-black text-slate-800 mb-1.5">
-                  New Hour Meter Reading (hrs)
-                </label>
-                <input
-                  type="number"
-                  required
-                  value={updatedHours}
-                  onChange={(e) => setUpdatedHours(e.target.value)}
-                  className="w-full p-4 bg-slate-50 border border-slate-300 rounded-2xl font-black text-3xl text-amber-700 focus:outline-hidden focus:border-amber-600 focus:bg-white font-mono"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 font-mono">
-                <button
-                  type="button"
-                  onClick={() => setIsMeterUpdateOpen(false)}
-                  className="px-5 py-3 bg-slate-100 text-slate-800 font-black rounded-2xl cursor-pointer hover:bg-slate-200 text-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-2xl shadow-md shadow-amber-600/20 cursor-pointer text-sm"
-                >
-                  Update Reading
                 </button>
               </div>
             </form>

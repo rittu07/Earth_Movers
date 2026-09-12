@@ -48,15 +48,34 @@ export const isMonthSettled = (loanCalculated, monthNum) => {
   });
   if (hasFullSettlement) return true;
 
-  // 3. Amount-based check: if total returned amount covers interest up to monthNum
-  const monthlyInterest = loanCalculated.monthlyInterest || 0;
-  const returnedAmount = loanCalculated.returnedAmount || 0;
-  if (monthlyInterest > 0 && returnedAmount >= monthNum * monthlyInterest) {
+  // 3. Amount-based check against the compound interest accrued through this month.
+  //    Only interest-tagged payments count toward the settled check, so a partial
+  //    principal return does not silently mark interest months as settled.
+  const monthInterest = loanCalculated.monthBreakdown?.[monthNum - 1]?.interestAccrued || 0;
+  if (monthInterest <= 0) return false;
+
+  const interestPaid = history.reduce((sum, p) => {
+    if (!p) return sum;
+    const label = (p.month || '').toLowerCase();
+    if (label.includes('principal') || label.includes('settlement') || label.includes('full')) {
+      return sum;
+    }
+    return sum + (Number(p.amount) || 0) + (Number(p.discount) || 0);
+  }, 0);
+
+  const interestDueThroughMonth = (loanCalculated.monthBreakdown || [])
+    .slice(0, monthNum)
+    .reduce((sum, month) => sum + (Number(month.interestAccrued) || 0), 0);
+  if (interestPaid >= interestDueThroughMonth) {
     return true;
   }
 
   return false;
 };
+
+const getCompoundTotal = (principal, rate, months) => Math.round(
+  (Number(principal) || 0) * Math.pow(1 + ((Number(rate) || 0) / 100), Math.max(1, Number(months) || 1))
+);
 
 export const getFirstUnsettledMonth = (loanCalculated) => {
   if (!loanCalculated) return 1;
@@ -139,6 +158,7 @@ export const buildLoanLedgerEvents = (loan) => {
       billAmount: 0,
       paidAmount: Number(pmt.amount) || 0,
       kind: 'payment'
+      ,paymentId: pmt.id || `${loan.id}-return-${idx}`
     });
   });
 
@@ -163,6 +183,8 @@ const Finance = () => {
     updateFinanceLoanMonths,
     resetFinanceLoanAutoMonths,
     recordReturnPayment,
+    updateReturnPayment,
+    deleteReturnPayment,
     settleFinanceLoan,
     deleteFinanceLoan
   } = useBusiness();
@@ -183,6 +205,7 @@ const Finance = () => {
   const [returnPayMonths, setReturnPayMonths] = useState('');
   const [returnPayDate, setReturnPayDate] = useState(new Date().toISOString().split('T')[0]);
   const [returnPayDiscount, setReturnPayDiscount] = useState('');
+  const [editingReturnPayment, setEditingReturnPayment] = useState(null);
 
   // WhatsApp notification state
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
@@ -274,8 +297,8 @@ const Finance = () => {
     const p = Number(newPrincipal) || 0;
     const r = Number(newRate) || 0;
     const m = 1;
-    const monthlyInt = (p * r) / 100;
-    const totAmt = p + monthlyInt;
+    const monthlyInt = Math.round((p * r) / 100);
+    const totAmt = getCompoundTotal(p, r, m);
 
     addFinanceLoan({
       borrowerName: newBorrowerName,
@@ -327,16 +350,18 @@ const Finance = () => {
     const discAmt = Number(returnPayDiscount) || 0;
     const newMonths = Number(returnPayMonths) || selectedLoan.months;
 
-    recordReturnPayment(
-      selectedLoan.id,
-      payAmt,
-      returnPayMonth || `Month ${newMonths}`,
-      newMonths,
-      returnPayMethod,
-      returnPayRef,
-      returnPayDate,
-      discAmt
-    );
+    if (editingReturnPayment) {
+      updateReturnPayment(selectedLoan.id, editingReturnPayment.id, {
+        amount: payAmt,
+        discount: discAmt,
+        month: returnPayMonth || `Month ${newMonths}`,
+        method: returnPayMethod,
+        reference: returnPayRef,
+        date: returnPayDate
+      });
+    } else {
+      recordReturnPayment(selectedLoan.id, payAmt, returnPayMonth || `Month ${newMonths}`, newMonths, returnPayMethod, returnPayRef, returnPayDate, discAmt);
+    }
 
     const currentCalc = getLoanCalculatedDetails(selectedLoan);
     const isFullSettlement = returnPayMonth === 'Full Settlement' || (payAmt + discAmt) >= currentCalc.dueAmount;
@@ -368,6 +393,7 @@ const Finance = () => {
     setReturnPayMonths('');
     setReturnPayRef('');
     setReturnPayDate(new Date().toISOString().split('T')[0]);
+    setEditingReturnPayment(null);
   };
 
   // When selected loan changes for return payment modal, calculate dynamic view
@@ -1005,7 +1031,7 @@ const Finance = () => {
                   <span>Monthly Interest (Each Month):</span>
                   <span>
                     {formatCurrency(
-                      ((Number(newPrincipal) || 0) * (Number(newRate) || 0)) / 100
+                       Math.round(((Number(newPrincipal) || 0) * (Number(newRate) || 0)) / 100)
                     )}
                   </span>
                 </div>
@@ -1013,15 +1039,14 @@ const Finance = () => {
                   <span>Month 1 Total Due:</span>
                   <span>
                     {formatCurrency(
-                      (Number(newPrincipal) || 0) +
-                        (((Number(newPrincipal) || 0) * (Number(newRate) || 0)) / 100)
+                       getCompoundTotal(newPrincipal, newRate, 1)
                     )}
                   </span>
                 </div>
                 <div className="bg-white/80 p-2.5 rounded-lg border border-emerald-200 text-xs text-emerald-800 flex items-start gap-2">
                   <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                   <p>
-                    <strong>Auto Month Extension Rule:</strong> Starts on selected date. Month 1 adds {formatCurrency(((Number(newPrincipal) || 0) * (Number(newRate) || 0)) / 100)} interest. When date enters Month 2, the app automatically detects the month extension and compounds total due.
+                     <strong>Compound Interest Rule:</strong> Each month applies the interest rate to the previous month&apos;s balance, so later months include prior accrued interest.
                   </p>
                 </div>
               </div>
@@ -1158,8 +1183,11 @@ const Finance = () => {
                     <span className="text-[11px] font-bold text-amber-700 uppercase">Total Accrued ({returnPayMonths || currentSelectedLoanCalculated.months} Mo)</span>
                     <p className="font-bold text-amber-900">
                       {formatCurrency(
-                        currentSelectedLoanCalculated.principal +
-                        currentSelectedLoanCalculated.monthlyInterest * (Number(returnPayMonths) || currentSelectedLoanCalculated.months || 1)
+                         getCompoundTotal(
+                           currentSelectedLoanCalculated.principal,
+                           currentSelectedLoanCalculated.interestRate,
+                           Number(returnPayMonths) || currentSelectedLoanCalculated.months || 1
+                         )
                       )}
                     </p>
                   </div>
@@ -1173,8 +1201,11 @@ const Finance = () => {
                       {formatCurrency(
                         Math.max(
                           0,
-                          (currentSelectedLoanCalculated.principal +
-                            currentSelectedLoanCalculated.monthlyInterest * (Number(returnPayMonths) || currentSelectedLoanCalculated.months || 1)) -
+                           getCompoundTotal(
+                             currentSelectedLoanCalculated.principal,
+                             currentSelectedLoanCalculated.interestRate,
+                             Number(returnPayMonths) || currentSelectedLoanCalculated.months || 1
+                           ) -
                             (currentSelectedLoanCalculated.returnedAmount || 0)
                         )
                       )}
@@ -1338,7 +1369,7 @@ const Finance = () => {
                   <div>
                     <label className="block font-bold text-slate-700 mb-2">Previous Return Payments</label>
                     <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                      {currentSelectedLoanCalculated.paymentHistory.map((p, idx) => (
+                       {currentSelectedLoanCalculated.paymentHistory.map((p, idx) => (
                         <div key={idx} className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2 border border-slate-100 text-sm">
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-bold text-amber-800 bg-amber-50 rounded-md px-1.5 py-0.5 border border-amber-200">
@@ -1350,7 +1381,21 @@ const Finance = () => {
                               {p.date ? ` • ${formatDate(p.date)}` : ''}
                             </span>
                           </div>
-                          <span className="font-bold text-emerald-600">{formatCurrency((Number(p.amount) || 0) + (Number(p.discount) || 0))}</span>
+                           <div className="flex items-center gap-2">
+                             <span className="font-bold text-emerald-600">{formatCurrency((Number(p.amount) || 0) + (Number(p.discount) || 0))}</span>
+                             <button type="button" title="Edit return payment" onClick={() => {
+                               setSelectedLoan(selectedLoan);
+                               setEditingReturnPayment(p);
+                               setReturnPayAmount(String(p.amount || 0));
+                               setReturnPayDiscount(String(p.discount || 0));
+                               setReturnPayMonth(p.month || '');
+                               setReturnPayMonths(String(currentSelectedLoanCalculated.months || 1));
+                               setReturnPayMethod(p.method || 'Cash');
+                               setReturnPayRef(p.reference || '');
+                               setReturnPayDate(p.date || new Date().toISOString().split('T')[0]);
+                             }} className="text-amber-600 cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>
+                             <button type="button" title="Delete return payment" onClick={() => window.confirm(`Delete return payment of ${formatCurrency((Number(p.amount) || 0) + (Number(p.discount) || 0))} for ${p.month || 'Loan'}?`) && deleteReturnPayment(selectedLoan.id, p.id)} className="text-rose-600 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                           </div>
                         </div>
                       ))}
                     </div>
@@ -1650,9 +1695,31 @@ const Finance = () => {
                               </td>
 
                               {/* DESCRIPTION */}
-                              <td className="py-3.5 px-4 font-bold text-slate-900">
-                                {ev.description}
-                              </td>
+                               <td className="py-3.5 px-4 font-bold text-slate-900">
+                                 <div className="flex items-center justify-between gap-2">
+                                   <span>{ev.description}</span>
+                                   {ev.kind === 'payment' && (
+                                     <span className="flex items-center gap-1 shrink-0">
+                                       <button type="button" title="Edit return payment" onClick={() => {
+                                         const payment = currentSelectedLedgerLoanCalculated.paymentHistory.find((item) => item.id === ev.paymentId);
+                                         if (!payment) return;
+                                         setSelectedLoan(currentSelectedLedgerLoanCalculated);
+                                         setEditingReturnPayment(payment);
+                                         setReturnPayAmount(String(payment.amount || 0));
+                                         setReturnPayDiscount(String(payment.discount || 0));
+                                         setReturnPayMonth(payment.month || '');
+                                         setReturnPayMonths(String(currentSelectedLedgerLoanCalculated.months || 1));
+                                         setReturnPayMethod(payment.method || 'Cash');
+                                         setReturnPayRef(payment.reference || '');
+                                         setReturnPayDate(payment.date || new Date().toISOString().split('T')[0]);
+                                         setSelectedLedgerLoan(null);
+                                         setIsReturnModalOpen(true);
+                                       }} className="text-amber-600 cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>
+                                       <button type="button" title="Delete return payment" onClick={() => window.confirm(`Delete return payment of ${formatCurrency(ev.paidAmount || 0)}?`) && deleteReturnPayment(currentSelectedLedgerLoanCalculated.id, ev.paymentId)} className="text-rose-600 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                                     </span>
+                                   )}
+                                 </div>
+                               </td>
 
                               {/* BILL AMOUNT */}
                               <td className="py-3.5 px-4 text-right font-black text-slate-900 whitespace-nowrap">

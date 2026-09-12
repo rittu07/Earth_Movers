@@ -1,11 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useBusiness } from '../../context/BusinessContext';
+import { useAuth } from '../../context/AuthContext';
 import { Search, Bell, Menu, LayoutDashboard } from 'lucide-react';
 import { formatDate } from '../../utils/formatCurrency';
 
 const Header = ({ onMobileMenuOpen }) => {
   const { openSearchModal } = useBusiness();
+  const { user, logout } = useAuth();
 
   // Dynamic greeting based on current time
   const getGreeting = () => {
@@ -68,6 +70,13 @@ const Header = ({ onMobileMenuOpen }) => {
 
       {/* Right Icons: Notifications */}
       <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:block text-right">
+            <p className="text-xs font-black text-slate-800">{user?.username}</p>
+            <p className="text-[10px] text-slate-500 font-bold capitalize">{user?.role}</p>
+          </div>
+          <button onClick={logout} className="px-2.5 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl">Logout</button>
+        </div>
         <button className="relative p-2 text-slate-500 hover:text-slate-900 rounded-xl hover:bg-slate-100 transition-colors">
           <Bell className="w-4 h-4" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-600 rounded-full ring-2 ring-white"></span>

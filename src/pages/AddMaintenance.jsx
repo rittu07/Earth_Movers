@@ -16,6 +16,7 @@ import {
   FileText
 } from 'lucide-react';
 import {
+  DEFAULT_SERVICE_INTERVALS,
   SERVICE_INTERVALS,
   DEFAULT_OIL_GRADES,
   getStoredFleet,
@@ -35,10 +36,16 @@ const formatDisplayDate = (dateStr) => {
   return `${day}/${month}/${year}`;
 };
 
+const normalizeMachine = (machine) => ({
+  ...machine,
+  serviceIntervals: { ...DEFAULT_SERVICE_INTERVALS, ...(machine.serviceIntervals || {}) },
+  lubricationOilLastMeter: machine.lubricationOilLastMeter ?? machine.totalHours
+});
+
 const AddMaintenance = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { showToast, addExpense } = useBusiness();
+  const { showToast, addExpense, transactions = [] } = useBusiness();
 
   const [fleet, setFleet] = useState(getStoredFleet);
   const [maintenanceRecords, setMaintenanceRecords] = useState(getStoredMaintenanceRecords);
@@ -48,7 +55,7 @@ const AddMaintenance = () => {
       loadSyncedCollection('jcbFleet', 'jcb_fleet_data'),
       loadSyncedCollection('maintenanceRecords', 'jcb_maintenance_records')
     ]).then(([savedFleet, savedRecords]) => {
-      if (savedFleet.length) setFleet(savedFleet);
+      if (savedFleet.length) setFleet(savedFleet.map(normalizeMachine));
       if (savedRecords.length) setMaintenanceRecords(savedRecords);
     }).catch(() => {});
   }, []);
@@ -56,21 +63,29 @@ const AddMaintenance = () => {
   const preselectedJcb = searchParams.get('machine') || 'jcb-1';
   const preselectedType = searchParams.get('type') || 'Engine Oil';
 
-  const selectedMachine = fleet.find((m) => m.id === preselectedJcb) || fleet[0];
+  const selectedMachineBase = fleet.find((m) => m.id === preselectedJcb) || fleet[0];
+  const selectedMachine = selectedMachineBase ? {
+    ...selectedMachineBase,
+    totalHours: transactions
+      .filter((transaction) => transaction.businessId === 'jcb' && transaction.jcbVehicle &&
+        (transaction.jcbVehicle === selectedMachineBase.code || transaction.jcbVehicle.startsWith(`${selectedMachineBase.code} `)))
+      .reduce((total, transaction) => total + (Number(transaction.duration) || Number(transaction.quantity) || 0), 0)
+  } : null;
 
   // General Work Order Info
   const [maintJcbId, setMaintJcbId] = useState(selectedMachine ? selectedMachine.id : 'jcb-1');
   const [maintServiceDate, setMaintServiceDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [maintHourMeter, setMaintHourMeter] = useState(selectedMachine ? selectedMachine.totalHours.toString() : '4528');
+  const [maintHourMeter, setMaintHourMeter] = useState(selectedMachine ? selectedMachine.totalHours.toString() : '0');
   const [maintServiceProvider, setMaintServiceProvider] = useState('');
   const [maintInvoiceName, setMaintInvoiceName] = useState('');
+  const [maintInvoiceData, setMaintInvoiceData] = useState('');
   const [maintGeneralRemarks, setMaintGeneralRemarks] = useState('');
 
   // Service Items List
   const [serviceItems, setServiceItems] = useState(() => {
     const defaultGrade = preselectedType === 'Others' ? 'N/A' : (DEFAULT_OIL_GRADES[preselectedType] || '15W-40');
     const defaultQty = preselectedType === 'Others' ? '0' : (preselectedType === 'Air Filter' || preselectedType === 'Filter' ? '1' : '20');
-    const defaultCost = preselectedType === 'Engine Oil' ? '8500' : preselectedType === 'Hydraulic Oil' ? '12000' : preselectedType === 'Air Filter' ? '3200' : preselectedType === 'Greasing' ? '1500' : '2500';
+     const defaultCost = '0';
 
     return [
       {
@@ -88,7 +103,7 @@ const AddMaintenance = () => {
   const addServiceItem = (serviceType = 'Engine Oil') => {
     const defaultGrade = serviceType === 'Others' ? 'N/A' : (DEFAULT_OIL_GRADES[serviceType] || '15W-40');
     const defaultQty = serviceType === 'Others' ? '0' : (serviceType === 'Air Filter' || serviceType === 'Filter' ? '1' : '20');
-    const defaultCost = serviceType === 'Engine Oil' ? '8500' : serviceType === 'Hydraulic Oil' ? '12000' : serviceType === 'Air Filter' ? '3200' : serviceType === 'Greasing' ? '1500' : '2500';
+    const defaultCost = '0';
 
     setServiceItems([
       ...serviceItems,
@@ -117,7 +132,7 @@ const AddMaintenance = () => {
   const handleServiceTypeChangeInItem = (index, newType) => {
     const defaultGrade = newType === 'Others' ? 'N/A' : (DEFAULT_OIL_GRADES[newType] || '15W-40');
     const defaultQty = newType === 'Others' ? '0' : (newType === 'Air Filter' || newType === 'Filter' ? '1' : '20');
-    const defaultCost = newType === 'Engine Oil' ? '8500' : newType === 'Hydraulic Oil' ? '12000' : newType === 'Air Filter' ? '3200' : newType === 'Greasing' ? '1500' : '2500';
+    const defaultCost = '0';
 
     setServiceItems(
       serviceItems.map((item, idx) =>
@@ -141,7 +156,7 @@ const AddMaintenance = () => {
         serviceType: 'Engine Oil',
         oilGrade: '15W-40',
         quantity: '20',
-        cost: '8500',
+         cost: '0',
         remarks: 'Part of 3-in-1 Full Package'
       },
       {
@@ -149,7 +164,7 @@ const AddMaintenance = () => {
         serviceType: 'Hydraulic Oil',
         oilGrade: 'Tellus 68',
         quantity: '40',
-        cost: '12000',
+         cost: '0',
         remarks: 'Part of 3-in-1 Full Package'
       },
       {
@@ -157,7 +172,7 @@ const AddMaintenance = () => {
         serviceType: 'Air Filter',
         oilGrade: 'OEM Grade Filter',
         quantity: '2',
-        cost: '3200',
+         cost: '0',
         remarks: 'Part of 3-in-1 Full Package'
       }
     ]);
@@ -177,11 +192,12 @@ const AddMaintenance = () => {
     let updatedBrg = targetMachine.greasingLastMeter;
     let updatedHyd = targetMachine.hydraulicOilLastMeter;
     let updatedFlt = targetMachine.filterLastMeter;
+    let updatedLub = targetMachine.lubricationOilLastMeter ?? targetMachine.totalHours;
 
     serviceItems.forEach((item, idx) => {
       const type = item.serviceType || 'Engine Oil';
       const costNum = Number(item.cost) || 0;
-      const interval = SERVICE_INTERVALS[type] || 300;
+       const interval = Number(targetMachine.serviceIntervals?.[type] || SERVICE_INTERVALS[type] || 300);
       const nextDueNum = hourMeterNum + interval;
       const gradeVal = type === 'Others' ? 'N/A' : (item.oilGrade?.trim() || DEFAULT_OIL_GRADES[type] || '15W-40');
       const qtyVal = type === 'Others' ? '-' : (item.quantity || '0');
@@ -209,6 +225,7 @@ const AddMaintenance = () => {
         cost: costNum,
         serviceProvider: maintServiceProvider.trim() || 'JCB Authorized Service',
         invoiceName: maintInvoiceName || 'service_invoice.pdf',
+        invoiceData: maintInvoiceData || '',
         nextDue: nextDueNum,
         remarks: combinedRemarks,
         notes: combinedRemarks || `${type} service record`,
@@ -220,7 +237,8 @@ const AddMaintenance = () => {
       if (type === 'Engine Oil') updatedEng = hourMeterNum;
       if (type === 'Greasing' || type === 'Bearing Oil') updatedBrg = hourMeterNum;
       if (type === 'Hydraulic Oil') updatedHyd = hourMeterNum;
-      if (type === 'Air Filter' || type === 'Filter') updatedFlt = hourMeterNum;
+       if (type === 'Air Filter' || type === 'Filter') updatedFlt = hourMeterNum;
+       if (type === 'Lubrication Oil') updatedLub = hourMeterNum;
 
       newLogs.push({
         date: formatDisplayDate(maintServiceDate),
@@ -243,8 +261,9 @@ const AddMaintenance = () => {
         ...m,
         engineOilLastMeter: updatedEng,
         greasingLastMeter: updatedBrg,
-        hydraulicOilLastMeter: updatedHyd,
-        filterLastMeter: updatedFlt,
+           hydraulicOilLastMeter: updatedHyd,
+           filterLastMeter: updatedFlt,
+           lubricationOilLastMeter: updatedLub,
         totalHours: Math.max(m.totalHours, hourMeterNum),
         serviceHistory: [...newLogs, ...(m.serviceHistory || [])]
       };
@@ -307,7 +326,13 @@ const AddMaintenance = () => {
                 onChange={(e) => {
                   setMaintJcbId(e.target.value);
                   const target = fleet.find((m) => m.id === e.target.value);
-                  if (target) setMaintHourMeter(target.totalHours.toString());
+                  if (target) {
+                    const rentalHours = transactions
+                      .filter((transaction) => transaction.businessId === 'jcb' && transaction.jcbVehicle &&
+                        (transaction.jcbVehicle === target.code || transaction.jcbVehicle.startsWith(`${target.code} `)))
+                      .reduce((total, transaction) => total + (Number(transaction.duration) || Number(transaction.quantity) || 0), 0);
+                    setMaintHourMeter(String(rentalHours));
+                  }
                 }}
                 className="w-full p-3 bg-amber-50/50 border border-amber-200 rounded-xl font-black text-amber-900 text-sm focus:outline-hidden focus:border-amber-600 cursor-pointer font-mono shadow-2xs"
               >
@@ -368,8 +393,17 @@ const AddMaintenance = () => {
                   type="file"
                   className="hidden"
                   onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      setMaintInvoiceName(e.target.files[0].name);
+                       if (e.target.files && e.target.files[0]) {
+                         const file = e.target.files[0];
+                         setMaintInvoiceName(file.name);
+                         if (file.size > 80000) {
+                           setMaintInvoiceData('');
+                           window.alert('Please choose a file smaller than 80 KB to keep it viewable and synchronized.');
+                           return;
+                         }
+                         const reader = new FileReader();
+                         reader.onload = () => setMaintInvoiceData(String(reader.result || ''));
+                         reader.readAsDataURL(file);
                     }
                   }}
                 />
@@ -464,6 +498,7 @@ const AddMaintenance = () => {
                         <option value="Hydraulic Oil">Hydraulic Oil</option>
                         <option value="Air Filter">Air Filter</option>
                         <option value="Greasing">Greasing</option>
+                        <option value="Lubrication Oil">Lubrication Oil</option>
                         <option value="Filter">Filter</option>
                         <option value="Bearing Oil">Bearing Oil</option>
                         <option value="Transmission Oil">Transmission Oil</option>
@@ -511,10 +546,10 @@ const AddMaintenance = () => {
                         <input
                           type="number"
                           required
-                          placeholder="e.g. 8500"
+                           placeholder="e.g. 0"
                           value={item.cost}
                           onChange={(e) => handleUpdateItemField(index, 'cost', e.target.value)}
-                          className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 text-xs focus:outline-hidden focus:border-amber-600"
+                           className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-mono font-black text-slate-900 text-base focus:outline-hidden focus:border-amber-600"
                         />
                       </div>
                     </div>
@@ -613,6 +648,13 @@ const AddMaintenance = () => {
                 className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl cursor-pointer font-bold transition-all shadow-2xs"
               >
                 + Greasing
+              </button>
+              <button
+                type="button"
+                onClick={() => addServiceItem('Lubrication Oil')}
+                className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-300 rounded-xl cursor-pointer font-bold transition-all shadow-2xs"
+              >
+                + Lubrication Oil
               </button>
             </div>
           </div>

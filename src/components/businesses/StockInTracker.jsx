@@ -183,21 +183,33 @@ const getInitialStockRecords = (businessId) => {
   ];
 };
 
+const inferStockBusinessId = (record) => {
+  if (record.businessId) return record.businessId;
+  if (String(record.id).includes('sand')) return 'sand';
+  if (String(record.id).includes('jalli')) return 'jalli';
+  return 'bricks';
+};
+
 const StockInTracker = ({ businessId = 'bricks', businessName = 'Bricks Supply' }) => {
-  const initialRecords = getInitialStockRecords(businessId);
-  const [stockRecords, setStockRecords] = useState(initialRecords);
-  const [storageReady, setStorageReady] = useState(false);
+  const [stockRecords, setStockRecords] = useState(() =>
+    getInitialStockRecords(businessId).map((record) => ({ ...record, businessId }))
+  );
 
   useEffect(() => {
     loadSyncedCollection('stockEntries', `${businessId}_stock_in_records`).then((saved) => {
-      if (saved.length) setStockRecords(saved.filter((record) => record.businessId === businessId));
-      setStorageReady(true);
-    }).catch(() => setStorageReady(true));
+      if (saved.length) {
+        setStockRecords(
+          saved
+            .map((record) => ({ ...record, businessId: inferStockBusinessId(record) }))
+            .filter((record) => record.businessId === businessId)
+        );
+      } else {
+        const seededRecords = getInitialStockRecords(businessId).map((record) => ({ ...record, businessId }));
+        setStockRecords(seededRecords);
+        saveSyncedCollection('stockEntries', 'stockEntry', seededRecords).catch(() => {});
+      }
+    }).catch(() => {});
   }, [businessId]);
-
-  useEffect(() => {
-    if (storageReady) saveSyncedCollection('stockEntries', 'stockEntry', stockRecords).catch(() => {});
-  }, [stockRecords, storageReady]);
 
   // Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -285,7 +297,8 @@ const StockInTracker = ({ businessId = 'bricks', businessName = 'Bricks Supply' 
       notes: `${entryType} stock entry logged`
     };
 
-    setStockRecords([newRecord, ...stockRecords]);
+    setStockRecords((previous) => [newRecord, ...previous]);
+    saveSyncedEntity('stockEntries', 'stockEntry', newRecord, 'create').catch(() => {});
     setIsAddModalOpen(false);
 
     // Reset Defaults
@@ -297,7 +310,7 @@ const StockInTracker = ({ businessId = 'bricks', businessName = 'Bricks Supply' 
 
   const handleDeleteRecord = (id) => {
     if (window.confirm('Are you sure you want to remove this Stock In record?')) {
-      setStockRecords(stockRecords.filter((r) => r.id !== id));
+      setStockRecords((previous) => previous.filter((r) => r.id !== id));
       saveSyncedEntity('stockEntries', 'stockEntry', { id }, 'delete').catch(() => {});
     }
   };
@@ -487,7 +500,7 @@ const StockInTracker = ({ businessId = 'bricks', businessName = 'Bricks Supply' 
             <div className="relative">
               <input
                 type="text"
-                placeholder="[ Search Source / Lorry ]"
+                placeholder="[ Search Source / Tractor ]"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full p-3 pl-9 bg-slate-50 border border-slate-300 rounded-2xl font-mono font-bold text-slate-900 focus:outline-hidden focus:border-amber-600 focus:bg-white"

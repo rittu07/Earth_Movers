@@ -131,14 +131,14 @@ const StaffSection = () => {
             JCB Drivers ({staff.filter((s) => s.role === 'JCB Driver').length})
           </button>
           <button
-            onClick={() => setRoleFilter('Lorry Driver')}
+             onClick={() => setRoleFilter('Tractor Driver')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
-              roleFilter === 'Lorry Driver'
+               roleFilter === 'Tractor Driver'
                 ? 'bg-white text-indigo-600 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Lorry Drivers ({staff.filter((s) => s.role === 'Lorry Driver').length})
+             Tractor Drivers ({staff.filter((s) => s.role === 'Tractor Driver').length})
           </button>
           <button
             onClick={() => setRoleFilter('Manager')}

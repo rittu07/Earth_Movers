@@ -104,7 +104,7 @@ export const initialTransactions = [
     businessName: 'Bricks Supply',
     itemService: 'Red Bricks',
     quantity: 2,
-    unit: 'Lorry',
+    unit: 'Tractor',
     rate: 8000,
     amount: 16000,
     paid: 10000,
@@ -175,7 +175,7 @@ export const initialTransactions = [
     businessName: 'Jalli Service',
     itemService: '20mm Blue Metal Jalli',
     quantity: 1,
-    unit: 'Lorry',
+    unit: 'Tractor',
     rate: 5500,
     amount: 5500,
     paid: 5500,
@@ -220,7 +220,7 @@ export const initialTransactions = [
     businessName: 'Bricks Supply',
     itemService: 'Chamber Bricks',
     quantity: 3,
-    unit: 'Lorry',
+    unit: 'Tractor',
     rate: 9000,
     amount: 27000,
     paid: 15000,
@@ -553,13 +553,12 @@ export const initialFinanceLoans = [
     interestRate: 2,
     startDate: '2026-07-11',
     months: 1,
-    monthlyInterest: 2000,
-    totalInterest: 2000,
-    totalAmount: 102000,
-    returnedAmount: 2000,
-    dueAmount: 100000,
+    isManualMonths: false,
     status: 'Active',
-    notes: 'Capital loan @ 2% monthly interest'
+    notes: 'Capital loan @ 2% monthly interest',
+    paymentHistory: [
+      { month: 'Month 1', amount: 2000, discount: 0, method: 'Cash', reference: '', date: '2026-08-11' }
+    ]
   },
   {
     id: 'FIN-102',
@@ -569,13 +568,14 @@ export const initialFinanceLoans = [
     interestRate: 1.5,
     startDate: '2026-05-15',
     months: 3,
-    monthlyInterest: 3750,
-    totalInterest: 11250,
-    totalAmount: 261250,
-    returnedAmount: 11250,
-    dueAmount: 250000,
+    isManualMonths: false,
     status: 'Active',
-    notes: 'Short term project finance'
+    notes: 'Short term project finance',
+    paymentHistory: [
+      { month: 'Month 1', amount: 3750, discount: 0, method: 'Cash', reference: '', date: '2026-06-15' },
+      { month: 'Month 2', amount: 3750, discount: 0, method: 'Cash', reference: '', date: '2026-07-15' },
+      { month: 'Month 3', amount: 3750, discount: 0, method: 'Cash', reference: '', date: '2026-08-15' }
+    ]
   },
   {
     id: 'FIN-103',
@@ -585,13 +585,18 @@ export const initialFinanceLoans = [
     interestRate: 2,
     startDate: '2026-02-01',
     months: 6,
-    monthlyInterest: 10000,
-    totalInterest: 60000,
-    totalAmount: 560000,
-    returnedAmount: 560000,
-    dueAmount: 0,
+    isManualMonths: false,
     status: 'Settled',
-    notes: 'Heavy machinery funding @ 2% monthly interest'
+    notes: 'Heavy machinery funding @ 2% monthly interest',
+    paymentHistory: [
+      { month: 'Month 1', amount: 10000, discount: 0, method: 'Cash', reference: '', date: '2026-03-01' },
+      { month: 'Month 2', amount: 10000, discount: 0, method: 'Cash', reference: '', date: '2026-04-01' },
+      { month: 'Month 3', amount: 10000, discount: 0, method: 'Cash', reference: '', date: '2026-05-01' },
+      { month: 'Month 4', amount: 10000, discount: 0, method: 'Cash', reference: '', date: '2026-06-01' },
+      { month: 'Month 5', amount: 10000, discount: 0, method: 'Cash', reference: '', date: '2026-07-01' },
+      { month: 'Month 6', amount: 10000, discount: 0, method: 'Cash', reference: '', date: '2026-08-01' },
+      { month: 'Full Settlement', amount: 500000, discount: 0, method: 'Cash', reference: '', date: '2026-08-15' }
+    ]
   },
   {
     id: 'FIN-104',
@@ -601,13 +606,12 @@ export const initialFinanceLoans = [
     interestRate: 2,
     startDate: '2026-06-10',
     months: 2,
-    monthlyInterest: 3000,
-    totalInterest: 6000,
-    totalAmount: 156000,
-    returnedAmount: 6000,
-    dueAmount: 150000,
+    isManualMonths: false,
     status: 'Active',
-    notes: 'Site excavation & levelling finance'
+    notes: 'Site excavation & levelling finance',
+    paymentHistory: [
+      { month: 'Month 1', amount: 3000, discount: 0, method: 'Cash', reference: '', date: '2026-07-10' }
+    ]
   }
 ];
 
@@ -655,7 +659,7 @@ export const initialStaff = [
     id: 'staff-2',
     name: 'Murugan',
     phone: '9876543211',
-    role: 'Lorry Driver',
+    role: 'Tractor Driver',
     monthlySalary: 22000,
     bataRate: 300,
     bataUnit: 'Per Trip',
@@ -664,7 +668,7 @@ export const initialStaff = [
     advanceRemaining: 40000,
     joiningDate: '2026-02-15',
     status: 'Active',
-    notes: 'Tipper & Lorry driver for bricks & sand'
+    notes: 'Tractor driver for bricks & sand'
   },
   {
     id: 'staff-3',
@@ -682,4 +686,3 @@ export const initialStaff = [
     notes: 'Site supervisor & manager'
   }
 ];
-

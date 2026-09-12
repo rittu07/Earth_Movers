@@ -8,6 +8,9 @@ export const calculateTotal = (quantity, rate, additionalCharge = 0) => {
   return (qty * r) + extra;
 };
 
+export const getOutsourcedSupplierName = (transaction) =>
+  String(transaction?.outsourcedSupplier || '').trim() || 'Supplier not specified';
+
 /**
  * Calculate remaining outstanding due
  */
@@ -48,6 +51,18 @@ export const calculateJCBDuration = (startTime, endTime) => {
   const durationInHours = (endMinutes - startMinutes) / 60;
   return Math.round(durationInHours * 10) / 10; // 1 decimal place
 };
+
+export const getRecordDateTime = (record) => {
+  const date = record?.date || record?.createdAt || record?.created_at || '';
+  const time = record?.time || record?.startTime || record?.createdAt?.split('T')[1] || '';
+  const value = new Date(time && date && !date.includes('T') ? `${date}T${time}` : date);
+  return Number.isNaN(value.getTime()) ? 0 : value.getTime();
+};
+
+export const sortByDateTimeDesc = (records = []) => [...records].sort((a, b) => {
+  const difference = getRecordDateTime(b) - getRecordDateTime(a);
+  return difference || String(b.id || '').localeCompare(String(a.id || ''));
+});
 
 /**
  * Calculate summary metrics for dashboard or customer ledgers

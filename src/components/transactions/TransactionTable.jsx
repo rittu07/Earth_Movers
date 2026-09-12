@@ -4,6 +4,7 @@ import { useBusiness } from '../../context/BusinessContext';
 import StatusBadge from '../common/StatusBadge';
 import EditTransactionModal from '../common/EditTransactionModal';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { getOutsourcedSupplierName, sortByDateTimeDesc } from '../../utils/calculations';
 import { openWhatsAppChat, formatTransactionWhatsApp } from '../../utils/whatsapp';
 import { Eye, Phone, Boxes, Droplets, UserCheck, MapPin, MessageSquare, ChevronDown, Pencil, Trash2 } from 'lucide-react';
 
@@ -18,10 +19,10 @@ const getShortDesc = (trx) => {
     return trx.quantity ? `Water • ${trx.quantity} Loads` : 'Water';
   }
   if (trx.businessId === 'jalli') {
-    return trx.quantity ? `Jalli • ${trx.quantity} ${trx.unit || 'Lorry'}` : 'Jalli';
+    return trx.quantity ? `Jalli • ${trx.quantity} ${trx.unit || 'Tractor'}` : 'Jalli';
   }
   if (trx.businessId === 'sand') {
-    return trx.quantity ? `Sand • ${trx.quantity} ${trx.unit || 'Lorry'}` : 'Sand';
+    return trx.quantity ? `Sand • ${trx.quantity} ${trx.unit || 'Tractor'}` : 'Sand';
   }
   return trx.businessName ? trx.businessName.replace(' Supply', '').replace(' Rental', '').replace(' Service', '') : 'Sale';
 };
@@ -31,11 +32,20 @@ const TransactionTable = ({ transactions = [] }) => {
   const [expandedId, setExpandedId] = useState(null);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const navigate = useNavigate();
+  const sortedTransactions = sortByDateTimeDesc(transactions);
 
-  const handleDelete = (id, e) => {
+  const handleDelete = (trx, e) => {
     if (e) e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this transaction entry? This will update customer balance.')) {
-      deleteTransaction(id);
+    const details = [
+      trx.customerName || 'Unknown customer',
+      trx.businessName || trx.businessId || 'Unknown business',
+      trx.itemService || 'Transaction',
+      `${trx.quantity || 0} ${trx.unit || 'units'}`,
+      formatCurrency(trx.amount || 0),
+      trx.date || 'No date'
+    ].join(' | ');
+    if (window.confirm(`Delete this transaction?\n\n${details}\n\nThis will adjust the customer outstanding balance.`)) {
+      deleteTransaction(trx.id);
     }
   };
 
@@ -43,12 +53,12 @@ const TransactionTable = ({ transactions = [] }) => {
     <div>
       {/* MOBILE VIEW INLINE EXPANDABLE CARDS (No popups) */}
       <div className="md:hidden space-y-3">
-        {transactions.length === 0 ? (
+        {sortedTransactions.length === 0 ? (
           <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 text-xs font-medium">
             No transactions match the selected filters.
           </div>
         ) : (
-          transactions.map((trx) => {
+          sortedTransactions.map((trx) => {
             const isExpanded = expandedId === trx.id;
             return (
               <div
@@ -68,18 +78,23 @@ const TransactionTable = ({ transactions = [] }) => {
                       <h4 className="text-sm font-black text-slate-900 leading-tight truncate">
                         {trx.customerName}
                       </h4>
-                      <p className="text-xs font-black text-indigo-900 mt-0.5 truncate">
-                        {getShortDesc(trx)}
-                      </p>
+                       <p className="text-xs font-black text-indigo-900 mt-0.5 truncate">
+                         {getShortDesc(trx)}
+                       </p>
+                       {trx.isOutsourced && (
+                         <p className="text-[11px] font-black text-amber-700 mt-0.5 truncate">
+                           Outsourced from: {getOutsourcedSupplierName(trx)}
+                         </p>
+                       )}
                       <span className="text-xs text-slate-500 font-semibold">{trx.displayDate}</span>
-                    </div>
-                  </div>
+                     </div>
+                   </div>
 
                   <div className="text-right shrink-0 flex items-center gap-2">
                     <div>
                       <div className="text-base font-black text-slate-900">
                         {formatCurrency(trx.amount)}
-                      </div>
+                     </div>
                     </div>
                     <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180 text-indigo-600' : ''}`} />
                   </div>
@@ -145,14 +160,20 @@ const TransactionTable = ({ transactions = [] }) => {
                       <div className="pt-1 flex items-baseline justify-between">
                         <div>
                           <span className="text-[10px] font-bold text-slate-400 uppercase block">Item / Service</span>
-                          <span className="text-xs font-black text-slate-900">{trx.itemService}</span>
+                           <span className="text-xs font-black text-slate-900">{trx.itemService}</span>
+                           {trx.businessId === 'jcb' && <span className="block text-[10px] font-bold text-slate-500">JCB No: {trx.jcbVehicle || '—'} • Driver: {trx.driverName || '—'}</span>}
                         </div>
                         <div className="text-right">
                           <span className="text-[10px] font-bold text-slate-400 uppercase block">Quantity</span>
-                          <span className="text-xs font-black text-indigo-900">{trx.quantity} {trx.unit}</span>
-                        </div>
-                      </div>
-                    </div>
+                         <span className="text-xs font-black text-indigo-900">{trx.quantity} {trx.unit}</span>
+                       </div>
+                     </div>
+                     {trx.isOutsourced && (
+                       <div className="pt-2 mt-2 border-t border-indigo-100 text-[11px] font-black text-amber-700">
+                         Outsourced from: {getOutsourcedSupplierName(trx)}
+                       </div>
+                     )}
+                   </div>
 
                     {/* Financial Summary Box */}
                     <div className="grid grid-cols-3 gap-2">
@@ -184,7 +205,7 @@ const TransactionTable = ({ transactions = [] }) => {
                       </button>
                       <button
                         type="button"
-                        onClick={(e) => handleDelete(trx.id, e)}
+                        onClick={(e) => handleDelete(trx, e)}
                         className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" /> Delete
@@ -228,14 +249,14 @@ const TransactionTable = ({ transactions = [] }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium">
-            {transactions.length === 0 ? (
+            {sortedTransactions.length === 0 ? (
               <tr>
                 <td colSpan="10" className="py-10 text-center text-slate-400 font-bold text-sm">
                   No transactions match the selected filters.
                 </td>
               </tr>
             ) : (
-              transactions.map((trx) => (
+              sortedTransactions.map((trx) => (
                 <tr key={trx.id} className="hover:bg-slate-50/80 transition-colors">
                   <td className="py-4 px-4 text-slate-500 font-medium text-xs whitespace-nowrap">
                     {trx.displayDate}
@@ -264,9 +285,21 @@ const TransactionTable = ({ transactions = [] }) => {
                   </td>
 
                   {/* Details Column */}
-                  <td className="py-4 px-4 text-slate-900">
-                    <div className="font-bold text-sm text-slate-900">{trx.itemService}</div>
-                  </td>
+                   <td className="py-4 px-4 text-slate-900">
+                      <div className="font-bold text-sm text-slate-900">
+                        {trx.itemService}
+                        {trx.businessId === 'jcb' && (
+                          <span className="block text-[10px] font-bold text-slate-500">
+                            JCB No: {trx.jcbVehicle || '—'} • Driver: {trx.driverName || '—'}
+                          </span>
+                        )}
+                      </div>
+                     {trx.isOutsourced && (
+                       <div className="text-xs font-black text-amber-700 mt-1">
+                         Outsourced from: {getOutsourcedSupplierName(trx)}
+                       </div>
+                     )}
+                   </td>
 
                   <td className="py-4 px-4 text-center font-bold text-sm text-slate-800 whitespace-nowrap">
                     {trx.quantity} {trx.unit}
@@ -303,7 +336,7 @@ const TransactionTable = ({ transactions = [] }) => {
 
                       <button
                         type="button"
-                        onClick={(e) => handleDelete(trx.id, e)}
+                        onClick={(e) => handleDelete(trx, e)}
                         className="p-2 inline-flex items-center text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
                         title="Delete Transaction"
                       >

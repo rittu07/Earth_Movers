@@ -15,15 +15,21 @@ import {
   X,
   Building2,
   ChevronRight,
-  Wallet
+  ChevronDown,
+  Wallet,
+  Eye,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 
 const SupplierSection = () => {
-  const { suppliers = [], addSupplier, getSupplierLedger, showToast } = useBusiness();
+  const { suppliers = [], addSupplier, updateSupplier, deleteSupplier, getSupplierFinancials, showToast } = useBusiness();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
+  const [selectedSupplierId, setSelectedSupplierId] = useState('');
 
   // Form State
   const [name, setName] = useState('');
@@ -101,56 +107,107 @@ const SupplierSection = () => {
         />
       </div>
 
-      {/* Supplier Cards List */}
-      <div className="space-y-3">
+      {/* Supplier Customer-style table */}
+      <div className="md:hidden space-y-3">
+        {filteredSuppliers.length === 0 ? (
+          <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 text-xs font-medium">
+            No suppliers found matching search.
+          </div>
+        ) : filteredSuppliers.map((sup) => {
+          const metrics = getSupplierFinancials(sup.id);
+          const isExpanded = expandedId === sup.id;
+          return (
+            <div key={sup.id} className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+              <div
+                onClick={() => navigate(`/suppliers/${sup.id}`)}
+                className="p-3.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 font-black flex items-center justify-center text-sm shrink-0">
+                    {sup.name?.charAt(0) || 'S'}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-black text-slate-900 truncate">{sup.name}</h4>
+                    <p className="text-xs font-bold text-slate-600 flex items-center gap-1 mt-0.5 truncate">
+                      <Phone className="w-3 h-3 text-slate-400 shrink-0" /> {sup.phone || 'No phone'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-sm font-black text-slate-900">{formatCurrency(metrics.totalPurchase)}</span>
+                  <button
+                    type="button"
+                    onClick={(event) => { event.stopPropagation(); setExpandedId(isExpanded ? null : sup.id); }}
+                    className="p-1 text-slate-400 hover:text-amber-600 rounded-lg cursor-pointer"
+                    aria-label={`Expand ${sup.name}`}
+                  >
+                    <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180 text-amber-600' : ''}`} />
+                  </button>
+                </div>
+              </div>
+              {isExpanded && (
+                <div className="p-4 bg-slate-50/70 border-t border-slate-100 space-y-3 text-xs">
+                  <div className="grid grid-cols-2 gap-2 text-center">
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                      <span className="text-[9px] font-black text-slate-400 uppercase block">Total Purchase</span>
+                      <span className="text-xs font-black text-slate-900">{formatCurrency(metrics.totalPurchase)}</span>
+                    </div>
+                    <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                      <span className="text-[9px] font-black text-emerald-700 uppercase block">Paid Amount</span>
+                      <span className="text-xs font-black text-emerald-700">{formatCurrency(metrics.paidAmount)}</span>
+                    </div>
+                    <div className="col-span-2 bg-rose-50 p-2.5 rounded-xl border border-rose-200">
+                      <span className="text-[9px] font-black text-rose-700 uppercase block">Outstanding</span>
+                      <span className="text-xs font-black text-rose-700">{formatCurrency(metrics.outstanding)}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {sup.phone && <>
+                      <a href={`tel:${sup.phone}`} className="flex-1 py-2 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-center font-black">Call</a>
+                      <button type="button" onClick={() => openWhatsAppChat(sup.phone, `Hello ${sup.name}`)} className="flex-1 py-2 bg-green-600 text-white rounded-xl font-black cursor-pointer">WhatsApp</button>
+                    </>}
+                    <button type="button" onClick={() => { setSelectedSupplierId(sup.id); setIsPayModalOpen(true); }} className="flex-1 py-2 bg-emerald-600 text-white rounded-xl font-black cursor-pointer">Pay</button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => { const nextName = window.prompt('Supplier name', sup.name); if (nextName?.trim()) updateSupplier(sup.id, { name: nextName.trim() }); }} className="flex-1 py-2 bg-amber-50 text-amber-800 border border-amber-200 rounded-xl font-black cursor-pointer">Edit</button>
+                    <button type="button" onClick={() => navigate(`/suppliers/${sup.id}`)} className="flex-1 py-2 bg-indigo-600 text-white rounded-xl font-black cursor-pointer">View Ledger</button>
+                    <button type="button" onClick={() => window.confirm(`Delete ${sup.name}?`) && deleteSupplier(sup.id)} className="p-2 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl cursor-pointer"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200">
         {filteredSuppliers.length === 0 ? (
           <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 text-xs font-medium">
             No suppliers found matching search.
           </div>
         ) : (
-          filteredSuppliers.map((sup) => {
-            const ledger = getSupplierLedger ? getSupplierLedger(sup.id) : [];
-            const dueAmt = ledger.reduce((sum, item) => sum + (item.due || 0), 0);
-
-            return (
-              <div
-                key={sup.id}
-                onClick={() => navigate(`/suppliers/${sup.id}`)}
-                className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:bg-slate-50/80 transition-all p-3.5 flex items-center justify-between gap-3 cursor-pointer group"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-900 font-black flex items-center justify-center text-sm shrink-0 shadow-2xs">
-                    {sup.name ? sup.name.charAt(0) : 'S'}
-                  </div>
-                  <div className="min-w-0">
-                    {/* Supplier Name */}
-                    <h4 className="text-xs font-black text-slate-900 group-hover:text-amber-600 transition-colors leading-tight truncate">
-                      {sup.name}
-                    </h4>
-                    {/* Phone Number directly below Supplier Name */}
-                    <p className="text-[11px] font-bold text-slate-600 flex items-center gap-1 mt-0.5 truncate">
-                      <Phone className="w-3 h-3 text-slate-400 shrink-0" />
-                      <span>{sup.phone || 'No phone provided'}</span>
-                    </p>
-                  </div>
-                </div>
-
-                {/* Right Side Balance & Navigation Chevron */}
-                <div className="text-right shrink-0 flex items-center gap-2">
-                  <div>
-                    <div className="text-xs font-extrabold text-slate-500 uppercase">
-                      {dueAmt > 0 ? (
-                        <span className="text-rose-600 font-black text-sm">{formatCurrency(dueAmt)}</span>
-                      ) : (
-                        <span className="text-emerald-600 font-bold text-xs">Clear (₹0)</span>
-                      )}
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-600 transition-colors" />
-                </div>
-              </div>
-            );
-          })
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 text-slate-500 uppercase font-black tracking-wider">
+              <tr><th className="p-3">Supplier</th><th className="p-3">Mobile Number</th><th className="p-3 text-right">Total Purchase</th><th className="p-3 text-right">Paid Amount</th><th className="p-3 text-right">Outstanding</th><th className="p-3 text-center">Action</th></tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredSuppliers.map((sup) => {
+                const metrics = getSupplierFinancials(sup.id);
+                return <tr key={sup.id} className="bg-white hover:bg-slate-50">
+                  <td className="p-3 font-black text-slate-900"><button type="button" onClick={() => navigate(`/suppliers/${sup.id}`)} className="inline-flex items-center gap-2 hover:text-amber-700 cursor-pointer text-left"><span className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center">{sup.name?.charAt(0)}</span>{sup.name}</button></td>
+                  <td className="p-3 font-semibold text-slate-600"><Phone className="w-3.5 h-3.5 inline mr-1" />{sup.phone || 'N/A'}</td>
+                  <td className="p-3 text-right font-black">{formatCurrency(metrics.totalPurchase)}</td>
+                  <td className="p-3 text-right font-black text-emerald-600">{formatCurrency(metrics.paidAmount)}</td>
+                  <td className="p-3 text-right font-black text-rose-600">{formatCurrency(metrics.outstanding)}</td>
+                  <td className="p-3 text-center whitespace-nowrap">
+                    <button title="Edit" onClick={() => { const nextName = window.prompt('Supplier name', sup.name); if (nextName?.trim()) updateSupplier(sup.id, { name: nextName.trim() }); }} className="p-1.5 text-amber-600"><Pencil className="w-4 h-4" /></button>
+                    <button title="View" onClick={() => navigate(`/suppliers/${sup.id}`)} className="p-1.5 text-indigo-600"><Eye className="w-4 h-4" /></button>
+                    <button title="Delete" onClick={() => window.confirm(`Delete ${sup.name}?`) && deleteSupplier(sup.id)} className="p-1.5 text-rose-600"><Trash2 className="w-4 h-4" /></button>
+                  </td>
+                </tr>;
+              })}
+            </tbody>
+          </table>
         )}
       </div>
 
@@ -241,7 +298,7 @@ const SupplierSection = () => {
       )}
 
       {/* Pay Supplier Modal */}
-      <PaySupplierModal isOpen={isPayModalOpen} onClose={() => setIsPayModalOpen(false)} />
+      <PaySupplierModal isOpen={isPayModalOpen} onClose={() => setIsPayModalOpen(false)} preselectedSupplierId={selectedSupplierId} />
     </div>
   );
 };

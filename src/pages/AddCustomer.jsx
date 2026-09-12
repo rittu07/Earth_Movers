@@ -19,6 +19,7 @@ const AddCustomer = () => {
   });
 
   const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -30,6 +31,7 @@ const AddCustomer = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (saving) return;
     const newErrors = {};
 
     if (!formData.name.trim()) newErrors.name = 'Full name is required';
@@ -44,6 +46,7 @@ const AddCustomer = () => {
       return;
     }
 
+    setSaving(true);
     const created = addCustomer(formData);
     navigate(`/customers/${created.id}`);
   };
@@ -178,9 +181,10 @@ const AddCustomer = () => {
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/30 transition-all"
+                disabled={saving}
+                className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold text-xs shadow-md shadow-indigo-600/30 transition-all"
               >
-                Save Customer
+                {saving ? 'Saving...' : 'Save Customer'}
               </button>
             </div>
           </form>

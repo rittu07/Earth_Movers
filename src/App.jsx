@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { App as CapacitorApp } from '@capacitor/app';
 import { BusinessProvider, useBusiness } from './context/BusinessContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 // Layout Components
 import Sidebar from './components/layout/Sidebar';
@@ -34,10 +35,16 @@ import Settings from './pages/Settings';
 import QuickExcelEntryPage from './pages/QuickExcelEntryPage';
 import StaffLedger from './pages/StaffLedger';
 import AddMaintenance from './pages/AddMaintenance';
+import Login from './pages/Login';
+
+const OwnerOnly = ({ children }) => {
+  const { role } = useAuth();
+  return role === 'owner' ? children : <Navigate to="/" replace />;
+};
 
 const AppContent = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { toastMessage } = useBusiness();
+  const { toastMessage, toastType } = useBusiness();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -81,8 +88,8 @@ const AppContent = () => {
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 lg:pb-6">
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/finance" element={<Finance />} />
-            <Route path="/finance/ledger/:id" element={<FinanceLoanLedger />} />
+            <Route path="/finance" element={<OwnerOnly><Finance /></OwnerOnly>} />
+            <Route path="/finance/ledger/:id" element={<OwnerOnly><FinanceLoanLedger /></OwnerOnly>} />
 
             <Route path="/customers" element={<Customers />} />
             <Route path="/customers/add" element={<AddCustomer />} />
@@ -124,8 +131,8 @@ const AppContent = () => {
 
       {/* Toast Notification Banner */}
       {toastMessage && (
-        <div className="fixed bottom-20 lg:bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl border border-slate-800 text-xs font-semibold flex items-center gap-2 animate-in slide-in-from-bottom duration-300">
-          <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <div className={`fixed top-4 right-4 sm:top-6 sm:right-6 z-50 text-white px-4 py-3 rounded-2xl shadow-2xl text-xs font-semibold flex items-center gap-2 animate-in slide-in-from-top duration-300 ${toastType === 'delete' ? 'bg-rose-600 border border-rose-700' : 'bg-slate-900 border border-slate-800'}`}>
+          <span className={`w-2 h-2 rounded-full ${toastType === 'delete' ? 'bg-white' : 'bg-emerald-400'}`}></span>
           <span>{toastMessage}</span>
         </div>
       )}
@@ -133,12 +140,25 @@ const AppContent = () => {
   );
 };
 
+const AuthenticatedApp = () => {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white font-bold">Checking secure session...</div>;
+  }
+  if (!user) return <Login />;
+  return (
+    <BusinessProvider>
+      <AppContent />
+    </BusinessProvider>
+  );
+};
+
 const App = () => {
   return (
     <Router>
-      <BusinessProvider>
-        <AppContent />
-      </BusinessProvider>
+      <AuthProvider>
+        <AuthenticatedApp />
+      </AuthProvider>
     </Router>
   );
 };

@@ -8,13 +8,14 @@ import WhatsAppModal from '../components/common/WhatsAppModal';
 import { Wallet, UserPlus, User, Phone, MapPin, MessageSquare, Send } from 'lucide-react';
 
 const ReceivePayment = () => {
-  const { customers, addPayment, addCustomer } = useBusiness();
+  const { customers, addPayment, addCustomer, getCustomerFinancials } = useBusiness();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const preselectedCustomer = searchParams.get('customer') || '';
 
   const [customerId, setCustomerId] = useState(preselectedCustomer || (customers[0]?.id || ''));
+  const [customerSearch, setCustomerSearch] = useState('');
 
   // Inline "New Customer" mode state
   const [isNewCustomer, setIsNewCustomer] = useState(false);
@@ -37,14 +38,17 @@ const ReceivePayment = () => {
   const [savedTargetCustId, setSavedTargetCustId] = useState('');
 
   const selectedCustObj = customers.find((c) => c.id === customerId);
+  const selectedFinancials = selectedCustObj ? getCustomerFinancials(selectedCustObj.id) : { outstanding: 0 };
 
   useEffect(() => {
-    if (selectedCustObj && !isNewCustomer) {
-      setAmount(selectedCustObj.outstanding > 0 ? selectedCustObj.outstanding.toString() : '1000');
+    if (!isNewCustomer && !selectedCustObj && customers.length > 0) {
+      setCustomerId(preselectedCustomer || customers[0].id);
+    } else if (selectedCustObj && !isNewCustomer) {
+      setAmount(selectedFinancials.outstanding > 0 ? selectedFinancials.outstanding.toString() : '');
     }
-  }, [customerId, isNewCustomer]);
+  }, [customerId, isNewCustomer, customers.length, selectedFinancials.outstanding]);
 
-  const currentOutstanding = isNewCustomer ? 0 : (selectedCustObj?.outstanding || 0);
+  const currentOutstanding = isNewCustomer ? 0 : selectedFinancials.outstanding;
   const payVal = Number(amount) || 0;
   const remaining = Math.max(0, currentOutstanding - payVal);
 
@@ -136,17 +140,28 @@ const ReceivePayment = () => {
                     <UserPlus className="w-3.5 h-3.5" /> + Add New Customer
                   </button>
                 </div>
+                <input
+                  type="search"
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  placeholder="Search customer name or mobile..."
+                  className="w-full mb-2 p-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:border-indigo-500"
+                />
                 <select
                   value={customerId}
                   onChange={(e) => setCustomerId(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:border-indigo-500"
                   required
                 >
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} — Phone: {c.phone} (Due: {formatCurrency(c.outstanding)})
+                  {customers.filter((c) => {
+                    const query = customerSearch.trim().toLowerCase();
+                    return !query || c.name?.toLowerCase().includes(query) || c.phone?.toLowerCase().includes(query);
+                  }).map((c) => {
+                    const balance = getCustomerFinancials(c.id);
+                    return <option key={c.id} value={c.id}>
+                      {c.name} — Phone: {c.phone} (Due: {formatCurrency(balance.outstanding)})
                     </option>
-                  ))}
+                  })}
                 </select>
               </div>
             ) : (

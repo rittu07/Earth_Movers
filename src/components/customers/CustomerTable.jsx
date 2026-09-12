@@ -8,35 +8,12 @@ import { openWhatsAppChat } from '../../utils/whatsapp';
 import { Eye, Trash2, Phone, MapPin, ChevronDown, MessageSquare, PlusCircle, Wallet, Pencil } from 'lucide-react';
 
 const CustomerTable = ({ customers, onDelete }) => {
-  const { transactions = [], payments = [] } = useBusiness();
+  const { getCustomerFinancials } = useBusiness();
   const [expandedId, setExpandedId] = useState(null);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const navigate = useNavigate();
 
-  const getCustMetrics = (cust) => {
-    const custNameLower = cust.name ? cust.name.toLowerCase().trim() : '';
-    const custTrxs = transactions.filter(
-      (t) => t.customerId === cust.id || (t.customerName && t.customerName.toLowerCase().trim() === custNameLower)
-    );
-    const custPays = payments.filter(
-      (p) => p.customerId === cust.id || (p.customerName && p.customerName.toLowerCase().trim() === custNameLower)
-    );
-
-    const totalBus = custTrxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-    const trxPaid = custTrxs.reduce((sum, t) => sum + (Number(t.paid) || 0), 0);
-    const directPaid = custPays.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-    const totalPaid = trxPaid + directPaid;
-
-    const finalTotalBus = totalBus > 0 ? totalBus : (Number(cust.totalBusiness) || 0);
-    const finalTotalPaid = totalPaid > 0 ? totalPaid : (Number(cust.paid) || 0);
-    const finalOutstanding = Math.max(0, finalTotalBus - finalTotalPaid);
-
-    return {
-      totalBusiness: finalTotalBus,
-      paid: finalTotalPaid,
-      outstanding: finalOutstanding
-    };
-  };
+  const getCustMetrics = (cust) => getCustomerFinancials(cust.id);
 
   return (
     <div>

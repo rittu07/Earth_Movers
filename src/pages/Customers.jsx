@@ -10,34 +10,11 @@ import { exportToPdf } from '../utils/pdfGenerator';
 import { Search, PlusCircle, Download } from 'lucide-react';
 
 const Customers = () => {
-  const { customers = [], transactions = [], payments = [], deleteCustomer } = useBusiness();
+  const { customers = [], getCustomerFinancials, deleteCustomer } = useBusiness();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTab, setFilterTab] = useState('all'); // all, active, outstanding
 
-  const getCustomerMetrics = (cust) => {
-    const custNameLower = cust.name ? cust.name.toLowerCase().trim() : '';
-    const custTrxs = transactions.filter(
-      (t) => t.customerId === cust.id || (t.customerName && t.customerName.toLowerCase().trim() === custNameLower)
-    );
-    const custPays = payments.filter(
-      (p) => p.customerId === cust.id || (p.customerName && p.customerName.toLowerCase().trim() === custNameLower)
-    );
-
-    const totalBus = custTrxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-    const trxPaid = custTrxs.reduce((sum, t) => sum + (Number(t.paid) || 0), 0);
-    const directPaid = custPays.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-    const totalPaid = trxPaid + directPaid;
-
-    const finalTotalBus = totalBus > 0 ? totalBus : (Number(cust.totalBusiness) || 0);
-    const finalTotalPaid = totalPaid > 0 ? totalPaid : (Number(cust.paid) || 0);
-    const finalOutstanding = Math.max(0, finalTotalBus - finalTotalPaid);
-
-    return {
-      totalBusiness: finalTotalBus,
-      paid: finalTotalPaid,
-      outstanding: finalOutstanding
-    };
-  };
+  const getCustomerMetrics = (cust) => getCustomerFinancials(cust.id);
 
   const filteredCustomers = customers.filter((cust) => {
     const matchesSearch =

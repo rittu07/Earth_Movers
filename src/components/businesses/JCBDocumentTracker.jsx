@@ -264,6 +264,7 @@ const JCBDocumentTracker = () => {
   const [docNo, setDocNo] = useState('');
   const [docExpiryDate, setDocExpiryDate] = useState('');
   const [docFileName, setDocFileName] = useState('');
+  const [docFileData, setDocFileData] = useState('');
 
   // Edit Vehicle Info Form State
   const [editRegNo, setEditRegNo] = useState('');
@@ -275,6 +276,7 @@ const JCBDocumentTracker = () => {
     setDocNo('');
     setDocExpiryDate('2026-10-15');
     setDocFileName('');
+    setDocFileData('');
     setIsAddDocOpen(true);
   };
 
@@ -292,7 +294,8 @@ const JCBDocumentTracker = () => {
       type: docType,
       docNo: docNo.toUpperCase().trim() || 'XXXXXXX',
       expiryDate: docExpiryDate || 'Lifetime',
-      fileName: docFileName || `${docType.toLowerCase().replace(/\s+/g, '_')}.pdf`
+      fileName: docFileName || `${docType.toLowerCase().replace(/\s+/g, '_')}.pdf`,
+      fileData: docFileData || ''
     };
 
     setVehicles(
@@ -420,9 +423,6 @@ const JCBDocumentTracker = () => {
               <span className="bg-amber-600 text-white font-black text-sm px-4 py-1.5 rounded-full uppercase tracking-wider shadow-xs">
                 {selectedVehicle.code}
               </span>
-              <h2 className="text-3xl sm:text-4xl font-mono font-black tracking-tight text-slate-900">
-                Registration No: {selectedVehicle.regNo}
-              </h2>
             </div>
 
             <div className="flex flex-wrap items-center gap-4 text-sm font-bold text-slate-700 pt-1 font-mono">
@@ -634,14 +634,24 @@ const JCBDocumentTracker = () => {
                 <label className="w-full p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-2xl font-black text-amber-700 text-sm sm:text-base flex items-center justify-center gap-2 cursor-pointer transition-all font-mono">
                   <Upload className="w-5 h-5" />
                   <span>{docFileName ? `[ File: ${docFileName} ]` : '[ Upload PDF / Photo ]'}</span>
-                  <input
-                    type="file"
-                    className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        setDocFileName(e.target.files[0].name);
-                      }
-                    }}
+                         <input
+                           type="file"
+                           accept="application/pdf,image/*"
+                           className="hidden"
+                           onChange={(e) => {
+                             if (e.target.files && e.target.files[0]) {
+                               const file = e.target.files[0];
+                               setDocFileName(file.name);
+                               if (file.size > 80000) {
+                                 setDocFileData('');
+                                 window.alert('Please choose a file smaller than 80 KB to keep it viewable and synchronized.');
+                                 return;
+                               }
+                               const reader = new FileReader();
+                               reader.onload = () => setDocFileData(String(reader.result || ''));
+                               reader.readAsDataURL(file);
+                             }
+                           }}
                   />
                 </label>
               </div>
@@ -783,10 +793,20 @@ const JCBDocumentTracker = () => {
               <div className="bg-slate-50 p-4 rounded-2xl space-y-2.5 border border-slate-200">
                 <div className="flex justify-between items-center font-mono">
                   <span className="text-slate-600 font-bold">Attached Scan File:</span>
-                  <span className="text-xs sm:text-sm text-amber-700 font-black underline cursor-pointer flex items-center gap-1">
-                    <Paperclip className="w-4 h-4" />
-                    {viewingDoc.fileName || 'document.pdf'}
-                  </span>
+                   {viewingDoc.fileData ? (
+                     <a
+                       href={viewingDoc.fileData}
+                       target="_blank"
+                       rel="noreferrer"
+                       className="text-xs sm:text-sm text-amber-700 font-black underline cursor-pointer flex items-center gap-1"
+                     >
+                       <Eye className="w-4 h-4" /> View Attachment
+                     </a>
+                   ) : (
+                     <span className="text-xs sm:text-sm text-slate-500 font-black flex items-center gap-1">
+                       <Paperclip className="w-4 h-4" /> {viewingDoc.fileName || 'No file data saved'}
+                     </span>
+                   )}
                 </div>
               </div>
             </div>

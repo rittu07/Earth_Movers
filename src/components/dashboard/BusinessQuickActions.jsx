@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { Boxes, Truck, Droplets, Layers, Mountain, Landmark, PlusCircle, MinusCircle, ArrowRight, Wrench } from 'lucide-react';
 
 const businessBlocks = [
@@ -90,9 +91,12 @@ const businessBlocks = [
 ];
 
 const BusinessQuickActions = () => {
+  const { role } = useAuth();
+  const visibleBlocks = role === 'owner' ? businessBlocks : businessBlocks.filter((block) => block.id !== 'finance');
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-      {businessBlocks.map((b) => {
+      {visibleBlocks.map((b) => {
         const Icon = b.icon;
         const { cardBg, border, badgeBg, btnTrx, btnExp } = b.colorTheme;
         return (

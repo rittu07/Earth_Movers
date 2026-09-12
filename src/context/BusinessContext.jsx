@@ -1,18 +1,33 @@
-import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect, useRef } from 'react';
 import {
   initialBusinesses,
   initialJcbVehicles,
   initialStaff,
 } from '../data/mockData';
 import { formatDate } from '../utils/formatCurrency';
-import { calculateSummaryMetrics } from '../utils/calculations';
+import { calculateSummaryMetrics, sortByDateTimeDesc } from '../utils/calculations';
 import { calculateElapsedMonths, getLoanCalculatedDetails } from '../utils/loanUtils';
-import { getAllLocal, putLocal, putManyLocal } from '../db/localDb';
+import { getAllLocal, putLocal, putManyLocal, deleteLocal } from '../db/localDb';
 import { queueEntity, startSync, syncNow } from '../db/syncQueue';
+import { useAuth } from './AuthContext';
 
 const BusinessContext = createContext();
+const makeId = (prefix) => `${prefix}-${crypto.randomUUID()}`;
+const normalizePhone = (value) => String(value || '').replace(/\D/g, '');
+const normalizeName = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+const dedupeCustomers = (values = []) => {
+  const seen = new Set();
+  return values.filter((customer) => {
+    const key = `${normalizeName(customer.name)}|${normalizePhone(customer.phone)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
 
 export const BusinessProvider = ({ children }) => {
+  const { role, user } = useAuth();
+  const canAccessFinance = role === 'owner';
   const [customers, setCustomers] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -26,6 +41,7 @@ export const BusinessProvider = ({ children }) => {
   const [driverMonthlyReports, setDriverMonthlyReports] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [staff, setStaff] = useState([]);
+  const [drivingHours, setDrivingHours] = useState([]);
 
   // Global Customer Search Modal state
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -34,6 +50,8 @@ export const BusinessProvider = ({ children }) => {
 
   // Toast notification state
   const [toastMessage, setToastMessage] = useState(null);
+  const [toastType, setToastType] = useState('info');
+  const toastTimerRef = useRef(null);
 
   const reloadPersistedData = async () => {
     const stores = [
@@ -43,14 +61,21 @@ export const BusinessProvider = ({ children }) => {
       ['expenses', setExpenses],
       ['dieselLogs', setDieselLogs],
       ['suppliers', setSuppliers],
-      ['financeLoans', setFinanceLoans],
+      ...(canAccessFinance ? [['financeLoans', setFinanceLoans]] : []),
       ['staff', setStaff]
+      ,['drivingHours', setDrivingHours]
     ];
-    await Promise.all(stores.map(async ([store, setter]) => setter(await getAllLocal(store))));
+    await Promise.all(stores.map(async ([store, setter]) => {
+      const values = await getAllLocal(store);
+      setter(store === 'customers' ? dedupeCustomers(values) : values);
+    }));
   };
 
   const persist = (store, entity, operation = 'create') => {
-    putLocal(store, entity).catch(() => {});
+    const localOperation = operation === 'delete'
+      ? deleteLocal(store, entity.id)
+      : putLocal(store, entity);
+    localOperation.catch(() => {});
     queueEntity(
       store === 'dieselLogs' ? 'dieselLog' : store === 'financeLoans' ? 'financeLoan' : store === 'staff' ? 'staff' : store.slice(0, -1),
       entity,
@@ -61,6 +86,18 @@ export const BusinessProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    if (!user) {
+      setCustomers([]);
+      setTransactions([]);
+      setPayments([]);
+      setExpenses([]);
+      setDieselLogs([]);
+      setSuppliers([]);
+      setFinanceLoans([]);
+      setStaff([]);
+      setDrivingHours([]);
+      return undefined;
+    }
     const stores = [
       ['customers', setCustomers, []],
       ['transactions', setTransactions, []],
@@ -68,23 +105,27 @@ export const BusinessProvider = ({ children }) => {
       ['expenses', setExpenses, []],
       ['dieselLogs', setDieselLogs, []],
       ['suppliers', setSuppliers, []],
-      ['financeLoans', setFinanceLoans, []],
+      ...(canAccessFinance ? [['financeLoans', setFinanceLoans, []]] : []),
       ['staff', setStaff, initialStaff]
+      ,['drivingHours', setDrivingHours, []]
     ];
     Promise.all(stores.map(async ([store, setter, seed]) => {
       const local = await getAllLocal(store);
-      if (local.length) setter(local);
+      if (local.length) setter(store === 'customers' ? dedupeCustomers(local) : local);
       else await putManyLocal(store, seed);
     })).catch(() => {});
     return startSync((result) => {
       if (result?.changed) reloadPersistedData().catch(() => {});
     });
-  }, []);
+  }, [canAccessFinance, user]);
 
   const showToast = (message) => {
     setToastMessage(message);
-    setTimeout(() => {
+    setToastType(/deleted|removed/i.test(message) ? 'delete' : 'info');
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => {
       setToastMessage(null);
+      toastTimerRef.current = null;
     }, 3000);
   };
 
@@ -100,22 +141,51 @@ export const BusinessProvider = ({ children }) => {
 
   // Add Supplier
   const addSupplier = (supplierData) => {
-    const newId = `sup-${Date.now()}`;
+    const supplierName = String(supplierData.name || '').trim();
+    if (!supplierName) {
+      showToast('Supplier name is required.');
+      return null;
+    }
+
+    const normalizedPhone = normalizePhone(supplierData.phone);
+    const existing = suppliers.find((supplier) => {
+      const phone = normalizePhone(supplier.phone);
+      return (normalizedPhone && phone && normalizedPhone === phone) ||
+        (!normalizedPhone && normalizeName(supplier.name) === normalizeName(supplierName));
+    });
+    if (existing) {
+      showToast(`Supplier "${existing.name}" already exists; using the existing record.`);
+      return existing;
+    }
+    const newId = makeId('sup');
     const newSup = {
       id: newId,
-      name: supplierData.name,
-      phone: supplierData.phone || '',
-      location: supplierData.location || '',
+      name: supplierName,
+      phone: String(supplierData.phone || '').trim(),
+      contactPerson: String(supplierData.contactPerson || '').trim(),
+      location: String(supplierData.location || '').trim(),
       defaultCostPerBrick: Number(supplierData.defaultCostPerBrick) || 7.5
     };
     setSuppliers((prev) => [newSup, ...prev]);
     persist('suppliers', newSup);
+    showToast(`Supplier "${newSup.name}" added successfully!`);
     return newSup;
   };
 
   // Add Customer
   const addCustomer = (customerData) => {
-    const newId = `cust-${Date.now()}`;
+    const incomingPhone = normalizePhone(customerData.phone);
+    const existing = customers.find((customer) => {
+      const existingPhone = normalizePhone(customer.phone);
+      return (incomingPhone && existingPhone && incomingPhone === existingPhone) ||
+        (!incomingPhone && normalizeName(customer.name) === normalizeName(customerData.name));
+    });
+    if (existing) {
+      showToast(`Customer "${existing.name}" already exists; using the existing record.`);
+      return existing;
+    }
+
+    const newId = makeId('cust');
     const newCust = {
       id: newId,
       name: customerData.name,
@@ -159,10 +229,11 @@ export const BusinessProvider = ({ children }) => {
 
   // Add Transaction
   const addTransaction = (trxData) => {
-    const trxId = `TRX-${Math.floor(100 + Math.random() * 900)}`;
+    const trxId = makeId('TRX');
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
-    const displayDateStr = `${formatDate(todayStr)}, ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+    const transactionDate = trxData.date || todayStr;
+    const displayDateStr = `${formatDate(transactionDate)}, ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
 
     const totalAmt = Number(trxData.amount) || 0;
     const paidAmt = Number(trxData.paid) || 0;
@@ -187,8 +258,11 @@ export const BusinessProvider = ({ children }) => {
       paymentMethod: trxData.paymentMethod || 'Cash',
       reference: trxData.reference || '',
       date: trxData.date || todayStr,
+      time: trxData.time || now.toTimeString().slice(0, 5),
       displayDate: displayDateStr,
       notes: trxData.notes || '',
+      jcbVehicle: trxData.jcbVehicle || '',
+      duration: Number(trxData.duration) || Number(trxData.quantity) || 0,
 
       // Business specific fields
       driverName: trxData.driverName || '',
@@ -196,6 +270,7 @@ export const BusinessProvider = ({ children }) => {
       driverAmount: Number(trxData.driverAmount) || 0,
       isOutsourced: Boolean(trxData.isOutsourced),
       outsourcedSupplier: trxData.outsourcedSupplier || '',
+      supplierId: trxData.supplierId || '',
       outsourcedPhone: trxData.outsourcedPhone || '',
       outsourcedBrickQty: Number(trxData.outsourcedBrickQty) || 0,
       outsourcedCostPerBrick: Number(trxData.outsourcedCostPerBrick) || 0,
@@ -255,16 +330,15 @@ export const BusinessProvider = ({ children }) => {
       const rawDriverName = (trxData.driverName || 'Kumar').split(' ')[0];
 
       const jcbJob = {
-        id: `JCB-JOB-${Date.now()}`,
+        id: makeId('JCB-JOB'),
+        date: transactionDate,
+        staffId: trxData.staffId || '',
         jcbVehicle: vehicleName,
         customerId: trxData.customerId,
         customerName: trxData.customerName,
         phone: trxData.phone,
         driverName: trxData.driverName || 'Kumar (Driver)',
         driverAmount: Number(trxData.driverAmount) || 0,
-        startTime: trxData.startTime || '10:00',
-        endTime: trxData.endTime || '12:00',
-        displayTime: `${trxData.startTime || '10:00'} - ${trxData.endTime || '12:00'}`,
         duration: dur,
         ratePerHour: trxData.rate || 1000,
         amount: totalAmt,
@@ -275,13 +349,27 @@ export const BusinessProvider = ({ children }) => {
       };
       setJcbJobs((prev) => [jcbJob, ...prev]);
 
-      // Update JCB Working Hours (august month hours)
+      const drivingRecord = {
+        id: makeId('DRIVE'),
+        staffId: trxData.staffId || '',
+        driverName: trxData.driverName || 'Kumar (Driver)',
+        date: transactionDate,
+        duration: dur,
+        jcbVehicle: vehicleName,
+        transactionId: newTrx.id
+      };
+      setDrivingHours((prev) => [drivingRecord, ...prev]);
+      persist('drivingHours', drivingRecord);
+
+      // Update JCB working hours for the transaction's actual month.
+      const monthKey = transactionDate.slice(0, 7);
+      const monthName = new Date(`${monthKey}-01`).toLocaleDateString('en-IN', { month: 'long' }).toLowerCase();
       setJcbMonthlyHours((prev) =>
         prev.map((row) => {
           if (row.vehicle.includes(shortCode) || row.shortName === shortCode) {
             return {
               ...row,
-              august: (row.august || 0) + dur
+              [monthName]: (row[monthName] || 0) + dur
             };
           }
           return row;
@@ -290,13 +378,13 @@ export const BusinessProvider = ({ children }) => {
 
       // Update Driver Monthly Working Hours & Days
       setDriverMonthlyReports((prev) => {
-        const existingIdx = prev.findIndex(
-          (d) => d.driverName.toLowerCase() === rawDriverName.toLowerCase()
+        const existingIdx = prev.findIndex((d) =>
+          d.driverName.toLowerCase() === rawDriverName.toLowerCase() && d.month === transactionDate.slice(0, 7)
         );
         if (existingIdx >= 0) {
           return prev.map((d, idx) =>
             idx === existingIdx
-              ? { ...d, monthlyHours: d.monthlyHours + dur }
+              ? { ...d, monthlyHours: (Number(d.monthlyHours) || 0) + dur }
               : d
           );
         } else {
@@ -307,7 +395,7 @@ export const BusinessProvider = ({ children }) => {
               jcbVehicle: vehicleName,
               monthlyHours: dur,
               workingDays: 1,
-              month: 'August 2026'
+               month: transactionDate.slice(0, 7)
             }
           ];
         }
@@ -322,12 +410,8 @@ export const BusinessProvider = ({ children }) => {
   const updateCustomerMetricsFromLists = (trxsList, paysList) => {
     setCustomers((prev) =>
       prev.map((cust) => {
-        const custTrxs = trxsList.filter(
-          (t) => t.customerId === cust.id || (t.customerName && cust.name && t.customerName.toLowerCase().trim() === cust.name.toLowerCase().trim())
-        );
-        const custPays = paysList.filter(
-          (p) => p.customerId === cust.id || (p.customerName && cust.name && p.customerName.toLowerCase().trim() === cust.name.toLowerCase().trim())
-        );
+        const custTrxs = trxsList.filter((t) => t.customerId === cust.id);
+        const custPays = paysList.filter((p) => p.customerId === cust.id);
         const totalBus = custTrxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
         const trxPaid = custTrxs.reduce((sum, t) => sum + (Number(t.paid) || 0), 0);
         const directPaid = custPays.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
@@ -403,9 +487,13 @@ export const BusinessProvider = ({ children }) => {
 
   // Receive / Add Payment
   const addPayment = (payData) => {
-    const payId = `PAY-${Math.floor(200 + Math.random() * 800)}`;
+    const payId = makeId('PAY');
     const todayStr = payData.date || new Date().toISOString().split('T')[0];
     const payAmt = Number(payData.amount) || 0;
+    if (!payData.customerId || payAmt <= 0) {
+      showToast('Enter a valid customer and payment amount.');
+      return null;
+    }
 
     const newPayment = {
       id: payId,
@@ -494,7 +582,7 @@ export const BusinessProvider = ({ children }) => {
 
   // Add Expense
   const addExpense = (expData) => {
-    const expId = `EXP-${Math.floor(300 + Math.random() * 700)}`;
+    const expId = makeId('exp');
     const todayStr = expData.date || new Date().toISOString().split('T')[0];
     const amt = Number(expData.amount) || 0;
 
@@ -579,7 +667,7 @@ export const BusinessProvider = ({ children }) => {
     persist('dieselLogs', newLog);
 
     // Automatically sync to global Expenses
-    const expId = `EXP-${Math.floor(300 + Math.random() * 700)}`;
+    const expId = makeId('exp');
     const busObj = businesses.find((b) => b.id === 'jcb') || { name: 'JCB Rental' };
     const newExp = {
       id: expId,
@@ -602,7 +690,7 @@ export const BusinessProvider = ({ children }) => {
 
   // Supplier Payment operations
   const addSupplierPayment = (paymentData) => {
-    const payId = `SPAY-${Date.now()}`;
+    const payId = makeId('SPAY');
     const amount = Number(paymentData.amount) || 0;
     const todayStr = paymentData.date || new Date().toISOString().split('T')[0];
 
@@ -617,6 +705,9 @@ export const BusinessProvider = ({ children }) => {
       category: 'Supplier Payment',
       businessId: 'bricks',
       businessName: 'Bricks Supply',
+      supplierId: paymentData.supplierId || supplierObj?.id || '',
+      supplierName: supplierObj?.name || paymentData.supplierName || '',
+      supplierPayment: true,
       description: `Payment to Supplier: ${supplierObj ? supplierObj.name : paymentData.supplierName}`,
       amount: amount,
       method: paymentData.method || 'Cash',
@@ -630,9 +721,26 @@ export const BusinessProvider = ({ children }) => {
     return newExp;
   };
 
+  const updateSupplier = (id, updatedFields) => {
+    let updatedSupplier = null;
+    setSuppliers((prev) => prev.map((supplier) => {
+      if (supplier.id !== id) return supplier;
+      updatedSupplier = { ...supplier, ...updatedFields, updatedAt: new Date().toISOString() };
+      return updatedSupplier;
+    }));
+    if (updatedSupplier) persist('suppliers', updatedSupplier, 'update');
+    return updatedSupplier;
+  };
+
+  const deleteSupplier = (id) => {
+    setSuppliers((prev) => prev.filter((supplier) => supplier.id !== id));
+    persist('suppliers', { id, deletedAt: new Date().toISOString() }, 'delete');
+    showToast('Supplier deleted successfully!');
+  };
+
   // Finance Loan operations
   const addFinanceLoan = (loanData) => {
-    const loanId = `FIN-${Math.floor(100 + Math.random() * 900)}`;
+    const loanId = makeId('FIN');
     const principal = Number(loanData.principal) || 0;
     const rate = Number(loanData.interestRate) || 0;
     const startDate = loanData.startDate || new Date().toISOString().split('T')[0];
@@ -663,28 +771,19 @@ export const BusinessProvider = ({ children }) => {
   };
 
   const updateFinanceLoan = (loanId, updatedFields) => {
-    let updatedLoan = null;
-    setFinanceLoans((prev) =>
-      prev.map((loan) => {
-        if (loan.id === loanId) {
-          const principal = updatedFields.principal !== undefined ? Number(updatedFields.principal) : loan.principal;
-          const interestRate = updatedFields.interestRate !== undefined ? Number(updatedFields.interestRate) : loan.interestRate;
-          const startDate = updatedFields.startDate || loan.startDate;
-
-          updatedLoan = getLoanCalculatedDetails({
-            ...loan,
-            ...updatedFields,
-            principal,
-            interestRate,
-            startDate
-          });
-          return updatedLoan;
-        }
-        return loan;
-      })
-    );
-    if (updatedLoan) persist('financeLoans', updatedLoan, 'update');
-    showToast(`Finance loan record updated!`);
+    const currentLoan = financeLoans.find((loan) => loan.id === loanId);
+    if (!currentLoan) return null;
+    const updatedLoan = getLoanCalculatedDetails({
+      ...currentLoan,
+      ...updatedFields,
+      principal: updatedFields.principal !== undefined ? Number(updatedFields.principal) : currentLoan.principal,
+      interestRate: updatedFields.interestRate !== undefined ? Number(updatedFields.interestRate) : currentLoan.interestRate,
+      startDate: updatedFields.startDate || currentLoan.startDate
+    });
+    setFinanceLoans((prev) => prev.map((loan) => (loan.id === loanId ? updatedLoan : loan)));
+    persist('financeLoans', updatedLoan, 'update');
+    showToast('Finance loan record updated!');
+    return updatedLoan;
   };
 
   const updateFinanceLoanMonths = (loanId, newMonths, isManual = true) => {
@@ -737,6 +836,7 @@ export const BusinessProvider = ({ children }) => {
         if (loan.id === loanId) {
           const updatedMonths = Number(newMonths) || loan.months || calculateElapsedMonths(loan.startDate);
           const history = [...(loan.paymentHistory || []), {
+            id: makeId('return'),
             month: monthLabel || `Month ${updatedMonths}`,
             amount: payAmt,
             discount: discAmt,
@@ -759,12 +859,55 @@ export const BusinessProvider = ({ children }) => {
     showToast(`Return payment of ₹${payAmt.toLocaleString('en-IN')}${discAmt > 0 ? ` (Discount: ₹${discAmt.toLocaleString('en-IN')})` : ''} recorded!`);
   };
 
+  const updateReturnPayment = (loanId, paymentId, paymentFields) => {
+    const currentLoan = financeLoans.find((loan) => loan.id === loanId);
+    if (!currentLoan) return null;
+    const history = (currentLoan.paymentHistory || []).map((payment, index) => (
+      (payment.id || `${loanId}-return-${index}`) === paymentId
+        ? { ...payment, id: paymentId, ...paymentFields, amount: Number(paymentFields.amount) || 0, discount: Number(paymentFields.discount) || 0 }
+        : payment
+    ));
+    const updatedLoan = getLoanCalculatedDetails({ ...currentLoan, paymentHistory: history });
+    setFinanceLoans((prev) => prev.map((loan) => (loan.id === loanId ? updatedLoan : loan)));
+    persist('financeLoans', updatedLoan, 'update');
+    showToast('Return payment updated successfully!');
+    return updatedLoan;
+  };
+
+  const deleteReturnPayment = (loanId, paymentId) => {
+    const currentLoan = financeLoans.find((loan) => loan.id === loanId);
+    if (!currentLoan) return null;
+    const updatedLoan = getLoanCalculatedDetails({
+      ...currentLoan,
+      paymentHistory: (currentLoan.paymentHistory || []).filter((payment, index) => (
+        (payment.id || `${loanId}-return-${index}`) !== paymentId
+      ))
+    });
+    setFinanceLoans((prev) => prev.map((loan) => (loan.id === loanId ? updatedLoan : loan)));
+    persist('financeLoans', updatedLoan, 'update');
+    showToast('Return payment deleted successfully!');
+    return updatedLoan;
+  };
+
   const settleFinanceLoan = (loanId) => {
     let updatedLoan = null;
     setFinanceLoans((prev) =>
       prev.map((loan) => {
         if (loan.id === loanId) {
-          updatedLoan = { ...loan, status: 'Settled', returnedAmount: loan.totalAmount, dueAmount: 0 };
+          const calculated = getLoanCalculatedDetails(loan);
+          const settlementPayment = {
+            month: 'Full Settlement',
+            amount: calculated ? calculated.dueAmount : 0,
+            discount: 0,
+            method: loan.paymentMethod || 'Cash',
+            reference: '',
+            date: new Date().toISOString().split('T')[0]
+          };
+          updatedLoan = getLoanCalculatedDetails({
+            ...loan,
+            status: 'Settled',
+            paymentHistory: [...(loan.paymentHistory || []), settlementPayment]
+          });
           return updatedLoan;
         }
         return loan;
@@ -783,23 +926,31 @@ export const BusinessProvider = ({ children }) => {
 
   // Helper getters
   const getCustomerById = (id) => customers.find((c) => c.id === id);
-  const getSupplierById = (id) => suppliers.find((s) => s.id === id || s.name.toLowerCase().includes(id.toLowerCase()));
+  const getSupplierById = (id) => suppliers.find((s) => s.id === id);
+
+  const getCustomerFinancials = (customerId) => {
+    const customerTransactions = transactions.filter((transaction) => transaction.customerId === customerId);
+    const customerPayments = payments.filter((payment) => payment.customerId === customerId);
+    const totalBusiness = customerTransactions.reduce((sum, transaction) => sum + (Number(transaction.amount) || 0), 0);
+    const transactionPaid = customerTransactions.reduce((sum, transaction) => sum + (Number(transaction.paid) || 0), 0);
+    const paymentPaid = customerPayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+    const paid = transactionPaid + paymentPaid;
+    return { totalBusiness, paid, outstanding: Math.max(0, totalBusiness - paid) };
+  };
 
   const getCustomerLedger = (customerId) => {
     const custObj = customers.find(
       (c) => c.id === customerId || (c.name && customerId && c.name.toLowerCase() === customerId.toLowerCase())
     );
-    const custNameLower = custObj ? custObj.name.toLowerCase() : (customerId ? customerId.toLowerCase() : '');
+    const custNameLower = custObj ? custObj.name.toLowerCase() : '';
 
     const custTrxs = transactions.filter(
       (t) =>
-        t.customerId === customerId ||
-        (t.customerName && custNameLower && t.customerName.toLowerCase() === custNameLower)
+        t.customerId === customerId || (!t.customerId && t.customerName && custNameLower && t.customerName.toLowerCase() === custNameLower)
     );
     const custPays = payments.filter(
       (p) =>
-        p.customerId === customerId ||
-        (p.customerName && custNameLower && p.customerName.toLowerCase() === custNameLower)
+        p.customerId === customerId || (!p.customerId && p.customerName && custNameLower && p.customerName.toLowerCase() === custNameLower)
     );
 
     // Merge into chronological ledger events
@@ -813,7 +964,7 @@ export const BusinessProvider = ({ children }) => {
         description: `${t.itemService} (${t.quantity} ${t.unit})`,
         amount: Number(t.amount) || 0,
         paid: Number(t.paid) || 0,
-        due: Number(t.due) !== undefined && !isNaN(Number(t.due)) ? Number(t.due) : Math.max(0, (Number(t.amount) || 0) - (Number(t.paid) || 0)),
+        due: Number.isFinite(Number(t.due)) ? Number(t.due) : Math.max(0, (Number(t.amount) || 0) - (Number(t.paid) || 0)),
         status: t.status,
         driverName: t.driverName,
         driverAmount: t.driverAmount,
@@ -834,21 +985,31 @@ export const BusinessProvider = ({ children }) => {
         due: 0,
         status: 'Settled'
       }))
-    ].sort((a, b) => new Date(b.date) - new Date(a.date));
+    ];
 
-    return items;
+    return sortByDateTimeDesc(items);
+  };
+
+  const getSupplierFinancials = (supplierId) => {
+    const supplies = transactions.filter((transaction) => transaction.supplierId === supplierId ||
+      (!transaction.supplierId && transaction.isOutsourced && normalizeName(transaction.outsourcedSupplier) === normalizeName(getSupplierById(supplierId)?.name)));
+    const supplierPayments = expenses.filter((expense) => expense.supplierPayment && expense.supplierId === supplierId);
+    const totalPurchase = supplies.reduce((sum, transaction) => sum + (Number(transaction.outsourcedCost) || 0), 0);
+    const transactionPaid = supplies.reduce((sum, transaction) => sum + (Number(transaction.outsourcedPaid) || 0), 0);
+    const paidAmount = transactionPaid + supplierPayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+    return { totalPurchase, paidAmount, outstanding: Math.max(0, totalPurchase - paidAmount) };
   };
 
   const getSupplierLedger = (supplierId) => {
     const supplierObj = getSupplierById(supplierId);
-    const supplierName = supplierObj ? supplierObj.name.toLowerCase() : supplierId.toLowerCase();
+    const supplierName = supplierObj ? supplierObj.name.toLowerCase() : '';
 
     const supTrxs = transactions.filter(
-      (t) => t.isOutsourced && t.outsourcedSupplier && t.outsourcedSupplier.toLowerCase().includes(supplierName)
+      (t) => t.supplierId === supplierId || (!t.supplierId && t.isOutsourced && t.outsourcedSupplier && t.outsourcedSupplier.toLowerCase() === supplierName)
     );
 
     const supExps = expenses.filter(
-      (e) => e.description && e.description.toLowerCase().includes(supplierName)
+      (e) => e.supplierPayment && e.supplierId === supplierId
     );
 
     const items = [
@@ -857,12 +1018,12 @@ export const BusinessProvider = ({ children }) => {
         date: t.date,
         displayDate: t.displayDate || formatDate(t.date),
         type: 'Supply Entry',
-        business: 'Bricks Supply',
-        description: `Chamber Bricks Supply (${t.outsourcedBrickQty || t.quantity} bricks @ ₹${t.outsourcedCostPerBrick || 7.5}/brick)`,
-        amount: t.outsourcedCost || t.amount,
-        paid: t.outsourcedPaid || t.paid,
-        due: t.outsourcedDue || t.due,
-        status: (t.outsourcedDue || 0) === 0 ? 'Paid' : 'Partial'
+         business: t.businessName || t.businessId || 'Business',
+         description: `${t.itemService || 'Material Supply'} (${t.quantity || 0} ${t.unit || 'Units'})`,
+         amount: Number(t.outsourcedCost) || 0,
+         paid: Number(t.outsourcedPaid) || 0,
+         due: Math.max(0, (Number(t.outsourcedCost) || 0) - (Number(t.outsourcedPaid) || 0)),
+         status: (Number(t.outsourcedDue) || 0) === 0 ? 'Paid' : 'Partial'
       })),
       ...supExps.map((e) => ({
         id: e.id,
@@ -876,9 +1037,9 @@ export const BusinessProvider = ({ children }) => {
         due: 0,
         status: 'Settled'
       }))
-    ].sort((a, b) => new Date(b.date) - new Date(a.date));
+    ];
 
-    return items;
+    return sortByDateTimeDesc(items);
   };
 
   // Staff operations
@@ -958,7 +1119,7 @@ export const BusinessProvider = ({ children }) => {
     const monthLabel = payoutData.salaryMonthLabel || payoutData.salaryMonth || '';
 
     // Record as business expense
-    const expId = `EXP-${Math.floor(300 + Math.random() * 700)}`;
+    const expId = makeId('exp');
     const newExp = {
       id: expId,
       date: payDate,
@@ -1025,7 +1186,7 @@ export const BusinessProvider = ({ children }) => {
     });
 
     // Record as advance expense
-    const expId = `EXP-${Math.floor(300 + Math.random() * 700)}`;
+    const expId = makeId('exp');
     const newExp = {
       id: expId,
       date: todayStr,
@@ -1057,7 +1218,7 @@ export const BusinessProvider = ({ children }) => {
       (e) => (e.staffId && e.staffId === staffObj.id) || (e.description && e.description.toLowerCase().includes(nameLower))
     );
 
-    return staffExps.sort((a, b) => new Date(b.date) - new Date(a.date));
+    return sortByDateTimeDesc(staffExps);
   };
 
   // Computed Overview Metrics
@@ -1094,6 +1255,7 @@ export const BusinessProvider = ({ children }) => {
         driverMonthlyReports,
         suppliers,
         staff,
+        drivingHours,
         addStaff,
         updateStaff,
         deleteStaff,
@@ -1103,6 +1265,8 @@ export const BusinessProvider = ({ children }) => {
         getStaffLedger,
         getStaffSalaryPaidForMonth,
         addSupplier,
+        updateSupplier,
+        deleteSupplier,
         addSupplierPayment,
         addDieselLog,
         addFinanceLoan,
@@ -1112,6 +1276,8 @@ export const BusinessProvider = ({ children }) => {
         recordReturnPayment,
         settleFinanceLoan,
         deleteFinanceLoan,
+        updateReturnPayment,
+        deleteReturnPayment,
         overviewMetrics,
         isSearchOpen,
         searchQuery,
@@ -1137,9 +1303,12 @@ export const BusinessProvider = ({ children }) => {
         }),
         getCustomerById,
         getCustomerLedger,
+        getCustomerFinancials,
         getSupplierById,
         getSupplierLedger,
+        getSupplierFinancials,
         toastMessage,
+        toastType,
         showToast
       }}
     >

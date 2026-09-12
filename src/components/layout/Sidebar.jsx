@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard,
   Landmark,
@@ -40,6 +41,11 @@ const settingNavItems = [
 ];
 
 const Sidebar = ({ mobileClose }) => {
+  const { user, logout } = useAuth();
+  const visibleMainNavItems = user?.role === 'owner'
+    ? mainNavItems
+    : mainNavItems.filter((item) => item.path !== '/finance');
+
   const renderNavGroup = (title, items) => (
     <div className="mb-5">
       <h3 className="px-3 text-xs font-black text-slate-400 uppercase tracking-wider mb-2">
@@ -99,7 +105,7 @@ const Sidebar = ({ mobileClose }) => {
 
       {/* Navigation Links */}
       <div className="flex-1 overflow-y-auto px-3 py-4">
-        {renderNavGroup('MAIN', mainNavItems)}
+        {renderNavGroup('MAIN', visibleMainNavItems)}
         {renderNavGroup('BUSINESSES', businessNavItems)}
         {renderNavGroup('REPORTS', reportNavItems)}
         {renderNavGroup('SETTINGS', settingNavItems)}
@@ -112,10 +118,11 @@ const Sidebar = ({ mobileClose }) => {
             <UserCheck className="w-4 h-4" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-white leading-tight">Admin User</p>
-            <p className="text-[11px] text-slate-400 font-medium">Owner</p>
+            <p className="text-xs font-semibold text-white leading-tight">{user?.username}</p>
+            <p className="text-[11px] text-slate-400 font-medium capitalize">{user?.role}</p>
           </div>
         </div>
+        <button onClick={logout} className="text-[11px] font-bold text-rose-300 hover:text-white">Logout</button>
       </div>
     </aside>
   );

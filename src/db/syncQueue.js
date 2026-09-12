@@ -1,8 +1,8 @@
 import { getAllLocal, getMeta, putLocal, deleteLocal } from './localDb';
+import { getAuthHeaders, getAuthenticatedUser } from '../context/AuthContext';
 
 // The deployed Worker serves both the SPA and API, so production sync works without a build-time URL.
 const API_URL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '');
-const API_TOKEN = import.meta.env.VITE_API_TOKEN || '';
 const CLIENT_ID_KEY = 'earth-movers-client-id';
 
 const getClientId = () => {
@@ -15,6 +15,8 @@ const getClientId = () => {
 };
 
 export const queueEntity = async (entityType, entity, operation = 'create') => {
+  const user = getAuthenticatedUser();
+  if (!user?.id) throw new Error('Authentication required before queuing data');
   const event = {
     id: crypto.randomUUID(),
     eventId: crypto.randomUUID(),
@@ -23,6 +25,7 @@ export const queueEntity = async (entityType, entity, operation = 'create') => {
     operation,
     payload: entity,
     clientId: getClientId(),
+    accountId: user.id,
     clientCreatedAt: new Date().toISOString()
   };
   await putLocal('syncQueue', event);
@@ -32,14 +35,18 @@ export const queueEntity = async (entityType, entity, operation = 'create') => {
 export const flushSyncQueue = async () => {
   if (!API_URL || !navigator.onLine) return { synced: 0, pending: (await getAllLocal('syncQueue')).length };
   const pending = await getAllLocal('syncQueue');
-  if (!pending.length) return { synced: 0, pending: 0 };
+  const user = getAuthenticatedUser();
+  const userPending = pending.filter((item) => item.accountId === user?.id);
+  const orphaned = pending.filter((item) => item.accountId !== user?.id);
+  await Promise.all(orphaned.map((item) => deleteLocal('syncQueue', item.id)));
+  if (!user?.id) return { synced: 0, pending: 0 };
+  if (!userPending.length) return { synced: 0, pending: 0 };
 
-  const headers = { 'Content-Type': 'application/json' };
-  if (API_TOKEN) headers.Authorization = `Bearer ${API_TOKEN}`;
+  const headers = { 'Content-Type': 'application/json', ...getAuthHeaders() };
   const response = await fetch(`${API_URL}/api/sync`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ events: pending.map((item) => {
+    body: JSON.stringify({ events: userPending.map((item) => {
       const event = { ...item };
       delete event.id;
       return event;
@@ -48,7 +55,7 @@ export const flushSyncQueue = async () => {
   if (!response.ok) throw new Error(`Sync failed: ${response.status}`);
   const result = await response.json();
   for (const eventId of result.accepted || []) {
-    const event = pending.find((item) => item.eventId === eventId);
+    const event = userPending.find((item) => item.eventId === eventId);
     if (event) await deleteLocal('syncQueue', event.id);
   }
   return { synced: (result.accepted || []).length, pending: (await getAllLocal('syncQueue')).length };
@@ -63,6 +70,7 @@ const storeForEntity = {
   supplier: 'suppliers',
   financeLoan: 'financeLoans',
   staff: 'staff',
+  drivingHour: 'drivingHours',
   jcbFleet: 'jcbFleet',
   maintenanceRecord: 'maintenanceRecords',
   jcbDocument: 'jcbDocuments',
@@ -73,7 +81,7 @@ const pullRemoteChanges = async () => {
   if (!API_URL || !navigator.onLine) return { changed: false, pending: 0 };
   const clientId = getClientId();
   const cursor = (await getMeta('sync-cursor'))?.value || '';
-  const headers = API_TOKEN ? { Authorization: `Bearer ${API_TOKEN}` } : {};
+  const headers = getAuthHeaders();
   const response = await fetch(`${API_URL}/api/sync?clientId=${encodeURIComponent(clientId)}&since=${encodeURIComponent(cursor)}`, { headers });
   if (!response.ok) throw new Error(`Pull failed: ${response.status}`);
   const result = await response.json();
