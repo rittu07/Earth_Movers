@@ -10,8 +10,11 @@ const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
 app.use('*', cors({
   origin: (origin, c) => {
-    const allowedOrigin = c.env.ALLOWED_ORIGIN;
-    return allowedOrigin && origin === allowedOrigin ? allowedOrigin : '';
+    const allowedOrigins = String(c.env.ALLOWED_ORIGIN || '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+    return allowedOrigins.includes(origin) ? origin : '';
   },
   allowHeaders: ['Content-Type', 'Authorization', 'X-API-Token', 'X-Setup-Key'],
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
