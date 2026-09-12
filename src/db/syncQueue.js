@@ -1,8 +1,8 @@
 import { getAllLocal, getMeta, putLocal, deleteLocal } from './localDb';
 import { getAuthHeaders, getAuthenticatedUser } from '../context/AuthContext';
+import { API_URL } from '../utils/apiUrl';
 
 // The deployed Worker serves both the SPA and API, so production sync works without a build-time URL.
-const API_URL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 const CLIENT_ID_KEY = 'earth-movers-client-id';
 
 const getClientId = () => {
@@ -46,6 +46,7 @@ export const flushSyncQueue = async () => {
   const response = await fetch(`${API_URL}/api/sync`, {
     method: 'POST',
     headers,
+    credentials: 'include',
     body: JSON.stringify({ events: userPending.map((item) => {
       const event = { ...item };
       delete event.id;
@@ -82,7 +83,7 @@ const pullRemoteChanges = async () => {
   const clientId = getClientId();
   const cursor = (await getMeta('sync-cursor'))?.value || '';
   const headers = getAuthHeaders();
-  const response = await fetch(`${API_URL}/api/sync?clientId=${encodeURIComponent(clientId)}&since=${encodeURIComponent(cursor)}`, { headers });
+  const response = await fetch(`${API_URL}/api/sync?clientId=${encodeURIComponent(clientId)}&since=${encodeURIComponent(cursor)}`, { headers, credentials: 'include' });
   if (!response.ok) throw new Error(`Pull failed: ${response.status}`);
   const result = await response.json();
   for (const event of result.events || []) {

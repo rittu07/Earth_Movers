@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { formatJCBOverdueWhatsApp, openWhatsAppChat } from '../../utils/whatsapp';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { isSafeDocumentUrl, validateAttachmentFile } from '../../utils/documentSecurity';
 import {
   DEFAULT_SERVICE_INTERVALS,
   SERVICE_INTERVALS,
@@ -1248,13 +1249,14 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                           className="hidden"
                           onChange={(e) => {
                              if (e.target.files && e.target.files[0]) {
-                               const file = e.target.files[0];
-                               setMaintInvoiceName(file.name);
-                               if (file.size > 80000) {
-                                 setMaintInvoiceData('');
-                                 window.alert('Please choose a file smaller than 80 KB to keep it viewable and synchronized.');
-                                 return;
-                               }
+                                const file = e.target.files[0];
+                                const validationError = validateAttachmentFile(file);
+                                if (validationError) {
+                                  setMaintInvoiceData('');
+                                  window.alert(validationError);
+                                  return;
+                                }
+                                setMaintInvoiceName(file.name);
                                const reader = new FileReader();
                                reader.onload = () => setMaintInvoiceData(String(reader.result || ''));
                                reader.readAsDataURL(file);
@@ -1619,7 +1621,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                 </div>
                 <div className="flex justify-between items-center font-mono">
                   <span className="text-slate-600 font-bold">Invoice:</span>
-                     {viewingRecord.invoiceData ? (
+                      {isSafeDocumentUrl(viewingRecord.invoiceData) ? (
                        <a
                          href={viewingRecord.invoiceData}
                          target="_blank"

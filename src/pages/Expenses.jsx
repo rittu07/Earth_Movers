@@ -1,85 +1,68 @@
-import React, { useState, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useBusiness } from '../context/BusinessContext';
+import { getAuthHeaders } from '../context/AuthContext';
 import PageHeader from '../components/layout/PageHeader';
 import { formatCurrency } from '../utils/formatCurrency';
+import { API_URL } from '../utils/apiUrl';
 import {
-  PlusCircle,
   Search,
-  ArrowUpRight,
-  ArrowDownLeft,
   Wallet,
   Receipt,
-  TrendingDown,
-  TrendingUp,
-  Tag,
-  Filter,
-  Layers
+  Tag
 } from 'lucide-react';
 
 const RecentActivity = () => {
-  const { transactions, payments, expenses, customers, businesses } = useBusiness();
+  const { syncNow } = useBusiness();
   const navigate = useNavigate();
+  const syncNowRef = useRef(syncNow);
+  const [recentTransactions, setRecentTransactions] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('all'); // 'all', 'in', 'out'
 
-  // Combine transactions, payments, and expenses into unified activity list
+  useEffect(() => {
+    let active = true;
+
+    const loadRecentTransactions = async () => {
+      await syncNowRef.current().catch(() => {});
+      try {
+        const response = await fetch(`${API_URL}/api/recent-transactions?limit=20`, {
+          headers: getAuthHeaders(),
+          credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Recent transactions unavailable');
+        const result = await response.json();
+        if (active) setRecentTransactions(result.data || []);
+      } catch {
+        if (active) setRecentTransactions([]);
+      }
+    };
+
+    const refresh = () => loadRecentTransactions();
+    loadRecentTransactions();
+    window.addEventListener('focus', refresh);
+    window.addEventListener('pageshow', refresh);
+    return () => {
+      active = false;
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('pageshow', refresh);
+    };
+  }, []);
+
   const combinedActivity = useMemo(() => {
-    const activityList = [];
+    return recentTransactions.map((trx) => ({
+      id: trx.id,
+      type: 'sale',
+      direction: 'in',
+      title: trx.customer_name || 'Customer unavailable',
+      subtitle: trx.business_name || trx.business_id || 'Sale',
+      date: trx.date,
+      displayDate: trx.updated_at || trx.created_at || trx.date,
+      amount: Number(trx.amount) || 0,
+      path: trx.customer_name && trx.customer_id ? `/customers/${trx.customer_id}` : ''
+    }));
+  }, [recentTransactions]);
 
-    // 1. Transactions (Sales -> Amount IN)
-    transactions.forEach((trx) => {
-      activityList.push({
-        id: `trx-${trx.id}`,
-        type: 'sale',
-        direction: 'in',
-        title: trx.customerName || 'Sale Entry',
-        subtitle: trx.businessName || 'Sale',
-        date: trx.date,
-        displayDate: trx.displayDate,
-        amount: trx.amount,
-        rawDate: new Date(trx.date).getTime() || Date.now(),
-        path: `/customers/${trx.customerId}`
-      });
-    });
-
-    // 2. Payments Received (Amount IN)
-    payments.forEach((pay) => {
-      activityList.push({
-        id: `pay-${pay.id}`,
-        type: 'payment',
-        direction: 'in',
-        title: pay.customerName || 'Payment Received',
-        subtitle: pay.method ? `Received via ${pay.method}` : 'Payment Received',
-        date: pay.date,
-        displayDate: pay.displayDate,
-        amount: pay.amount,
-        rawDate: new Date(pay.date).getTime() || Date.now(),
-        path: `/customers/${pay.customerId}`
-      });
-    });
-
-    // 3. Expenses (Operating Expenditures -> Amount OUT)
-    expenses.forEach((exp) => {
-      activityList.push({
-        id: `exp-${exp.id}`,
-        type: 'expense',
-        direction: 'out',
-        title: exp.description || exp.category || 'Expense',
-        subtitle: exp.businessName || exp.category || 'Operating Cost',
-        date: exp.date,
-        displayDate: exp.displayDate,
-        amount: exp.amount,
-        rawDate: new Date(exp.date).getTime() || Date.now(),
-        path: '/expenses'
-      });
-    });
-
-    // Sort by date descending
-    return activityList.sort((a, b) => b.rawDate - a.rawDate);
-  }, [transactions, payments, expenses]);
-
-  // Filter list by search term and direction type
+  // Filter the database-backed list by search term.
   const filteredActivity = combinedActivity.filter((act) => {
     const matchesSearch =
       act.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -87,27 +70,14 @@ const RecentActivity = () => {
       act.displayDate.toLowerCase().includes(searchTerm.toLowerCase());
 
     if (!matchesSearch) return false;
-    if (filterType === 'in' && act.direction !== 'in') return false;
-    if (filterType === 'out' && act.direction !== 'out') return false;
     return true;
   });
-
-  // Calculate Summary Totals
-  const totalAmountIn = combinedActivity
-    .filter((a) => a.direction === 'in')
-    .reduce((sum, a) => sum + a.amount, 0);
-
-  const totalAmountOut = combinedActivity
-    .filter((a) => a.direction === 'out')
-    .reduce((sum, a) => sum + a.amount, 0);
-
-  const netBalance = totalAmountIn - totalAmountOut;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <PageHeader
-        title="Recent Activity"
-        subtitle="Live stream of all business transactions, received payments and expenditures (Amount In & Out)"
+        title="Recent Transactions"
+        subtitle="Latest transactions loaded from the database"
       />
 
       {/* Filter and Search Bar */}
@@ -124,41 +94,6 @@ const RecentActivity = () => {
           />
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto">
-          <button
-            onClick={() => setFilterType('all')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-              filterType === 'all'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            All Activity ({combinedActivity.length})
-          </button>
-
-          <button
-            onClick={() => setFilterType('in')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-              filterType === 'in'
-                ? 'bg-white text-emerald-600 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            📥 Amount IN (+{combinedActivity.filter((a) => a.direction === 'in').length})
-          </button>
-
-          <button
-            onClick={() => setFilterType('out')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-              filterType === 'out'
-                ? 'bg-white text-rose-600 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            📤 Amount OUT (-{combinedActivity.filter((a) => a.direction === 'out').length})
-          </button>
-        </div>
       </div>
 
       {/* Activity Cards List */}

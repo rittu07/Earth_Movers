@@ -3,10 +3,13 @@ import { cors } from 'hono/cors';
 
 const app = new Hono();
 const MAX_EVENTS = 100;
+const MAX_D1_BATCH_STATEMENTS = 100;
 const MAX_REQUEST_BYTES = 512 * 1024;
 const MAX_EVENT_BYTES = 128 * 1024;
 const MAX_ID_LENGTH = 128;
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const MAX_LOGIN_ATTEMPTS = 8;
 
 app.use('*', cors({
   origin: (origin, c) => {
@@ -16,8 +19,9 @@ app.use('*', cors({
       .filter(Boolean);
     return allowedOrigins.includes(origin) ? origin : '';
   },
-  allowHeaders: ['Content-Type', 'Authorization', 'X-API-Token', 'X-Setup-Key'],
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+  allowHeaders: ['Content-Type', 'X-Client-Request', 'X-Setup-Key'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true
 }));
 
 app.use('*', async (c, next) => {
@@ -41,6 +45,9 @@ app.use('/api/*', async (c, next) => {
 
   const user = await getSessionUser(c);
   if (!user) return c.json({ error: 'Authentication required' }, 401);
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(c.req.method) && c.req.header('X-Client-Request') !== 'EarthMovers') {
+    return c.json({ error: 'Invalid client request' }, 403);
+  }
   c.set('user', user);
   await next();
 });
@@ -77,9 +84,43 @@ const hashPassword = async (password, salt) => {
 const safeUsername = (value) => String(value || '').trim().toLowerCase();
 const validPassword = (value) => typeof value === 'string' && value.length >= 8 && value.length <= 128;
 
+const cookieValue = (cookieHeader, name) => {
+  const match = String(cookieHeader || '').match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : '';
+};
+
+const sessionCookie = (token, maxAge = SESSION_TTL_MS / 1000) =>
+  `earth-movers-session=${encodeURIComponent(token)}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${maxAge}`;
+
+const getLoginAttemptKey = (c, username) => `${c.req.header('CF-Connecting-IP') || 'unknown'}:${username || '<unknown>'}`;
+
+async function checkLoginRateLimit(c, username) {
+  const attemptKey = getLoginAttemptKey(c, username);
+  const timestamp = Date.now();
+  const current = await c.env.DB.prepare(
+    'SELECT attempts, window_started_at, blocked_until FROM auth_login_attempts WHERE attempt_key = ?'
+  ).bind(attemptKey).first();
+  const windowStarted = current ? new Date(current.window_started_at).getTime() : timestamp;
+  if (current?.blocked_until && new Date(current.blocked_until).getTime() > timestamp) {
+    return { allowed: false, retryAfter: Math.ceil((new Date(current.blocked_until).getTime() - timestamp) / 1000) };
+  }
+  const inWindow = timestamp - windowStarted < LOGIN_WINDOW_MS;
+  const attempts = inWindow ? Number(current?.attempts || 0) + 1 : 1;
+  const blockedUntil = attempts > MAX_LOGIN_ATTEMPTS ? new Date(timestamp + LOGIN_WINDOW_MS).toISOString() : null;
+  await c.env.DB.prepare(
+    `INSERT INTO auth_login_attempts (attempt_key, attempts, window_started_at, blocked_until)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(attempt_key) DO UPDATE SET attempts=excluded.attempts, window_started_at=excluded.window_started_at, blocked_until=excluded.blocked_until`
+  ).bind(attemptKey, attempts, inWindow && current ? current.window_started_at : new Date(timestamp).toISOString(), blockedUntil).run();
+  return { allowed: !blockedUntil, retryAfter: blockedUntil ? Math.ceil(LOGIN_WINDOW_MS / 1000) : 0 };
+}
+
+async function clearLoginRateLimit(c, username) {
+  await c.env.DB.prepare('DELETE FROM auth_login_attempts WHERE attempt_key = ?').bind(getLoginAttemptKey(c, username)).run();
+}
+
 async function getSessionUser(c) {
-  const authorization = c.req.header('Authorization') || '';
-  const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+  const token = cookieValue(c.req.header('Cookie'), 'earth-movers-session');
   if (!token || !c.env.DB) return null;
 
   const tokenHash = await sha256(token);
@@ -147,6 +188,11 @@ app.post('/api/auth/login', async (c) => {
   if (!username || !validPassword(password) || !['owner', 'manager'].includes(requestedRole)) {
     return c.json({ error: 'Invalid username, password, or role' }, 400);
   }
+  const rateLimit = await checkLoginRateLimit(c, username);
+  if (!rateLimit.allowed) {
+    c.header('Retry-After', String(rateLimit.retryAfter));
+    return c.json({ error: 'Too many login attempts. Try again later.' }, 429);
+  }
 
   const user = await c.env.DB.prepare(
     'SELECT id, username, password_hash, password_salt, role FROM auth_users WHERE username = ?'
@@ -156,6 +202,7 @@ app.post('/api/auth/login', async (c) => {
   const passwordHash = await hashPassword(password, user.password_salt);
   if (passwordHash !== user.password_hash) return c.json({ error: 'Invalid credentials' }, 401);
 
+  await clearLoginRateLimit(c, username);
   await c.env.DB.prepare('DELETE FROM auth_sessions WHERE expires_at <= ?').bind(now()).run();
   const rawToken = randomBase64(32);
   const tokenHash = await sha256(rawToken);
@@ -163,14 +210,82 @@ app.post('/api/auth/login', async (c) => {
   await c.env.DB.prepare(
     'INSERT INTO auth_sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)'
   ).bind(tokenHash, user.id, expiresAt, now()).run();
-  return c.json({ token: rawToken, expiresAt, user: publicUser(user) });
+  c.header('Set-Cookie', sessionCookie(rawToken));
+  return c.json({ expiresAt, user: publicUser(user) });
+});
+
+app.post('/api/auth/change-password', async (c) => {
+  const currentUser = c.get('user');
+  if (currentUser.role !== 'owner') return c.json({ error: 'Only the owner can change passwords' }, 403);
+  const body = await c.req.json().catch(() => null);
+  const currentPassword = body?.currentPassword;
+  const newPassword = body?.newPassword;
+  if (!validPassword(currentPassword) || !validPassword(newPassword)) {
+    return c.json({ error: 'Passwords must be 8-128 characters' }, 400);
+  }
+
+  const user = await c.env.DB.prepare(
+    'SELECT password_hash, password_salt FROM auth_users WHERE id = ?'
+  ).bind(currentUser.id).first();
+  if (!user) return c.json({ error: 'User not found' }, 404);
+
+  const currentHash = await hashPassword(currentPassword, user.password_salt);
+  if (currentHash !== user.password_hash) return c.json({ error: 'Current password is incorrect' }, 400);
+
+  const salt = randomBase64(16);
+  const passwordHash = await hashPassword(newPassword, salt);
+  await c.env.DB.prepare(
+    'UPDATE auth_users SET password_hash = ?, password_salt = ?, updated_at = ? WHERE id = ?'
+  ).bind(passwordHash, salt, now(), currentUser.id).run();
+
+  const currentToken = cookieValue(c.req.header('Cookie'), 'earth-movers-session');
+  const currentTokenHash = currentToken ? await sha256(currentToken) : '';
+  await c.env.DB.prepare(
+    'DELETE FROM auth_sessions WHERE user_id = ? AND token_hash != ?'
+  ).bind(currentUser.id, currentTokenHash).run();
+
+  return c.json({ ok: true });
+});
+
+app.post('/api/auth/change-manager-password', async (c) => {
+  const currentUser = c.get('user');
+  if (currentUser.role !== 'owner') return c.json({ error: 'Only the owner can change the manager password' }, 403);
+
+  const body = await c.req.json().catch(() => null);
+  const currentPassword = body?.currentPassword;
+  const newPassword = body?.newPassword;
+  if (!validPassword(currentPassword) || !validPassword(newPassword)) {
+    return c.json({ error: 'Passwords must be 8-128 characters' }, 400);
+  }
+
+  const owner = await c.env.DB.prepare(
+    'SELECT password_hash, password_salt FROM auth_users WHERE id = ? AND role = ?'
+  ).bind(currentUser.id, 'owner').first();
+  if (!owner) return c.json({ error: 'Owner account not found' }, 404);
+  const currentHash = await hashPassword(currentPassword, owner.password_salt);
+  if (currentHash !== owner.password_hash) return c.json({ error: 'Current owner password is incorrect' }, 400);
+
+  const manager = await c.env.DB.prepare(
+    'SELECT id, username, role FROM auth_users WHERE role = ? LIMIT 1'
+  ).bind('manager').first();
+  if (!manager) return c.json({ error: 'Manager account not found' }, 404);
+
+  const salt = randomBase64(16);
+  const passwordHash = await hashPassword(newPassword, salt);
+  await c.env.DB.prepare(
+    'UPDATE auth_users SET password_hash = ?, password_salt = ?, updated_at = ? WHERE id = ?'
+  ).bind(passwordHash, salt, now(), manager.id).run();
+  await c.env.DB.prepare('DELETE FROM auth_sessions WHERE user_id = ?').bind(manager.id).run();
+
+  return c.json({ ok: true, user: publicUser(manager) });
 });
 
 app.get('/api/auth/me', (c) => c.json({ user: publicUser(c.get('user')) }));
 
 app.post('/api/auth/logout', async (c) => {
-  const token = (c.req.header('Authorization') || '').slice(7);
+  const token = cookieValue(c.req.header('Cookie'), 'earth-movers-session');
   if (token) await c.env.DB.prepare('DELETE FROM auth_sessions WHERE token_hash = ?').bind(await sha256(token)).run();
+  c.header('Set-Cookie', sessionCookie('', 0));
   return c.json({ ok: true });
 });
 
@@ -265,6 +380,12 @@ app.post('/api/sync', async (c) => {
   const body = await c.req.json().catch(() => null);
   const events = Array.isArray(body) ? body : body?.events;
   if (!Array.isArray(events) || events.length > MAX_EVENTS) return c.json({ error: `events must contain 1-${MAX_EVENTS} items` }, 400);
+  if (new TextEncoder().encode(JSON.stringify(body)).byteLength > MAX_REQUEST_BYTES) {
+    return c.json({ error: 'Request too large' }, 413);
+  }
+  if (events.some((event) => new TextEncoder().encode(JSON.stringify(event)).byteLength > MAX_EVENT_BYTES)) {
+    return c.json({ error: 'An event is too large' }, 413);
+  }
 
   const receivedAt = now();
   const statements = [];
@@ -291,8 +412,15 @@ app.post('/api/sync', async (c) => {
     statements.push(c.env.DB.prepare('INSERT INTO sync_events (event_id,entity_type,entity_id,operation,payload,client_id,client_created_at,received_at) VALUES (?,?,?,?,?,?,?,?)').bind(event.eventId, event.entityType, event.entityId, event.operation || 'create', JSON.stringify(event.payload), event.clientId || 'unknown', event.clientCreatedAt || receivedAt, receivedAt));
     accepted.push(event.eventId);
   }
-  if (statements.length) await c.env.DB.batch(statements);
-  return c.json({ accepted, rejected, receivedAt });
+  try {
+    for (let index = 0; index < statements.length; index += MAX_D1_BATCH_STATEMENTS) {
+      await c.env.DB.batch(statements.slice(index, index + MAX_D1_BATCH_STATEMENTS));
+    }
+    return c.json({ accepted, rejected, receivedAt });
+  } catch (error) {
+    console.error('Sync batch failed', error);
+    return c.json({ error: 'Sync failed while saving data' }, 500);
+  }
 });
 
 app.get('/api/sync', async (c) => {
@@ -304,6 +432,19 @@ app.get('/api/sync', async (c) => {
     : `SELECT * FROM sync_events WHERE received_at > ?${financeFilter} ORDER BY received_at LIMIT 500`;
   const result = clientId ? await c.env.DB.prepare(query).bind(clientId, since).all() : await c.env.DB.prepare(query).bind(since).all();
   return c.json({ events: result.results || [], nextSince: now() });
+});
+
+app.get('/api/recent-transactions', async (c) => {
+  const requestedLimit = Number(c.req.query('limit') || 10);
+  const limit = Math.min(Math.max(Number.isFinite(requestedLimit) ? Math.floor(requestedLimit) : 10, 1), 50);
+  const result = await c.env.DB.prepare(
+    `SELECT t.*, c.name AS customer_name, c.phone AS customer_phone
+     FROM transactions t
+     LEFT JOIN customers c ON c.id = t.customer_id
+     ORDER BY datetime(COALESCE(t.updated_at, t.created_at)) DESC, t.rowid DESC
+     LIMIT ?`
+  ).bind(limit).all();
+  return c.json({ data: result.results || [] });
 });
 
 for (const [path, table] of Object.entries(tableFor)) {

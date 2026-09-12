@@ -1,18 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { clearLocalData } from '../db/localDb';
+import { API_URL } from '../utils/apiUrl';
 
 const AuthContext = createContext(null);
 const SESSION_KEY = 'earth-movers-auth-session';
 const USER_KEY = 'earth-movers-auth-user';
-const API_URL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '');
-const API_TOKEN = import.meta.env.VITE_API_TOKEN || '';
 
 export const getAuthHeaders = () => {
-  const headers = {};
-  const session = sessionStorage.getItem(SESSION_KEY);
-  if (session) headers.Authorization = `Bearer ${session}`;
-  if (API_TOKEN) headers['X-API-Token'] = API_TOKEN;
-  return headers;
+  return { 'X-Client-Request': 'EarthMovers' };
 };
 
 export const getAuthenticatedUser = () => {
@@ -28,15 +23,15 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const loadSession = async () => {
-    const session = sessionStorage.getItem(SESSION_KEY);
-    if (!session || !API_URL) {
-      if (!session) await clearLocalData().catch(() => {});
+    const storedUser = sessionStorage.getItem(USER_KEY);
+    if (!storedUser || !API_URL) {
+      if (!storedUser) await clearLocalData().catch(() => {});
       setLoading(false);
       return;
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/auth/me`, { headers: getAuthHeaders() });
+      const response = await fetch(`${API_URL}/api/auth/me`, { headers: getAuthHeaders(), credentials: 'include' });
       if (!response.ok) throw new Error('Session expired');
       const result = await response.json();
       setUser(result.user);
@@ -57,22 +52,44 @@ export const AuthProvider = ({ children }) => {
   const login = async (username, password, role) => {
     const response = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(API_TOKEN ? { 'X-API-Token': API_TOKEN } : {}) },
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ username, password, role })
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.error || 'Login failed');
     const previousUser = getAuthenticatedUser();
     if (previousUser?.id && previousUser.id !== result.user?.id) await clearLocalData();
-    sessionStorage.setItem(SESSION_KEY, result.token);
     sessionStorage.setItem(USER_KEY, JSON.stringify(result.user));
     setUser(result.user);
     return result.user;
   };
 
+  const changePassword = async (currentPassword, newPassword) => {
+    const response = await fetch(`${API_URL}/api/auth/change-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      credentials: 'include',
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Password change failed');
+  };
+
+  const changeManagerPassword = async (currentPassword, newPassword) => {
+    const response = await fetch(`${API_URL}/api/auth/change-manager-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      credentials: 'include',
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Manager password change failed');
+  };
+
   const logout = async () => {
     try {
-      await fetch(`${API_URL}/api/auth/logout`, { method: 'POST', headers: getAuthHeaders() });
+      await fetch(`${API_URL}/api/auth/logout`, { method: 'POST', headers: getAuthHeaders(), credentials: 'include' });
     } finally {
       sessionStorage.removeItem(SESSION_KEY);
       sessionStorage.removeItem(USER_KEY);
@@ -82,7 +99,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, role: user?.role || null, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, role: user?.role || null, loading, login, changePassword, changeManagerPassword, logout }}>
       {children}
     </AuthContext.Provider>
   );

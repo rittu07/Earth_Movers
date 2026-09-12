@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Eye, EyeOff, LockKeyhole, LogIn, ShieldCheck, UserRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -10,6 +10,35 @@ const Login = () => {
   const [role, setRole] = useState('owner');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const activeFieldRef = useRef(null);
+  const [keyboardInset, setKeyboardInset] = useState(0);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return undefined;
+
+    const updateKeyboardInset = () => {
+      const inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      setKeyboardInset(inset);
+      if (inset > 0 && activeFieldRef.current) {
+        window.setTimeout(() => activeFieldRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+      }
+    };
+
+    viewport.addEventListener('resize', updateKeyboardInset);
+    viewport.addEventListener('scroll', updateKeyboardInset);
+    updateKeyboardInset();
+    return () => {
+      viewport.removeEventListener('resize', updateKeyboardInset);
+      viewport.removeEventListener('scroll', updateKeyboardInset);
+    };
+  }, []);
+
+  const keepFieldVisible = (event) => {
+    const field = event.currentTarget;
+    activeFieldRef.current = field;
+    window.setTimeout(() => field.scrollIntoView({ behavior: 'smooth', block: 'center' }), 250);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -25,15 +54,18 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 font-sans">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
-        <div className="bg-slate-900 p-8 text-white">
+    <div
+      className="min-h-[100dvh] overflow-y-auto bg-slate-950 flex items-start sm:items-center justify-center px-4 py-6 sm:py-4 font-sans"
+      style={{ paddingBottom: `${keyboardInset + 24}px` }}
+    >
+      <div className="w-full max-w-md my-auto bg-white rounded-3xl shadow-2xl overflow-hidden">
+        <div className="bg-slate-900 p-6 sm:p-8 text-white">
           <div className="w-14 h-14 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center text-2xl mb-5">🚜</div>
           <p className="text-amber-400 text-xs font-black uppercase tracking-widest">Loganathan Earth Movers</p>
           <h1 className="text-2xl font-black mt-2">Secure business login</h1>
           <p className="text-slate-400 text-sm mt-2">Sign in with your Owner or Manager account.</p>
         </div>
-        <form onSubmit={handleSubmit} className="p-8 space-y-5">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-4 sm:space-y-5">
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-bold text-slate-700">Login as</label>
@@ -59,6 +91,7 @@ const Login = () => {
               required
               autoComplete="username"
               value={username}
+              onFocus={keepFieldVisible}
               onChange={(event) => setUsername(event.target.value)}
               className="w-full px-4 py-3 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none focus:border-indigo-500"
               placeholder={`${role} username`}
@@ -73,6 +106,7 @@ const Login = () => {
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 value={password}
+                onFocus={keepFieldVisible}
                 onChange={(event) => setPassword(event.target.value)}
                 className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none focus:border-indigo-500"
                 placeholder="Enter password"

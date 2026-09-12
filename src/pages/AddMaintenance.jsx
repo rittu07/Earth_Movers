@@ -25,6 +25,7 @@ import {
   saveStoredMaintenanceRecords
 } from '../data/jcbServiceData';
 import { loadSyncedCollection } from '../db/syncedStorage';
+import { validateAttachmentFile } from '../utils/documentSecurity';
 
 const formatDisplayDate = (dateStr) => {
   if (!dateStr) return '';
@@ -394,13 +395,14 @@ const AddMaintenance = () => {
                   className="hidden"
                   onChange={(e) => {
                        if (e.target.files && e.target.files[0]) {
-                         const file = e.target.files[0];
-                         setMaintInvoiceName(file.name);
-                         if (file.size > 80000) {
-                           setMaintInvoiceData('');
-                           window.alert('Please choose a file smaller than 80 KB to keep it viewable and synchronized.');
-                           return;
-                         }
+                          const file = e.target.files[0];
+                          const validationError = validateAttachmentFile(file);
+                          if (validationError) {
+                            setMaintInvoiceData('');
+                            window.alert(validationError);
+                            return;
+                          }
+                          setMaintInvoiceName(file.name);
                          const reader = new FileReader();
                          reader.onload = () => setMaintInvoiceData(String(reader.result || ''));
                          reader.readAsDataURL(file);

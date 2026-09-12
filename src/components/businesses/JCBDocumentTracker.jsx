@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { formatJCBOverdueWhatsApp, openWhatsAppChat } from '../../utils/whatsapp';
 import { loadSyncedCollection, saveSyncedCollection } from '../../db/syncedStorage';
+import { isSafeDocumentUrl, validateAttachmentFile } from '../../utils/documentSecurity';
 
 const initialJcbVehiclesData = [
   {
@@ -636,17 +637,18 @@ const JCBDocumentTracker = () => {
                   <span>{docFileName ? `[ File: ${docFileName} ]` : '[ Upload PDF / Photo ]'}</span>
                          <input
                            type="file"
-                           accept="application/pdf,image/*"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
                            className="hidden"
                            onChange={(e) => {
                              if (e.target.files && e.target.files[0]) {
-                               const file = e.target.files[0];
-                               setDocFileName(file.name);
-                               if (file.size > 80000) {
-                                 setDocFileData('');
-                                 window.alert('Please choose a file smaller than 80 KB to keep it viewable and synchronized.');
-                                 return;
-                               }
+                                const file = e.target.files[0];
+                                const validationError = validateAttachmentFile(file);
+                                if (validationError) {
+                                  setDocFileData('');
+                                  window.alert(validationError);
+                                  return;
+                                }
+                                setDocFileName(file.name);
                                const reader = new FileReader();
                                reader.onload = () => setDocFileData(String(reader.result || ''));
                                reader.readAsDataURL(file);
@@ -793,7 +795,7 @@ const JCBDocumentTracker = () => {
               <div className="bg-slate-50 p-4 rounded-2xl space-y-2.5 border border-slate-200">
                 <div className="flex justify-between items-center font-mono">
                   <span className="text-slate-600 font-bold">Attached Scan File:</span>
-                   {viewingDoc.fileData ? (
+                    {isSafeDocumentUrl(viewingDoc.fileData) ? (
                      <a
                        href={viewingDoc.fileData}
                        target="_blank"

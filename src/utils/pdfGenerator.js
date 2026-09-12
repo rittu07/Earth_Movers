@@ -1,5 +1,15 @@
 import { formatCurrency } from './formatCurrency';
 
+const escapeHtml = (value) => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#039;');
+
+const safeAlign = (value) => ['left', 'center', 'right'].includes(value) ? value : 'left';
+const safeColor = (value, fallback) => /^#[0-9a-f]{3,8}$/i.test(String(value || '')) ? value : fallback;
+
 /**
  * Universal PDF / Print Statement Generator
  */
@@ -30,9 +40,9 @@ export const exportToPdf = ({
     .map(
       (col) =>
         `<th style="padding: 10px 12px; border-bottom: 2px solid #cbd5e1; text-align: ${
-          col.align || 'left'
+          safeAlign(col.align)
         }; font-size: 11px; font-weight: 800; color: #334155; text-transform: uppercase;">${
-          col.header
+          escapeHtml(col.header)
         }</th>`
     )
     .join('');
@@ -44,8 +54,8 @@ export const exportToPdf = ({
         .map((col) => {
           const val = row[col.key] !== undefined && row[col.key] !== null ? row[col.key] : '';
           return `<td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px; text-align: ${
-            col.align || 'left'
-          }; font-weight: ${col.bold ? '700' : '500'}; color: ${col.color || '#1e293b'};">${val}</td>`;
+            safeAlign(col.align)
+          }; font-weight: ${col.bold ? '700' : '500'}; color: ${safeColor(col.color, '#1e293b')};">${escapeHtml(val)}</td>`;
         })
         .join('');
       return `<tr style="background-color: ${bg};">${cells}</tr>`;
@@ -56,8 +66,8 @@ export const exportToPdf = ({
     .map(
       (s) => `
     <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9;">
-      <span style="font-size: 12px; font-weight: 700; color: #64748b;">${s.label}:</span>
-      <span style="font-size: 14px; font-weight: 900; color: ${s.color || '#0f172a'};">${s.value}</span>
+       <span style="font-size: 12px; font-weight: 700; color: #64748b;">${escapeHtml(s.label)}:</span>
+       <span style="font-size: 14px; font-weight: 900; color: ${safeColor(s.color, '#0f172a')};">${escapeHtml(s.value)}</span>
     </div>
   `
     )
@@ -67,7 +77,7 @@ export const exportToPdf = ({
     <!DOCTYPE html>
     <html>
       <head>
-        <title>${title} - ${customerName || filename}</title>
+        <title>${escapeHtml(title)} - ${escapeHtml(customerName || filename)}</title>
         <meta charset="utf-8" />
         <style>
           @page { size: A4; margin: 0; }
@@ -101,7 +111,7 @@ export const exportToPdf = ({
             <div class="brand-contact">Katpadi Main Road, Vellore, Tamil Nadu • Phone: +91 9876543210</div>
           </div>
           <div class="doc-type">
-            <h2 class="doc-title">${title}</h2>
+             <h2 class="doc-title">${escapeHtml(title)}</h2>
             <div class="doc-date">Generated: ${dateStr}</div>
           </div>
         </div>
@@ -115,7 +125,7 @@ export const exportToPdf = ({
                 ? `
               <div>
                 <div class="info-label">${title.includes('SUPPLIER') ? 'Supplier Name' : 'Customer Name'}</div>
-                <div class="info-val">${customerName}</div>
+                <div class="info-val">${escapeHtml(customerName)}</div>
               </div>
             `
                 : ''
@@ -125,7 +135,7 @@ export const exportToPdf = ({
                 ? `
               <div>
                 <div class="info-label">Mobile Number</div>
-                <div class="info-val">${phone}</div>
+                <div class="info-val">${escapeHtml(phone)}</div>
               </div>
             `
                 : ''
@@ -135,7 +145,7 @@ export const exportToPdf = ({
                 ? `
               <div>
                 <div class="info-label">Address / Location</div>
-                <div class="info-val">${address}</div>
+                <div class="info-val">${escapeHtml(address)}</div>
               </div>
             `
                 : ''
@@ -145,7 +155,7 @@ export const exportToPdf = ({
                 ? `
               <div>
                 <div class="info-label">Filter / Scope</div>
-                <div class="info-val">${subtitle}</div>
+                <div class="info-val">${escapeHtml(subtitle)}</div>
               </div>
             `
                 : ''
