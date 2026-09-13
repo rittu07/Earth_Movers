@@ -110,7 +110,12 @@ const BusinessQuickActions = () => {
                 <div className={`w-12 h-12 rounded-2xl ${badgeBg} flex items-center justify-center shrink-0 shadow-2xs`}>
                   <Icon className="w-6 h-6" />
                 </div>
-                <h4 className="text-lg font-black text-slate-900 leading-tight">{b.name}</h4>
+                <Link
+                  to={b.path}
+                  className="text-lg font-black text-slate-900 leading-tight hover:text-indigo-700 transition-colors"
+                >
+                  {b.name}
+                </Link>
               </div>
               <Link
                 to={b.path}
