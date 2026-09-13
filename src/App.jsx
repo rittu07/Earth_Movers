@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocat
 import { App as CapacitorApp } from '@capacitor/app';
 import { BusinessProvider, useBusiness } from './context/BusinessContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { digitsOnly } from './utils/validation';
 
 // Layout Components
 import Sidebar from './components/layout/Sidebar';
@@ -60,19 +59,9 @@ const AppContent = () => {
       if (isPhone && event.key.length === 1 && !/\d/.test(event.key)) event.preventDefault();
     };
 
-    const handleInput = (event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLInputElement)) return;
-      if (target.type === 'tel' || /phone|mobile/i.test(`${target.name} ${target.placeholder}`)) {
-        target.value = digitsOnly(target.value);
-      }
-    };
-
     document.addEventListener('keydown', handleKeyDown, true);
-    document.addEventListener('input', handleInput, true);
     return () => {
       document.removeEventListener('keydown', handleKeyDown, true);
-      document.removeEventListener('input', handleInput, true);
     };
   }, []);
 
