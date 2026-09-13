@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocat
 import { App as CapacitorApp } from '@capacitor/app';
 import { BusinessProvider, useBusiness } from './context/BusinessContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { decimalOnly, digitsOnly } from './utils/validation';
+import { digitsOnly } from './utils/validation';
 
 // Layout Components
 import Sidebar from './components/layout/Sidebar';
@@ -63,7 +63,6 @@ const AppContent = () => {
     const handleInput = (event) => {
       const target = event.target;
       if (!(target instanceof HTMLInputElement)) return;
-      if (target.type === 'number') target.value = decimalOnly(target.value);
       if (target.type === 'tel' || /phone|mobile/i.test(`${target.name} ${target.placeholder}`)) {
         target.value = digitsOnly(target.value);
       }
