@@ -107,6 +107,7 @@ export const syncNow = async (onChange) => {
     const pushed = await flushSyncQueue();
     const pulled = await pullRemoteChanges();
     const result = { ...pushed, ...pulled, changed: pushed.synced > 0 || pulled.changed };
+    if (result.changed) window.dispatchEvent(new CustomEvent('earth-movers-sync', { detail: result }));
     onChange?.(result);
     return result;
   } catch {
@@ -135,7 +136,7 @@ export const startSync = (onChange) => {
   window.addEventListener('focus', throttled);
   window.addEventListener('pageshow', throttled);
 
-  const interval = window.setInterval(sync, 5 * 60 * 1000);
+  const interval = window.setInterval(sync, 30 * 1000);
   sync();
 
   return () => {

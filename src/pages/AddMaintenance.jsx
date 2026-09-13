@@ -52,13 +52,17 @@ const AddMaintenance = () => {
   const [maintenanceRecords, setMaintenanceRecords] = useState(getStoredMaintenanceRecords);
 
   useEffect(() => {
-    Promise.all([
+    const reload = () => Promise.all([
       loadSyncedCollection('jcbFleet', 'jcb_fleet_data'),
       loadSyncedCollection('maintenanceRecords', 'jcb_maintenance_records')
     ]).then(([savedFleet, savedRecords]) => {
       if (savedFleet.length) setFleet(savedFleet.map(normalizeMachine));
       if (savedRecords.length) setMaintenanceRecords(savedRecords);
     }).catch(() => {});
+
+    reload();
+    window.addEventListener('earth-movers-sync', reload);
+    return () => window.removeEventListener('earth-movers-sync', reload);
   }, []);
 
   const preselectedJcb = searchParams.get('machine') || 'jcb-1';

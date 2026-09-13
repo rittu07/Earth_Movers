@@ -4,6 +4,7 @@ import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import TransactionTable from '../components/transactions/TransactionTable';
 import ExpenseTable from '../components/expenses/ExpenseTable';
+import StockInTracker from '../components/businesses/StockInTracker';
 import { formatCurrency } from '../utils/formatCurrency';
 import { calculateBusinessMetrics } from '../utils/calculations';
 import { exportBusinessStatementPdf } from '../utils/pdfGenerator';
@@ -11,7 +12,7 @@ import { PlusCircle, Download, FileText, Receipt, Share2 } from 'lucide-react';
 
 const WaterSupply = () => {
   const { transactions, payments, expenses } = useBusiness();
-  const [activeTab, setActiveTab] = useState('sales'); // sales, expenses
+  const [activeTab, setActiveTab] = useState('sales'); // sales, stock_in, expenses
   const waterTrxs = transactions.filter((t) => t.businessId === 'water');
   const waterExpenses = expenses.filter(
     (e) => e.businessId === 'water' || e.businessName?.toLowerCase().includes('water')
@@ -59,6 +60,12 @@ const WaterSupply = () => {
             >
               <PlusCircle className="w-4 h-4" /> + Add Water Delivery
             </Link>
+            <button
+              onClick={() => setActiveTab('stock_in')}
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer font-mono"
+            >
+              + Add Water Stock
+            </button>
           </div>
         }
       />
@@ -116,6 +123,17 @@ const WaterSupply = () => {
         </button>
 
         <button
+          onClick={() => setActiveTab('stock_in')}
+          className={`pb-2.5 sm:pb-3 transition-all relative flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
+            activeTab === 'stock_in'
+              ? 'text-blue-600 border-b-2 border-blue-600 font-black'
+              : 'text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <span>WATER STOCK IN</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('expenses')}
           className={`pb-2.5 sm:pb-3 transition-all relative flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
             activeTab === 'expenses'
@@ -136,6 +154,10 @@ const WaterSupply = () => {
           </h3>
           <TransactionTable transactions={waterTrxs} />
         </div>
+      )}
+
+      {activeTab === 'stock_in' && (
+        <StockInTracker businessId="water" businessName="Water Supply" />
       )}
 
       {activeTab === 'expenses' && (

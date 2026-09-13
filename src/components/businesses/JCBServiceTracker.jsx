@@ -247,14 +247,17 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
   const [storageReady, setStorageReady] = useState(false);
 
   useEffect(() => {
-    Promise.all([
+    const reload = () => Promise.all([
       loadSyncedCollection('jcbFleet', 'jcb_fleet_data'),
       loadSyncedCollection('maintenanceRecords', 'jcb_maintenance_records')
     ]).then(([savedFleet, savedRecords]) => {
       if (savedFleet.length) setFleet(savedFleet.map(normalizeMachine));
       if (savedRecords.length) setMaintenanceRecords(savedRecords);
-      setStorageReady(true);
-    }).catch(() => setStorageReady(true));
+    }).catch(() => {});
+
+    reload().finally(() => setStorageReady(true));
+    window.addEventListener('earth-movers-sync', reload);
+    return () => window.removeEventListener('earth-movers-sync', reload);
   }, []);
 
   useEffect(() => {

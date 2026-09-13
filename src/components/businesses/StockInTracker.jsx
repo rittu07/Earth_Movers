@@ -131,6 +131,27 @@ const getInitialStockRecords = (businessId) => {
     ];
   }
 
+  if (businessId === 'water') {
+    return [
+      {
+        id: 'stk-water-101',
+        date: '2026-09-05',
+        type: 'Purchase',
+        source: 'Purchased',
+        sourceName: 'Water Filling Point',
+        material: 'Tanker Water',
+        quantity: 5,
+        rate: 1200,
+        rateUnit: 'per Load',
+        totalCost: 6000,
+        vehicle: 'Water Tanker 1',
+        quality: 'OK',
+        damagedQty: 0,
+        notes: 'Purchased tanker loads'
+      }
+    ];
+  }
+
   // Default Bricks Supply mock records matching screenshot
   return [
     {
@@ -197,7 +218,7 @@ const StockInTracker = ({ businessId = 'bricks', businessName = 'Bricks Supply' 
   );
 
   useEffect(() => {
-    loadSyncedCollection('stockEntries', `${businessId}_stock_in_records`).then((saved) => {
+    const reload = () => loadSyncedCollection('stockEntries', `${businessId}_stock_in_records`).then((saved) => {
       if (saved.length) {
         setStockRecords(
           saved
@@ -210,6 +231,10 @@ const StockInTracker = ({ businessId = 'bricks', businessName = 'Bricks Supply' 
         saveSyncedCollection('stockEntries', 'stockEntry', seededRecords).catch(() => {});
       }
     }).catch(() => {});
+
+    reload();
+    window.addEventListener('earth-movers-sync', reload);
+    return () => window.removeEventListener('earth-movers-sync', reload);
   }, [businessId]);
 
   // Modal State
@@ -224,12 +249,14 @@ const StockInTracker = ({ businessId = 'bricks', businessName = 'Bricks Supply' 
       ? ['M-Sand', 'P-Sand', 'River Sand', 'Filling Sand', 'Gravel']
       : businessId === 'jalli'
       ? ['20mm Jalli', '40mm Jalli', '12mm Jalli', '6mm Dust', 'GSB / Wet Mix']
+      : businessId === 'water'
+      ? ['Tanker Water', 'Borewell Water', 'RO Water']
       : ['Raw Material', 'Finished Stock'];
 
   const defaultMaterial = availableMaterials[0];
-  const defaultRateUnit = businessId === 'bricks' ? 'per 1000' : 'per Unit';
-  const defaultQty = businessId === 'bricks' ? '6000' : '10';
-  const defaultRate = businessId === 'bricks' ? '5000' : '4500';
+  const defaultRateUnit = businessId === 'bricks' ? 'per 1000' : businessId === 'water' ? 'per Load' : 'per Unit';
+  const defaultQty = businessId === 'bricks' ? '6000' : businessId === 'water' ? '1' : '10';
+  const defaultRate = businessId === 'bricks' ? '5000' : businessId === 'water' ? '1200' : '4500';
 
   // Form State
   const [entryType, setEntryType] = useState('Production');
@@ -266,12 +293,12 @@ const StockInTracker = ({ businessId = 'bricks', businessName = 'Bricks Supply' 
     if (type === 'Production') {
       setSource('Own Production');
       setSourceName(
-        businessId === 'bricks' ? 'Kiln-01' : businessId === 'sand' ? 'Crusher Unit 1' : 'Blue Metal Crusher 1'
+        businessId === 'bricks' ? 'Kiln-01' : businessId === 'sand' ? 'Crusher Unit 1' : businessId === 'water' ? 'Water Filling Point' : 'Blue Metal Crusher 1'
       );
     } else {
       setSource('Purchased');
       setSourceName(
-        businessId === 'bricks' ? 'Sri Ram Bricks' : businessId === 'sand' ? 'Cauvery River Pit' : 'Sri Vinayaga Quarry'
+        businessId === 'bricks' ? 'Sri Ram Bricks' : businessId === 'sand' ? 'Cauvery River Pit' : businessId === 'water' ? 'Water Filling Point' : 'Sri Vinayaga Quarry'
       );
     }
   };
@@ -341,7 +368,7 @@ const StockInTracker = ({ businessId = 'bricks', businessName = 'Bricks Supply' 
   const totalInvestmentCost = stockRecords.reduce((acc, r) => acc + (r.totalCost || 0), 0);
   const totalDamagedQty = stockRecords.reduce((acc, r) => acc + (r.damagedQty || 0), 0);
 
-  const unitName = businessId === 'bricks' ? 'bricks' : 'Units';
+  const unitName = businessId === 'bricks' ? 'bricks' : businessId === 'water' ? 'Loads' : 'Units';
 
   return (
     <div className="space-y-6 font-sans text-slate-900 animate-in fade-in duration-300">
