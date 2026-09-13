@@ -20,6 +20,7 @@ import {
   Mountain
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { decimalOnly } from '../../utils/validation';
 import { loadSyncedCollection, saveSyncedCollection, saveSyncedEntity } from '../../db/syncedStorage';
 
 // Initial Mock Records tailored per business unit
@@ -814,7 +815,9 @@ const StockInTracker = ({ businessId = 'bricks', businessName = 'Bricks Supply' 
                 <label className="text-slate-300 w-36 font-mono">Quantity</label>
                 <div className="flex-1">
                   <input
-                    type="number"
+                     type="text"
+                     inputMode="decimal"
+                     pattern="[0-9.]*"
                     required
                     placeholder="e.g. 10"
                     value={quantity}
@@ -836,7 +839,7 @@ const StockInTracker = ({ businessId = 'bricks', businessName = 'Bricks Supply' 
                     required
                     placeholder="e.g. 4500"
                     value={rate}
-                    onChange={(e) => setRate(e.target.value)}
+                     onChange={(e) => setRate(decimalOnly(e.target.value))}
                     className="w-full p-3 bg-slate-800 border border-slate-700 rounded-2xl font-mono font-black text-white text-base focus:outline-hidden focus:border-amber-500"
                   />
                 </div>

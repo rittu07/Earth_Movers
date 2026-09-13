@@ -4,7 +4,7 @@ import { useBusiness } from '../../context/BusinessContext';
 import { Plus, Trash2, Save, User, Calendar, CreditCard, Layers, MessageSquare } from 'lucide-react';
 import { formatTransactionWhatsApp, openWhatsAppChat } from '../../utils/whatsapp';
 import SearchableCustomerSelect from './SearchableCustomerSelect';
-import { mobileError } from '../../utils/validation';
+import { decimalOnly, mobileError } from '../../utils/validation';
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
@@ -920,9 +920,11 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                   <div className="sm:col-span-2">
                     <label className="block text-sm font-black text-slate-800 mb-1.5">Rate (₹) *</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
+                      pattern="[0-9.]*"
                       value={row.rate}
-                      onChange={(e) => handleTxChange(row.id, 'rate', e.target.value)}
+                      onChange={(e) => handleTxChange(row.id, 'rate', decimalOnly(e.target.value))}
                       placeholder="0"
                       className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl text-base sm:text-lg font-black text-slate-900 focus:bg-white focus:border-indigo-500 focus:outline-hidden shadow-2xs"
                     />
