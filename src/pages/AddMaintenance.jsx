@@ -25,7 +25,7 @@ import {
   saveStoredMaintenanceRecords
 } from '../data/jcbServiceData';
 import { loadSyncedCollection } from '../db/syncedStorage';
-import { validateAttachmentFile } from '../utils/documentSecurity';
+import { uploadAttachment } from '../utils/attachmentStorage';
 
 const formatDisplayDate = (dateStr) => {
   if (!dateStr) return '';
@@ -401,17 +401,14 @@ const AddMaintenance = () => {
                   onChange={(e) => {
                        if (e.target.files && e.target.files[0]) {
                           const file = e.target.files[0];
-                                 const validationError = validateAttachmentFile(file);
-                                 if (validationError) {
-                                   setMaintInvoiceData('');
-                                   setInvoiceError(validationError);
-                                   return;
-                                 }
-                                 setInvoiceError('');
-                          setMaintInvoiceName(file.name);
-                         const reader = new FileReader();
-                         reader.onload = () => setMaintInvoiceData(String(reader.result || ''));
-                         reader.readAsDataURL(file);
+                                 setInvoiceError('Uploading attachment...');
+                                 uploadAttachment(file, 'maintenance')
+                                   .then((attachment) => {
+                                     setMaintInvoiceName(attachment.name);
+                                     setMaintInvoiceData(attachment.url);
+                                     setInvoiceError('');
+                                   })
+                                   .catch((error) => setInvoiceError(error.message));
                     }
                   }}
                 />

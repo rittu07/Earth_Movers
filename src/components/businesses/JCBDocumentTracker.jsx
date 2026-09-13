@@ -21,7 +21,8 @@ import {
 } from 'lucide-react';
 import { formatJCBOverdueWhatsApp, openWhatsAppChat } from '../../utils/whatsapp';
 import { loadSyncedCollection, saveSyncedCollection } from '../../db/syncedStorage';
-import { isSafeDocumentUrl, validateAttachmentFile } from '../../utils/documentSecurity';
+import { isSafeDocumentUrl } from '../../utils/documentSecurity';
+import { uploadAttachment } from '../../utils/attachmentStorage';
 
 const initialJcbVehiclesData = [
   {
@@ -643,17 +644,14 @@ const JCBDocumentTracker = () => {
                            onChange={(e) => {
                              if (e.target.files && e.target.files[0]) {
                                 const file = e.target.files[0];
-                                const validationError = validateAttachmentFile(file);
-                                 if (validationError) {
-                                   setDocFileData('');
-                                   setDocFileError(validationError);
-                                   return;
-                                 }
-                                 setDocFileError('');
-                                setDocFileName(file.name);
-                               const reader = new FileReader();
-                               reader.onload = () => setDocFileData(String(reader.result || ''));
-                               reader.readAsDataURL(file);
+                                 setDocFileError('Uploading attachment...');
+                                 uploadAttachment(file, 'documents')
+                                   .then((attachment) => {
+                                     setDocFileName(attachment.name);
+                                     setDocFileData(attachment.url);
+                                     setDocFileError('');
+                                   })
+                                   .catch((error) => setDocFileError(error.message));
                              }
                            }}
                   />

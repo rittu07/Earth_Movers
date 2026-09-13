@@ -6,6 +6,7 @@ const MAX_EVENTS = 100;
 const MAX_D1_BATCH_STATEMENTS = 100;
 const MAX_REQUEST_BYTES = 512 * 1024;
 const MAX_EVENT_BYTES = 128 * 1024;
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 const MAX_ID_LENGTH = 128;
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
@@ -287,6 +288,99 @@ app.post('/api/auth/logout', async (c) => {
   if (token) await c.env.DB.prepare('DELETE FROM auth_sessions WHERE token_hash = ?').bind(await sha256(token)).run();
   c.header('Set-Cookie', sessionCookie('', 0));
   return c.json({ ok: true });
+});
+
+const attachmentType = (value) => ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(value);
+
+const getGoogleAccessToken = async (env) => {
+  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.GOOGLE_REFRESH_TOKEN) return null;
+  const body = new URLSearchParams({
+    client_id: env.GOOGLE_CLIENT_ID,
+    client_secret: env.GOOGLE_CLIENT_SECRET,
+    refresh_token: env.GOOGLE_REFRESH_TOKEN,
+    grant_type: 'refresh_token'
+  });
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.access_token) throw new Error('Google Drive authentication failed');
+  return result.access_token;
+};
+
+const googleFileId = (path) => {
+  const id = path.replace('/api/attachments/', '');
+  return /^[A-Za-z0-9_-]{10,200}$/.test(id) ? id : '';
+};
+
+app.post('/api/attachments', async (c) => {
+  if (!c.env.GOOGLE_DRIVE_FOLDER_ID) return c.json({ error: 'Google Drive storage is not configured' }, 503);
+  const form = await c.req.formData().catch(() => null);
+  const file = form?.get('file');
+  if (!(file instanceof File) || !attachmentType(file.type)) return c.json({ error: 'Unsupported attachment type' }, 400);
+  if (file.size > MAX_ATTACHMENT_BYTES) return c.json({ error: 'Attachment exceeds the 10 MB limit' }, 413);
+
+  try {
+    const accessToken = await getGoogleAccessToken(c.env);
+    if (!accessToken) return c.json({ error: 'Google Drive storage is not configured' }, 503);
+    const boundary = `earthmovers-${crypto.randomUUID()}`;
+    const metadata = JSON.stringify({
+      name: `${c.get('user').id}-${file.name}`,
+      parents: [c.env.GOOGLE_DRIVE_FOLDER_ID],
+      mimeType: file.type,
+      description: `Earth Movers invoice attachment uploaded by ${c.get('user').username}`
+    });
+    const separator = `--${boundary}\r\n`;
+    const closing = `\r\n--${boundary}--\r\n`;
+    const multipart = new Blob([
+      separator,
+      'Content-Type: application/json; charset=UTF-8\r\n\r\n',
+      metadata,
+      '\r\n',
+      separator,
+      `Content-Type: ${file.type}\r\n\r\n`,
+      await file.arrayBuffer(),
+      closing
+    ]);
+    const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,size', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
+      body: multipart
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.id) return c.json({ error: 'Google Drive upload failed' }, 502);
+    return c.json({
+      key: result.id,
+      url: `${new URL(c.req.url).origin}/api/attachments/${result.id}`,
+      name: result.name || file.name,
+      type: result.mimeType || file.type,
+      size: Number(result.size || file.size)
+    }, 201);
+  } catch (error) {
+    console.error('Google Drive upload failed', error);
+    return c.json({ error: 'Google Drive upload failed' }, 502);
+  }
+});
+
+app.get('/api/attachments/*', async (c) => {
+  const fileId = googleFileId(c.req.path);
+  if (!fileId) return c.json({ error: 'Attachment not found' }, 404);
+  try {
+    const accessToken = await getGoogleAccessToken(c.env);
+    if (!accessToken) return c.json({ error: 'Google Drive storage is not configured' }, 503);
+    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if (!response.ok) return c.json({ error: 'Attachment not found' }, 404);
+    const headers = new Headers(response.headers);
+    headers.set('cache-control', 'private, max-age=3600');
+    return new Response(response.body, { headers });
+  } catch (error) {
+    console.error('Google Drive download failed', error);
+    return c.json({ error: 'Attachment download failed' }, 502);
+  }
 });
 
 const tableFor = {

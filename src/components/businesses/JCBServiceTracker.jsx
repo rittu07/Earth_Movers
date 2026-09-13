@@ -27,7 +27,8 @@ import {
 } from 'lucide-react';
 import { formatJCBOverdueWhatsApp, openWhatsAppChat } from '../../utils/whatsapp';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { isSafeDocumentUrl, validateAttachmentFile } from '../../utils/documentSecurity';
+import { isSafeDocumentUrl } from '../../utils/documentSecurity';
+import { uploadAttachment } from '../../utils/attachmentStorage';
 import {
   DEFAULT_SERVICE_INTERVALS,
   SERVICE_INTERVALS,
@@ -1254,17 +1255,14 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                           onChange={(e) => {
                              if (e.target.files && e.target.files[0]) {
                                 const file = e.target.files[0];
-                                const validationError = validateAttachmentFile(file);
-                                 if (validationError) {
-                                   setMaintInvoiceData('');
-                                   setMaintInvoiceError(validationError);
-                                   return;
-                                 }
-                                 setMaintInvoiceError('');
-                                setMaintInvoiceName(file.name);
-                               const reader = new FileReader();
-                               reader.onload = () => setMaintInvoiceData(String(reader.result || ''));
-                               reader.readAsDataURL(file);
+                                 setMaintInvoiceError('Uploading attachment...');
+                                 uploadAttachment(file, 'maintenance')
+                                   .then((attachment) => {
+                                     setMaintInvoiceName(attachment.name);
+                                     setMaintInvoiceData(attachment.url);
+                                     setMaintInvoiceError('');
+                                   })
+                                   .catch((error) => setMaintInvoiceError(error.message));
                             }
                           }}
                         />
