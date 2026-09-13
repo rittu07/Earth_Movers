@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import { UserCheck, Phone, MapPin, Mail, FileText, Info } from 'lucide-react';
+import { mobileError } from '../utils/validation';
 
 const AddCustomer = () => {
   const { addCustomer } = useBusiness();
@@ -40,6 +41,8 @@ const AddCustomer = () => {
     } else if (!/^\d{10}$/.test(formData.phone.trim())) {
       newErrors.phone = 'Enter valid 10-digit mobile number';
     }
+    const alternatePhoneError = mobileError(formData.altPhone);
+    if (alternatePhoneError) newErrors.altPhone = alternatePhoneError;
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -118,8 +121,9 @@ const AddCustomer = () => {
                   placeholder="9123456780 (Optional)"
                   value={formData.altPhone}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                />
+                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                 />
+                {errors.altPhone && <p className="text-xs text-rose-600 mt-1">{errors.altPhone}</p>}
               </div>
             </div>
 

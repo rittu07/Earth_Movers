@@ -4,6 +4,7 @@ import { useBusiness } from '../../context/BusinessContext';
 import { Plus, Trash2, Save, User, Calendar, CreditCard, Layers, MessageSquare } from 'lucide-react';
 import { formatTransactionWhatsApp, openWhatsAppChat } from '../../utils/whatsapp';
 import SearchableCustomerSelect from './SearchableCustomerSelect';
+import { mobileError } from '../../utils/validation';
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
@@ -72,9 +73,11 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
   const [txRows, setTxRows] = useState([createEmptyTxRow(initialBusId)]);
   const [expRows, setExpRows] = useState([createEmptyExpRow(defaultBusinessId || 'jcb')]);
   const [customerSearch, setCustomerSearch] = useState({});
+  const [txErrors, setTxErrors] = useState({});
 
   // Row edit handlers
   const handleTxChange = (id, field, value) => {
+    setTxErrors((prev) => ({ ...prev, [id]: '' }));
     setTxRows((prev) =>
       prev.map((row) => {
         if (row.id === id) {
@@ -202,6 +205,30 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
 
     if (validRows.length === 0) {
       alert('Please select a customer and enter Qty / Rate for at least one row.');
+      return;
+    }
+
+    const invalidPhoneRow = validRows.find((row) => (
+      (row.isNewCustomer && row.customerPhone && mobileError(row.customerPhone)) ||
+      (row.isNewSupplier && row.supplierPhone && mobileError(row.supplierPhone)) ||
+      (row.isNewDriver && row.driverPhone && mobileError(row.driverPhone))
+    ));
+    if (invalidPhoneRow) {
+      const message = 'Enter valid 10-digit mobile numbers for customer, supplier, or driver.';
+      setTxErrors((prev) => ({ ...prev, [invalidPhoneRow.id]: message }));
+      showToast(message);
+      return;
+    }
+
+    const invalidRow = validRows.find((row) => {
+      const supplierCost = Number(row.supplierCost) || 0;
+      const supplierPaid = Number(row.supplierPaid) || 0;
+      return supplierCost > 0 && supplierPaid < supplierCost;
+    });
+    if (invalidRow) {
+      const message = 'Paid to Supplier must be equal to or greater than Supplier Cost.';
+      setTxErrors((prev) => ({ ...prev, [invalidRow.id]: message }));
+      showToast(message);
       return;
     }
 
@@ -428,8 +455,8 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                 key={row.id}
                 className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-4 shadow-2xs"
               >
-                {/* Row Top Line */}
-                <div className="flex flex-wrap items-center justify-between gap-3 text-base pb-1 border-b border-slate-100">
+                  {/* Row Top Line */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 text-base pb-1 border-b border-slate-100">
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="font-black text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-200 text-base shadow-2xs">
                       #{idx + 1}
@@ -456,6 +483,11 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                       className="bg-slate-100 border border-slate-300 text-slate-900 text-sm sm:text-base font-extrabold px-3.5 py-2 rounded-xl cursor-pointer shadow-2xs focus:bg-white focus:border-indigo-500 focus:outline-hidden"
                     />
                   </div>
+                  {txErrors[row.id] && (
+                    <p className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
+                      {txErrors[row.id]}
+                    </p>
+                  )}
 
                   <button
                     type="button"

@@ -166,9 +166,16 @@ export const BusinessProvider = ({ children }) => {
     const existing = suppliers.find((supplier) => {
       const phone = normalizePhone(supplier.phone);
       return (normalizedPhone && phone && normalizedPhone === phone) ||
-        (!normalizedPhone && normalizeName(supplier.name) === normalizeName(supplierName));
+        normalizeName(supplier.name) === normalizeName(supplierName);
     });
     if (existing) {
+      if (normalizedPhone && !normalizePhone(existing.phone)) {
+        const updatedSupplier = { ...existing, phone: normalizedPhone };
+        setSuppliers((prev) => prev.map((supplier) => supplier.id === existing.id ? updatedSupplier : supplier));
+        persist('suppliers', updatedSupplier, 'update');
+        showToast(`Supplier "${updatedSupplier.name}" phone number updated.`);
+        return updatedSupplier;
+      }
       showToast(`Supplier "${existing.name}" already exists; using the existing record.`);
       return existing;
     }
@@ -176,7 +183,7 @@ export const BusinessProvider = ({ children }) => {
     const newSup = {
       id: newId,
       name: supplierName,
-      phone: String(supplierData.phone || '').trim(),
+      phone: normalizedPhone,
       contactPerson: String(supplierData.contactPerson || '').trim(),
       location: String(supplierData.location || '').trim(),
       defaultCostPerBrick: Number(supplierData.defaultCostPerBrick) || 7.5

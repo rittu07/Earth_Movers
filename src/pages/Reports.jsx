@@ -576,7 +576,7 @@ const Reports = () => {
           <div className="h-64 w-full flex items-center justify-center">
             {reportData.businessPerformance.some((item) => item.value > 0) ? (
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+                <PieChart margin={{ top: 8, right: 18, bottom: 18, left: 18 }}>
                   <Pie
                     data={reportData.businessPerformance.filter((item) => item.value > 0)}
                     dataKey="value"
@@ -598,7 +598,16 @@ const Reports = () => {
                     formatter={(val) => [formatCurrency(val), 'Revenue']}
                     contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: 'none', color: '#fff', fontSize: '11px' }}
                   />
-                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                  <Legend
+                    layout="horizontal"
+                    align="center"
+                    verticalAlign="bottom"
+                    iconType="circle"
+                    iconSize={8}
+                    itemGap={18}
+                    formatter={(value) => <span style={{ marginLeft: '6px' }}>{value}</span>}
+                    wrapperStyle={{ fontSize: '11px', paddingTop: '14px', lineHeight: '20px' }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             ) : (

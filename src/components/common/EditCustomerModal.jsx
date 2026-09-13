@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { X, Save, User, Phone, MapPin, Mail, FileText } from 'lucide-react';
+import { mobileError } from '../../utils/validation';
 
 const EditCustomerModal = ({ isOpen, onClose, customer }) => {
   const { updateCustomer } = useBusiness();
@@ -13,6 +14,7 @@ const EditCustomerModal = ({ isOpen, onClose, customer }) => {
     gst: '',
     notes: ''
   });
+  const [phoneError, setPhoneError] = useState('');
 
   useEffect(() => {
     if (customer) {
@@ -33,10 +35,16 @@ const EditCustomerModal = ({ isOpen, onClose, customer }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === 'phone' || name === 'altPhone') setPhoneError('');
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const error = mobileError(formData.phone, true) || mobileError(formData.altPhone);
+    if (error) {
+      setPhoneError(error);
+      return;
+    }
     updateCustomer(customer.id, formData);
     onClose();
   };
@@ -89,7 +97,7 @@ const EditCustomerModal = ({ isOpen, onClose, customer }) => {
               <div className="relative">
                 <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                 <input
-                  type="text"
+                  type="tel"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
@@ -104,7 +112,7 @@ const EditCustomerModal = ({ isOpen, onClose, customer }) => {
               <div className="relative">
                 <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                 <input
-                  type="text"
+                  type="tel"
                   name="altPhone"
                   value={formData.altPhone}
                   onChange={handleChange}
@@ -113,6 +121,7 @@ const EditCustomerModal = ({ isOpen, onClose, customer }) => {
               </div>
             </div>
           </div>
+          {phoneError && <p className="text-xs font-bold text-rose-600">{phoneError}</p>}
 
           <div>
             <label className="block text-slate-700 font-bold mb-1">Address / Location</label>

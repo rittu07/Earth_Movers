@@ -9,6 +9,7 @@ import { formatCurrency, formatDate } from '../utils/formatCurrency';
 import { getLoanCalculatedDetails, calculateElapsedMonths, getLoanDueDateInfo } from '../utils/loanUtils';
 import { exportToPdf } from '../utils/pdfGenerator';
 import { formatFinanceLoanWhatsApp, formatFinanceReturnPaymentWhatsApp, openWhatsAppChat } from '../utils/whatsapp';
+import { mobileError } from '../utils/validation';
 import WhatsAppModal from '../components/common/WhatsAppModal';
 import EditFinanceLoanModal from '../components/common/EditFinanceLoanModal';
 import {
@@ -187,7 +188,8 @@ const Finance = () => {
     updateReturnPayment,
     deleteReturnPayment,
     settleFinanceLoan,
-    deleteFinanceLoan
+    deleteFinanceLoan,
+    showToast
   } = useBusiness();
 
   // Search & Filter state
@@ -294,6 +296,11 @@ const Finance = () => {
   const handleAddSubmit = (e) => {
     e.preventDefault();
     if (!newBorrowerName.trim()) return;
+    const phoneValidationError = mobileError(newPhone, true);
+    if (phoneValidationError) {
+      showToast(phoneValidationError);
+      return;
+    }
 
     const p = Number(newPrincipal) || 0;
     const r = Number(newRate) || 0;

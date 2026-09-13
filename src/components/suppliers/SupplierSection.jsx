@@ -4,6 +4,7 @@ import { useBusiness } from '../../context/BusinessContext';
 import { openWhatsAppChat } from '../../utils/whatsapp';
 import { formatCurrency } from '../../utils/formatCurrency';
 import PaySupplierModal from './PaySupplierModal';
+import { mobileError } from '../../utils/validation';
 import {
   Truck,
   PlusCircle,
@@ -36,6 +37,7 @@ const SupplierSection = () => {
   const [phone, setPhone] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [location, setLocation] = useState('');
+  const [phoneError, setPhoneError] = useState('');
 
   const filteredSuppliers = suppliers.filter(
     (sup) =>
@@ -47,6 +49,12 @@ const SupplierSection = () => {
   const handleAddSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) return;
+    const error = mobileError(phone, true);
+    if (error) {
+      setPhoneError(error);
+      showToast(error);
+      return;
+    }
 
     addSupplier({
       name,
@@ -57,6 +65,7 @@ const SupplierSection = () => {
 
     setName('');
     setPhone('');
+    setPhoneError('');
     setContactPerson('');
     setLocation('');
     setIsAddModalOpen(false);
@@ -391,9 +400,10 @@ const SupplierSection = () => {
                   required
                   placeholder="9845012345"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-hidden focus:border-amber-500"
-                />
+                   onChange={(e) => { setPhone(e.target.value); setPhoneError(''); }}
+                   className={`w-full p-2.5 bg-slate-50 border rounded-xl font-medium focus:outline-hidden focus:border-amber-500 ${phoneError ? 'border-rose-500' : 'border-slate-200'}`}
+                  />
+                {phoneError && <p className="mt-1 text-xs font-bold text-rose-600">{phoneError}</p>}
               </div>
 
               <div>

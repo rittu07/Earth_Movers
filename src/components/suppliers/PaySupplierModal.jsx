@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { decimalOnly, mobileError } from '../../utils/validation';
 import { Wallet, X, DollarSign, Calendar, CreditCard, FileText, Building2 } from 'lucide-react';
 
 const PaySupplierModal = ({ isOpen, onClose, preselectedSupplierId = '' }) => {
@@ -15,6 +16,8 @@ const PaySupplierModal = ({ isOpen, onClose, preselectedSupplierId = '' }) => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [reference, setReference] = useState('');
   const [notes, setNotes] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [amountError, setAmountError] = useState('');
 
   if (!isOpen) return null;
 
@@ -25,7 +28,15 @@ const PaySupplierModal = ({ isOpen, onClose, preselectedSupplierId = '' }) => {
     e.preventDefault();
     const payAmt = Number(amount);
     if (!payAmt || payAmt <= 0) {
+      setAmountError('Enter a payment amount greater than ₹0');
       showToast('Please enter a valid payment amount');
+      return;
+    }
+    setAmountError('');
+    const newPhoneError = mobileError(newSupplierPhone);
+    if (newPhoneError) {
+      setPhoneError(newPhoneError);
+      showToast(newPhoneError);
       return;
     }
 
@@ -56,8 +67,10 @@ const PaySupplierModal = ({ isOpen, onClose, preselectedSupplierId = '' }) => {
     });
 
     setAmount('');
+    setAmountError('');
     setNewSupplierName('');
     setNewSupplierPhone('');
+    setPhoneError('');
     setIsNewSupplier(false);
     setReference('');
     setNotes('');
@@ -134,15 +147,16 @@ const PaySupplierModal = ({ isOpen, onClose, preselectedSupplierId = '' }) => {
                 <input
                   type="tel"
                   value={newSupplierPhone}
-                  onChange={(e) => setNewSupplierPhone(e.target.value)}
-                  placeholder="Phone"
-                  className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-500 shadow-2xs"
-                />
+                   onChange={(e) => { setNewSupplierPhone(e.target.value); setPhoneError(''); }}
+                   placeholder="10-digit Phone"
+                   className={`w-full p-2.5 bg-white border rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-500 shadow-2xs ${phoneError ? 'border-rose-500' : 'border-slate-300'}`}
+                  />
+                {phoneError && <p className="col-span-2 text-xs font-bold text-rose-600">{phoneError}</p>}
               </div>
             )}
           </div>
 
-           <p className="text-xs font-bold text-rose-600">Current amount to pay: {formatCurrency(selectedBalance)}</p>
+            <p className="text-xs font-bold text-rose-600">Outstanding supplier balance: {formatCurrency(selectedBalance)}</p>
 
            {/* Amount */}
           <div>
@@ -150,16 +164,19 @@ const PaySupplierModal = ({ isOpen, onClose, preselectedSupplierId = '' }) => {
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-slate-400">₹</span>
               <input
-                type="number"
+                 type="text"
+                 inputMode="decimal"
+                 pattern="[0-9.]*"
                 required
                 min="1"
                 placeholder="e.g. 15000"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full pl-7 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 text-sm focus:outline-hidden focus:border-emerald-500"
-              />
-            </div>
-          </div>
+                 onChange={(e) => { setAmount(decimalOnly(e.target.value)); setAmountError(''); }}
+                 className={`w-full pl-7 pr-3 py-2.5 bg-slate-50 border rounded-xl font-bold text-slate-900 text-sm focus:outline-hidden focus:border-emerald-500 ${amountError ? 'border-rose-500 bg-rose-50/30' : 'border-slate-200 bg-slate-50'}`}
+               />
+             </div>
+             {amountError && <p className="mt-1 text-xs font-bold text-rose-600">{amountError}</p>}
+           </div>
 
           {/* Payment Method & Date */}
           <div className="grid grid-cols-2 gap-3">

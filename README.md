@@ -57,6 +57,15 @@ A full-stack offline-first business ledger application for rural transport opera
 - **Staff Persistence** — User-created staff records persist; obsolete demo staff seeds are not reintroduced
 - **Login Attribution** — Login page links to [GRW Sure Infotech](https://www.grwsureinfotech.in/)
 
+### Input Validation
+- **Numeric Fields** — Amounts, quantities, rates, hours, costs, interest, and payment fields accept numeric values only; alphabetic characters and invalid number symbols are rejected.
+- **Mobile Numbers** — Customer, supplier, driver, staff, and finance mobile fields accept digits only and require exactly 10 digits when entered.
+- **Required Fields** — Forms prevent submission when required names, selections, dates, or positive amounts are missing.
+- **Supplier Cost Checks** — Quick transaction entry prevents saving when `Paid to Supplier (Rs.)` is less than `Supplier Cost (Rs.)` and displays an inline warning.
+- **Supplier Payments** — Pay Supplier accepts positive payment amounts, including partial payments, and records the amount in the supplier ledger.
+- **Duplicate Suppliers** — Re-entering a valid phone number for an existing same-name supplier fills a previously blank phone number instead of creating a duplicate.
+- **Shared Web and Android Rules** — The same React validation logic is used in the browser and synchronized Capacitor Android application.
+
 ### Android App
 - **Capacitor Android Build** — Native debug APK includes the React application and synchronized web assets
 - **Native PDF Save** — Save As PDF uses the Android document picker
