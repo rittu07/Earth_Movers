@@ -75,17 +75,18 @@ const FinanceLoanLedger = () => {
   const netRemainingDue = loanCalculated.dueAmount;
 
   // Download Statement PDF
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = (action = 'save') => {
     exportToPdf({
+      action,
       title: 'FINANCE LOAN ACCOUNT STATEMENT',
       customerName: loanCalculated.borrowerName,
       phone: loanCalculated.phone,
-      subtitle: `Loan ID: ${loanCalculated.id} | Principal: ${formatCurrency(loanCalculated.principal)} @ ${loanCalculated.interestRate}%/mo (${loanCalculated.months} Mo Tenure)`,
+      subtitle: `Principal: ${formatCurrency(loanCalculated.principal)} @ ${loanCalculated.interestRate}%/mo (${loanCalculated.months} Mo Tenure)`,
       filename: `Loan_Statement_${loanCalculated.borrowerName.replace(/\s+/g, '_')}.pdf`,
       columns: [
         { header: 'Date', key: 'displayDate' },
         { header: 'Type', key: 'type', bold: true },
-        { header: 'Payment Method / ID', key: 'methodAndId' },
+        { header: 'Payment Method', key: 'paymentMethod' },
         { header: 'Description', key: 'description' },
         { header: 'Bill Amount', key: 'formattedBill', align: 'right', bold: true },
         { header: 'Amount Paid', key: 'formattedPaid', align: 'right', color: '#15803d', bold: true },
@@ -94,7 +95,7 @@ const FinanceLoanLedger = () => {
       data: filteredEvents.map((ev) => ({
         displayDate: ev.displayDate,
         type: ev.type,
-        methodAndId: ev.kind === 'interest' ? '-' : `${ev.paymentMethod || 'Cash'}${ev.reference ? ` (Ref: ${ev.reference})` : ''}`,
+        paymentMethod: ev.kind === 'interest' ? '-' : ev.paymentMethod || 'Cash',
         description: ev.description,
         formattedBill: ev.billAmount > 0 ? formatCurrency(ev.billAmount) : '-',
         formattedPaid: ev.paidAmount > 0 ? `+${formatCurrency(ev.paidAmount)}` : '₹0',
@@ -215,6 +216,12 @@ const FinanceLoanLedger = () => {
               className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
             >
               <Download className="w-3.5 h-3.5" /> Statement
+            </button>
+            <button
+              onClick={() => handleDownloadPdf('share')}
+              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+            >
+              <Share2 className="w-3.5 h-3.5" /> Share PDF
             </button>
           </div>
         }

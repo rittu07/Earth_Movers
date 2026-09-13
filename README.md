@@ -23,12 +23,16 @@ A full-stack offline-first business ledger application for rural transport opera
 - **Auto-Calculate Interest** — Real-time interest and total payable preview when creating loans
 - **Customer Ledger** — Per-customer chronological view of all transactions and payments
 - **Business Ledger** — Unified event log across all business units
+- **PDF Statements** — Save and share customer, supplier, finance, business, audit, outstanding, and report statements
+- **Readable PDF Layouts** — Wide reports automatically use landscape tables, currency values remain aligned, and text wraps by word
 
 ### Reports & Dashboard
 - **Real-Time Dashboard** — Today's income, expenses, outstanding, and profit calculated from synced data
 - **Business Performance Chart** — Donut chart showing income distribution across business units
 - **Revenue Trend Chart** — 7-day line chart of income vs expenses
 - **Reports Page** — Filterable by today / week / month / year with summary cards and per-business breakdown
+- **Finance-Aware Totals** — Finance interest is included in income and net profit; loan principal is treated as capital deployed, not profit
+- **Database-Driven Reports** — Reports recalculate synced loan values and use the selected date range for transactions, expenses, and finance loans
 
 ### Sync & Offline
 - **Offline-First** — All data stored in IndexedDB first; works without internet
@@ -42,6 +46,21 @@ A full-stack offline-first business ledger application for rural transport opera
 - **Stock In** — Bricks, Sand, and Jalli stock-in records are saved to IndexedDB and synced to D1 `stock_entries` when the Stock In form is submitted
 - **JCB Operations** — Fleet, maintenance, document, diesel, and driving-hours records use the same local-first sync path
 - **Driving Hours** — Driver hours are stored locally and remotely in `driving_hours` for monthly summaries and Bata calculations
+
+### Authentication & Security
+- **Owner and Manager Roles** — Server-enforced role access, with Finance Loans restricted to owners
+- **Secure Sessions** — PBKDF2 password hashes, per-user salts, hashed session tokens, 12-hour expiry, and login rate limiting
+- **Encrypted Local Storage** — Business records in IndexedDB are encrypted with a device-local AES-GCM key
+- **Encrypted Backups** — Settings exports password-protected `.embackup` files using AES-256-GCM and PBKDF2-SHA256
+- **No Plain Excel Imports** — Unencrypted `.xlsx` backups are rejected; backup passwords are never stored
+- **Staff Persistence** — User-created staff records persist; obsolete demo staff seeds are not reintroduced
+- **Login Attribution** — Login page links to [GRW Sure Infotech](https://www.grwsureinfotech.in/)
+
+### Android App
+- **Capacitor Android Build** — Native debug APK includes the React application and synchronized web assets
+- **Native PDF Save** — Save As PDF uses the Android document picker
+- **Native PDF Share** — Share PDF opens the Android system chooser
+- **Native Plugin** — `SaveAsPdfPlugin.java` handles PDF data for Save and Share actions
 
 ---
 
@@ -257,6 +276,7 @@ CREATE TABLE sync_events (
 | `0003_add_operational_data.sql` | Staff, fleet, maintenance, document registry, and stock-in tables |
 | `0004_add_auth.sql` | Owner/manager users and hashed session storage |
 | `0005_add_driving_hours.sql` | Persistent driver driving-hours records |
+| `0006_add_auth_rate_limits.sql` | Login-attempt rate limiting records |
 
 ---
 
@@ -348,7 +368,9 @@ Earth_Movers/
 │   ├── pages/                             # All page components
 │   ├── utils/
 │   │   ├── calculations.js                # Report data, date ranges, metrics
-│   │   └── formatCurrency.js              # Currency + date formatting
+│   │   ├── formatCurrency.js              # Currency + date formatting
+│   │   ├── pdfGenerator.js                # Browser and native PDF generation
+│   │   └── excelBackup.js                 # Encrypted backup export/import
 │   └── data/mockData.js                   # Seed data (not used in production)
 ├── worker/
 │   ├── src/index.js                       # Hono API (sync + entity endpoints)
@@ -359,11 +381,14 @@ Earth_Movers/
 │   │   └── 0003_add_operational_data.sql  # Operational data schema
 │   │   └── 0004_add_auth.sql               # Authentication schema
 │   │   └── 0005_add_driving_hours.sql      # Driving-hours schema
+│   │   └── 0006_add_auth_rate_limits.sql   # Login rate-limit schema
 │   └── package.json
 ├── .env.example                           # Environment template
 ├── package.json                           # Scripts + dependencies
 └── README.md
 ```
+
+Android native PDF integration is located under `android/app/src/main/java/com/loganathan/earthmovers/`, including `SaveAsPdfPlugin.java` and its registration in `MainActivity.java`.
 
 ---
 
@@ -380,6 +405,7 @@ Earth_Movers/
 - Worker serializes `paymentHistory` as JSON for D1 storage
 - Added migration `0003_add_operational_data.sql` for staff, JCB fleet, maintenance records, vehicle documents, and stock entries
 - Added migrations `0004_add_auth.sql` and `0005_add_driving_hours.sql` for server authentication and persistent driver-hours records
+- Added migration `0006_add_auth_rate_limits.sql` for login-attempt rate limiting
 - Added Worker sync and read support for all operational entities
 - Corrected create/update/delete event handling so deleted entities are removed from D1
 - Operational modules now persist through IndexedDB and the Cloudflare sync queue instead of direct `localStorage` writes
@@ -403,6 +429,8 @@ Earth_Movers/
   - Payment history display — shows all past repayments with month labels
 - Finance loans now persist to IndexedDB + sync to D1
 - `recordReturnPayment`, `settleFinanceLoan`, `deleteFinanceLoan` now call `persist()`
+- Finance report values are recalculated from loan payment history and selected date ranges
+- Loan principal is excluded from operating profit; accrued interest is included in report income and net profit
 
 ### UI/UX Changes
 - Supplier entry for Bricks/Jalli/Sand now matches customer entry UX (select existing / + New Supplier toggle with inline name + phone inputs)
@@ -417,6 +445,20 @@ Earth_Movers/
 - `calculateSummaryMetrics()` — total income, expenses, outstanding across all transactions
 - Reports page, BusinessPerformance donut, RevenueChart all use real data
 - Dashboard overview metrics calculated from actual synced data
+- Report totals reconcile with per-business breakdowns and include finance interest correctly
+
+### PDF Export & Sharing
+- Added Save PDF and Share PDF actions beside PDF downloads across Dashboard, Finance, Ledgers, Reports, customer statements, supplier statements, and business statements
+- Android uses native Save As and system sharing; browser output uses the print/PDF flow
+- Native PDF tables auto-select landscape for wide data sets, keep numeric columns aligned, and replace unsupported native `₹` glyphs with `Rs.`
+- Browser PDF tables use word-aware wrapping instead of breaking every letter
+- PDF exports omit internal record IDs from customer, supplier, and finance statements
+
+### Backup & Data Protection
+- Added password confirmation dialogs for encrypted backup export/import in Settings
+- Backup contents are separated by business table and use merge/upsert by record ID during import
+- Backup files use the `.embackup` extension and cannot be opened as plain Excel files
+- Authentication, sync metadata, encryption keys, and dashboard totals are excluded from backups
 
 ## Authentication
 

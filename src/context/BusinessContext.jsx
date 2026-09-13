@@ -25,6 +25,18 @@ const dedupeCustomers = (values = []) => {
   });
 };
 
+const removeDefaultStaffSeeds = async (values = []) => {
+  const seedById = new Map(initialStaff.map((member) => [member.id, member]));
+  const retained = values.filter((member) => {
+    const seed = seedById.get(member.id);
+    if (!seed) return true;
+    return ['name', 'phone', 'role', 'joiningDate'].some((field) => member[field] !== seed[field]);
+  });
+  const seededRecords = values.filter((member) => !retained.includes(member));
+  await Promise.all(seededRecords.map((member) => deleteLocal('staff', member.id)));
+  return retained;
+};
+
 export const BusinessProvider = ({ children }) => {
   const { role, user } = useAuth();
   const canAccessFinance = role === 'owner';
@@ -106,12 +118,15 @@ export const BusinessProvider = ({ children }) => {
       ['dieselLogs', setDieselLogs, []],
       ['suppliers', setSuppliers, []],
       ...(canAccessFinance ? [['financeLoans', setFinanceLoans, []]] : []),
-      ['staff', setStaff, initialStaff]
-      ,['drivingHours', setDrivingHours, []]
+       ['staff', setStaff, []]
+       ,['drivingHours', setDrivingHours, []]
     ];
     Promise.all(stores.map(async ([store, setter, seed]) => {
       const local = await getAllLocal(store);
-      if (local.length) setter(store === 'customers' ? dedupeCustomers(local) : local);
+      if (store === 'staff') {
+        const staffRecords = await removeDefaultStaffSeeds(local);
+        if (staffRecords.length) setter(staffRecords);
+      } else if (local.length) setter(store === 'customers' ? dedupeCustomers(local) : local);
       else await putManyLocal(store, seed);
     })).catch(() => {});
     return startSync((result) => {

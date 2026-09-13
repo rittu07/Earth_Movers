@@ -7,7 +7,7 @@ import SupplierSection from '../components/suppliers/SupplierSection';
 import StaffSection from '../components/staff/StaffSection';
 import { formatCurrency } from '../utils/formatCurrency';
 import { exportToPdf } from '../utils/pdfGenerator';
-import { Search, PlusCircle, Download } from 'lucide-react';
+import { Search, PlusCircle, Download, Share2 } from 'lucide-react';
 
 const Customers = () => {
   const { customers = [], getCustomerFinancials, deleteCustomer } = useBusiness();
@@ -37,7 +37,7 @@ const Customers = () => {
     }))
     .filter((c) => c.outstanding > 0);
 
-  const handleDownloadOutstandingPdf = () => {
+  const handleDownloadOutstandingPdf = (action = 'save') => {
     if (outstandingCustomersList.length === 0) {
       alert('No customers with outstanding dues found.');
       return;
@@ -48,6 +48,7 @@ const Customers = () => {
     const totalPaidSum = outstandingCustomersList.reduce((sum, c) => sum + c.paid, 0);
 
     exportToPdf({
+      action,
       title: 'CUSTOMERS OUTSTANDING STATEMENT',
       subtitle: `Total Pending Customers: ${outstandingCustomersList.length} | Net Outstanding Balance: ${formatCurrency(totalOutstandingSum)}`,
       filename: `Customers_Outstanding_Statement_${new Date().toISOString().split('T')[0]}.pdf`,
@@ -87,6 +88,12 @@ const Customers = () => {
               className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
             >
               <Download className="w-4 h-4 text-rose-600" /> Outstanding PDF
+            </button>
+            <button
+              onClick={() => handleDownloadOutstandingPdf('share')}
+              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+            >
+              <Share2 className="w-4 h-4" /> Share PDF
             </button>
             <Link
               to="/transactions/add"
@@ -153,6 +160,13 @@ const Customers = () => {
             title="Download PDF statement of customers with outstanding dues"
           >
             <Download className="w-3.5 h-3.5" /> PDF Dues Statement
+          </button>
+          <button
+            onClick={() => handleDownloadOutstandingPdf('share')}
+            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer whitespace-nowrap shrink-0"
+            title="Share PDF statement of customers with outstanding dues"
+          >
+            <Share2 className="w-3.5 h-3.5" /> Share PDF
           </button>
         </div>
       </div>

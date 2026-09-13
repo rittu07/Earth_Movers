@@ -4,7 +4,7 @@ import { useBusiness } from '../context/BusinessContext';
 import PageHeader from '../components/layout/PageHeader';
 import { formatCurrency } from '../utils/formatCurrency';
 import { exportToPdf } from '../utils/pdfGenerator';
-import { BookOpen, Search, Download, ChevronDown, Eye } from 'lucide-react';
+import { BookOpen, Search, Download, Share2, ChevronDown, Eye } from 'lucide-react';
 import { getDateRange, getOutsourcedSupplierName, isDateInRange } from '../utils/calculations';
 
 const Ledger = () => {
@@ -63,8 +63,9 @@ const Ledger = () => {
     return true;
   });
 
-  const handleDownload = () => {
+  const handleDownload = (action = 'save') => {
     exportToPdf({
+      action,
       title: 'MASTER GENERAL LEDGER & AUDIT REPORT',
       subtitle: `Filter: ${selectedBusiness.toUpperCase()} • ${dateFilter.toUpperCase()}`,
       filename: 'Master_General_Ledger.pdf',
@@ -98,12 +99,20 @@ const Ledger = () => {
         title="General Ledger & Audit Log"
         subtitle="Complete double-entry record of transactions, payments, and settlements"
         action={
-          <button
-            onClick={handleDownload}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
-          >
-            <Download className="w-4 h-4" /> Download Audit PDF
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownload}
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+            >
+              <Download className="w-4 h-4" /> Download Audit PDF
+            </button>
+            <button
+              onClick={() => handleDownload('share')}
+              className="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+            >
+              <Share2 className="w-4 h-4" /> Share PDF
+            </button>
+          </div>
         }
       />
 

@@ -7,7 +7,7 @@ import ExpenseTable from '../components/expenses/ExpenseTable';
 import { formatCurrency } from '../utils/formatCurrency';
 import { calculateBusinessMetrics } from '../utils/calculations';
 import { exportBusinessStatementPdf } from '../utils/pdfGenerator';
-import { PlusCircle, Download, FileText, Receipt } from 'lucide-react';
+import { PlusCircle, Download, FileText, Receipt, Share2 } from 'lucide-react';
 
 const WaterSupply = () => {
   const { transactions, payments, expenses } = useBusiness();
@@ -19,11 +19,12 @@ const WaterSupply = () => {
 
   const metrics = calculateBusinessMetrics(transactions, payments, expenses, 'water');
 
-  const handleDownloadStatement = () => {
+  const handleDownloadStatement = (action = 'save') => {
     exportBusinessStatementPdf({
       title: 'WATER SUPPLY',
       transactions: waterTrxs,
       metrics
+      ,action
     });
   };
 
@@ -39,6 +40,12 @@ const WaterSupply = () => {
               className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
             >
               <Download className="w-4 h-4 text-blue-600" /> Statement PDF
+            </button>
+            <button
+              onClick={() => handleDownloadStatement('share')}
+              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <Share2 className="w-4 h-4" /> Share PDF
             </button>
             <Link
               to="/expenses/add?business=water"

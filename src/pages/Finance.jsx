@@ -26,6 +26,7 @@ import {
   Info,
   Calendar,
   Download,
+  Share2,
   Pencil
 } from 'lucide-react';
 
@@ -401,13 +402,13 @@ const Finance = () => {
     ? processedLoans.find((l) => l.id === selectedLedgerLoan.id) || getLoanCalculatedDetails(selectedLedgerLoan)
     : null;
 
-  const handleDownloadFinanceStatement = () => {
+  const handleDownloadFinanceStatement = (action = 'save') => {
     exportToPdf({
+      action,
       title: 'FINANCE LOANS LEDGER STATEMENT',
       subtitle: `Total Principal: ${formatCurrency(totalPrincipalGiven)} | Active Loans: ${activeLoans.length}`,
       filename: `Finance_Loans_Statement_${new Date().toISOString().split('T')[0]}.pdf`,
       columns: [
-        { header: 'ID', key: 'id' },
         { header: 'Borrower Name', key: 'borrowerName', bold: true },
         { header: 'Phone', key: 'phone' },
         { header: 'Principal', key: 'formattedPrincipal', align: 'right', bold: true },
@@ -418,7 +419,6 @@ const Finance = () => {
         { header: 'Remaining Due', key: 'formattedDue', align: 'right', color: '#b91c1c', bold: true }
       ],
       data: processedLoans.map((l) => ({
-        id: l.id,
         borrowerName: l.borrowerName,
         phone: l.phone || 'N/A',
         formattedPrincipal: formatCurrency(l.principal),
@@ -451,6 +451,12 @@ const Finance = () => {
                 className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
               >
                 <Download className="w-4 h-4 text-emerald-600" /> Statement PDF
+              </button>
+              <button
+                onClick={() => handleDownloadFinanceStatement('share')}
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+              >
+                <Share2 className="w-4 h-4" /> Share PDF
               </button>
               <button
                 onClick={() => setIsAddModalOpen(true)}
@@ -524,12 +530,26 @@ const Finance = () => {
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">Finance</h2>
             <p className="text-xs font-bold text-slate-500">Compounding Interest Loan Tracker</p>
           </div>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer shrink-0"
-          >
-            <PlusCircle className="w-4 h-4" /> + Give Loan
-          </button>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <button
+              onClick={handleDownloadFinanceStatement}
+              className="px-3 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-2xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            >
+              <Download className="w-4 h-4 text-emerald-600" /> Save PDF
+            </button>
+            <button
+              onClick={() => handleDownloadFinanceStatement('share')}
+              className="px-3 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-2xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+            >
+              <Share2 className="w-4 h-4" /> Share PDF
+            </button>
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer shrink-0"
+            >
+              <PlusCircle className="w-4 h-4" /> + Give Loan
+            </button>
+          </div>
         </div>
 
         {/* 4 Summary KPI Cards (Bold Light Mode Grid) */}

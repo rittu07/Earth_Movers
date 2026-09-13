@@ -8,7 +8,7 @@ import ExpenseTable from '../components/expenses/ExpenseTable';
 import { formatCurrency } from '../utils/formatCurrency';
 import { calculateBusinessMetrics } from '../utils/calculations';
 import { exportBusinessStatementPdf } from '../utils/pdfGenerator';
-import { Mountain, PlusCircle, PackagePlus, FileText, Download, Receipt } from 'lucide-react';
+import { Mountain, PlusCircle, PackagePlus, FileText, Download, Receipt, Share2 } from 'lucide-react';
 
 const SandSupply = () => {
   const { transactions, payments, expenses } = useBusiness();
@@ -20,11 +20,12 @@ const SandSupply = () => {
 
   const metrics = calculateBusinessMetrics(transactions, payments, expenses, 'sand');
 
-  const handleDownloadStatement = () => {
+  const handleDownloadStatement = (action = 'save') => {
     exportBusinessStatementPdf({
       title: 'M-SAND & P-SAND SUPPLY',
       transactions: sandTrxs,
       metrics
+      ,action
     });
   };
 
@@ -40,6 +41,12 @@ const SandSupply = () => {
               className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
             >
               <Download className="w-4 h-4 text-teal-600" /> Statement PDF
+            </button>
+            <button
+              onClick={() => handleDownloadStatement('share')}
+              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <Share2 className="w-4 h-4" /> Share PDF
             </button>
             <button
               onClick={() => setActiveTab('stock_in')}

@@ -128,10 +128,21 @@ const Login = () => {
           >
             <LogIn className="w-4 h-4" /> {submitting ? 'Signing in...' : 'Sign in'}
           </button>
-          <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold justify-center">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" /> Passwords are securely hashed on the server
-          </div>
-        </form>
+           <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold justify-center">
+             <ShieldCheck className="w-4 h-4 text-emerald-600" /> Passwords are securely hashed on the server
+           </div>
+           <p className="text-center text-xs text-slate-400 font-semibold pt-2">
+             Powered by{' '}
+             <a
+               href="https://www.grwsureinfotech.in/"
+               target="_blank"
+               rel="noreferrer"
+               className="text-indigo-600 hover:text-indigo-700 hover:underline"
+             >
+               GRW Sure Infotech
+             </a>
+           </p>
+         </form>
       </div>
     </div>
   );

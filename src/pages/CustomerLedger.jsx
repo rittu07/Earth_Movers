@@ -14,6 +14,7 @@ import {
   PlusCircle,
   Wallet,
   Download,
+  Share2,
   Receipt,
   CheckCircle,
   FileText,
@@ -153,8 +154,9 @@ const CustomerLedger = () => {
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = (action = 'save') => {
     exportToPdf({
+      action,
       title: 'CUSTOMER ACCOUNT STATEMENT',
       customerName: customer.name,
       phone: customer.phone,
@@ -208,6 +210,12 @@ const CustomerLedger = () => {
               className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1 transition-all cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" /> Statement
+            </button>
+            <button
+              onClick={() => handleDownload('share')}
+              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center gap-1 transition-all cursor-pointer"
+            >
+              <Share2 className="w-3.5 h-3.5" /> Share PDF
             </button>
           </div>
         }

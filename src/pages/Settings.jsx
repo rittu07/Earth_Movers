@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useBusiness } from '../context/BusinessContext';
 import { useAuth } from '../context/AuthContext';
 import PageHeader from '../components/layout/PageHeader';
-import { Building2, User, Phone, MapPin, Check, Database, CreditCard, LockKeyhole, Eye, EyeOff } from 'lucide-react';
+import { Building2, User, Phone, MapPin, Check, Database, CreditCard, LockKeyhole, Eye, EyeOff, Download, Upload } from 'lucide-react';
+import { exportBusinessWorkbook, importBusinessWorkbook } from '../utils/excelBackup';
 
 const Settings = () => {
-  const { showToast } = useBusiness();
+  const { showToast, syncNow } = useBusiness();
   const { role, changePassword, changeManagerPassword } = useAuth();
   const [profile, setProfile] = useState({
     businessName: 'SRI AMMAN TRADERS & EARTHMOVERS',
@@ -25,14 +26,75 @@ const Settings = () => {
   const [managerPasswordError, setManagerPasswordError] = useState('');
   const [managerPasswordSuccess, setManagerPasswordSuccess] = useState('');
   const [savingManagerPassword, setSavingManagerPassword] = useState(false);
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [backupMessage, setBackupMessage] = useState('');
+  const [backupError, setBackupError] = useState('');
+  const [backupDialog, setBackupDialog] = useState(null);
+  const [backupPassword, setBackupPassword] = useState('');
+  const [backupPasswordConfirm, setBackupPasswordConfirm] = useState('');
+  const [pendingBackupFile, setPendingBackupFile] = useState(null);
+  const importInputRef = useRef(null);
 
   const handleSave = (e) => {
     e.preventDefault();
     showToast('Settings saved successfully!');
   };
 
-  const handleBackup = () => {
-    showToast('Local database backup created successfully!');
+  const openExportBackup = () => {
+    setBackupError('');
+    setBackupMessage('');
+    setBackupPassword('');
+    setBackupPasswordConfirm('');
+    setBackupDialog('export');
+  };
+
+  const handleImportFile = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setBackupError('');
+    setBackupMessage('');
+    setBackupPassword('');
+    setBackupPasswordConfirm('');
+    setPendingBackupFile(file);
+    setBackupDialog('import');
+  };
+
+  const closeBackupDialog = () => {
+    setBackupDialog(null);
+    setBackupPassword('');
+    setBackupPasswordConfirm('');
+    setPendingBackupFile(null);
+  };
+
+  const handleBackup = async (event) => {
+    event?.preventDefault();
+    setBackupError('');
+    setBackupMessage('');
+    if (backupPassword.length < 10) {
+      setBackupError('Backup password must be at least 10 characters.');
+      return;
+    }
+    if (backupDialog === 'export' && backupPassword !== backupPasswordConfirm) {
+      setBackupError('Backup passwords do not match.');
+      return;
+    }
+    setBackupBusy(true);
+    try {
+      if (backupDialog === 'export') {
+        const rowCount = await exportBusinessWorkbook({ role, password: backupPassword });
+        setBackupMessage(`Encrypted backup downloaded with ${rowCount} records.`);
+      } else {
+        const result = await importBusinessWorkbook(pendingBackupFile, { role, syncNow, password: backupPassword });
+        setBackupMessage(`Imported ${result.importedRows} records from the encrypted backup.`);
+        showToast('Encrypted backup imported successfully!');
+      }
+      closeBackupDialog();
+    } catch (error) {
+      setBackupError(error.message || 'Could not create the Excel backup.');
+    } finally {
+      setBackupBusy(false);
+    }
   };
 
   const handlePasswordChange = async () => {
@@ -184,25 +246,42 @@ const Settings = () => {
           </div>
         </div>
 
-        {/* Data & Local Backup */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Database className="w-5 h-5 text-indigo-600" /> Local SQLite Backup
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Export all customer, transaction and ledger data to local JSON/SQLite format.
-            </p>
-          </div>
+         {/* Data & Excel Backup */}
+         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
+           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+             <div>
+             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+               <Database className="w-5 h-5 text-indigo-600" /> Excel Business Backup
+             </h3>
+             <p className="text-xs text-slate-500 mt-0.5">
+               Each business table is exported as a separate worksheet. Import uses merge/upsert by record ID.
+             </p>
+             </div>
 
-          <button
-            type="button"
-            onClick={handleBackup}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shrink-0"
-          >
-            Create Backup
-          </button>
-        </div>
+             <div className="flex flex-wrap gap-2 shrink-0">
+               <button
+                 type="button"
+                onClick={openExportBackup}
+                 disabled={backupBusy}
+                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold rounded-xl text-xs flex items-center gap-1.5"
+               >
+                  <Download className="w-4 h-4" /> Export Secure Backup
+               </button>
+               <button
+                 type="button"
+                  onClick={() => importInputRef.current?.click()}
+                 disabled={backupBusy}
+                 className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white font-bold rounded-xl text-xs flex items-center gap-1.5"
+               >
+                  <Upload className="w-4 h-4" /> Import Secure Backup
+                </button>
+                <input ref={importInputRef} type="file" accept=".embackup,application/octet-stream" onChange={handleImportFile} className="hidden" />
+             </div>
+           </div>
+             <p className="text-[11px] text-slate-500">Backups are encrypted with your backup password and cannot be opened in Excel. Authentication, sync metadata, encryption keys, and dashboard totals are excluded. Finance Loans are included for owners only.</p>
+           {backupMessage && <p className="text-xs font-bold text-emerald-700">{backupMessage}</p>}
+           {backupError && <p className="text-xs font-bold text-rose-700">{backupError}</p>}
+         </div>
 
         {/* Save Button */}
         <div className="flex justify-end">
@@ -328,6 +407,52 @@ const Settings = () => {
           </div>
         )}
       </form>
+
+      {backupDialog && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 space-y-4">
+            <div>
+              <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                <LockKeyhole className="w-5 h-5 text-indigo-600" />
+                {backupDialog === 'export' ? 'Protect Backup' : 'Unlock Backup'}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                {backupDialog === 'export'
+                  ? 'Use at least 10 characters. This password is required to restore the backup and cannot be recovered.'
+                  : `Enter the password used for ${pendingBackupFile?.name || 'this backup'}.`}
+              </p>
+            </div>
+            <input
+              type="password"
+              autoFocus
+              required
+              value={backupPassword}
+              onChange={(event) => setBackupPassword(event.target.value)}
+              placeholder="Backup password"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:border-indigo-500"
+            />
+            {backupDialog === 'export' && (
+              <input
+                type="password"
+                required
+                value={backupPasswordConfirm}
+                onChange={(event) => setBackupPasswordConfirm(event.target.value)}
+                placeholder="Confirm backup password"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:border-indigo-500"
+              />
+            )}
+            {backupError && <p className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">{backupError}</p>}
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={closeBackupDialog} disabled={backupBusy} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-60 text-slate-700 font-bold rounded-xl text-xs">
+                Cancel
+              </button>
+              <button type="button" onClick={handleBackup} disabled={backupBusy} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold rounded-xl text-xs">
+                {backupBusy ? 'Processing...' : backupDialog === 'export' ? 'Encrypt & Export' : 'Unlock & Import'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

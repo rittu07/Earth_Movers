@@ -1,15 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useBusiness } from '../context/BusinessContext';
+import { getAllLocal } from '../db/localDb';
 import PageHeader from '../components/layout/PageHeader';
 import { formatCurrency } from '../utils/formatCurrency';
 import { exportToPdf } from '../utils/pdfGenerator';
-import { calculateReportData } from '../utils/calculations';
+import { calculateReportData, getDateRange, isDateInRange } from '../utils/calculations';
 import {
   BarChart,
   Bar,
-  LineChart,
-  Line,
   PieChart,
   Pie,
   Cell,
@@ -22,11 +21,7 @@ import {
 } from 'recharts';
 import {
   Download,
-  Calendar,
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  Wallet,
+  Share2,
   Boxes,
   Truck,
   Droplets,
@@ -38,20 +33,261 @@ import {
   BarChart3
 } from 'lucide-react';
 
+const asText = (value) => {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (Array.isArray(value) || typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+};
+
+const scopedByDate = (records, range) => records.filter((record) => {
+  const date = record.date || record.startDate || record.createdAt || record.expiryDate;
+  return date && isDateInRange(date, range);
+});
+
+const reportSection = (title, columns, rows) => ({
+  title,
+  columns,
+  data: rows
+});
+
 const Reports = () => {
-  const { transactions, payments, expenses, businesses, financeLoans = [] } = useBusiness();
+  const {
+    customers = [],
+    transactions,
+    payments,
+    expenses,
+    businesses,
+    financeLoans = [],
+    dieselLogs = [],
+    suppliers = [],
+    staff = [],
+    drivingHours = [],
+    jcbJobs = [],
+    jcbMonthlyHours = [],
+    driverMonthlyReports = [],
+    syncNow
+  } = useBusiness();
   const [dateRange, setDateRange] = useState('month'); // today, week, month, year
+  const [operationalData, setOperationalData] = useState({
+    jcbFleet: [],
+    maintenanceRecords: [],
+    jcbDocuments: [],
+    stockEntries: []
+  });
+  const syncNowRef = useRef(syncNow);
+
+  useEffect(() => {
+    let active = true;
+    const loadOperationalData = async () => {
+      await syncNowRef.current?.();
+      const [jcbFleet, maintenanceRecords, jcbDocuments, stockEntries] = await Promise.all([
+        getAllLocal('jcbFleet'),
+        getAllLocal('maintenanceRecords'),
+        getAllLocal('jcbDocuments'),
+        getAllLocal('stockEntries')
+      ]);
+      if (active) setOperationalData({ jcbFleet, maintenanceRecords, jcbDocuments, stockEntries });
+    };
+
+    loadOperationalData().catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   const reportData = useMemo(
     () => calculateReportData(transactions, payments, expenses, businesses, dateRange, financeLoans),
     [transactions, payments, expenses, businesses, dateRange, financeLoans]
   );
 
-  const handleDownload = () => {
+  const reportSections = useMemo(() => {
+    const range = getDateRange(dateRange);
+    const documents = operationalData.jcbDocuments.flatMap((vehicle) =>
+      (vehicle.documents || []).map((document) => ({
+        vehicle: vehicle.code || vehicle.id,
+        ...document
+      }))
+    );
+
+    return [
+      reportSection('Customers', [
+        { header: 'Name', key: 'name', bold: true },
+        { header: 'Phone', key: 'phone' },
+        { header: 'Address', key: 'address' },
+        { header: 'Status', key: 'status' }
+      ], customers.map((customer) => ({
+        name: asText(customer.name), phone: asText(customer.phone), address: asText(customer.address), status: asText(customer.status)
+      }))),
+      reportSection('Transactions', [
+        { header: 'Date', key: 'date' },
+        { header: 'Business', key: 'business' },
+        { header: 'Customer', key: 'customer' },
+        { header: 'Item / Service', key: 'item' },
+        { header: 'Amount', key: 'amount', align: 'right' },
+        { header: 'Paid', key: 'paid', align: 'right' },
+        { header: 'Due', key: 'due', align: 'right' }
+      ], scopedByDate(transactions, range).map((transaction) => ({
+        date: asText(transaction.date),
+        business: asText(transaction.businessName || transaction.businessId),
+        customer: asText(transaction.customerName),
+        item: asText(transaction.itemService || transaction.description),
+        amount: formatCurrency(transaction.amount || 0),
+        paid: formatCurrency(transaction.paid || 0),
+        due: formatCurrency(transaction.due || 0)
+      }))),
+      reportSection('Payments', [
+        { header: 'Date', key: 'date' },
+        { header: 'Customer', key: 'customer' },
+        { header: 'Amount', key: 'amount', align: 'right' },
+        { header: 'Method', key: 'method' },
+        { header: 'Reference', key: 'reference' }
+      ], scopedByDate(payments, range).map((payment) => ({
+        date: asText(payment.date), customer: asText(payment.customerName), amount: formatCurrency(payment.amount || 0), method: asText(payment.method), reference: asText(payment.reference)
+      }))),
+      reportSection('Expenses and Staff Payments', [
+        { header: 'Date', key: 'date' },
+        { header: 'Business', key: 'business' },
+        { header: 'Category', key: 'category' },
+        { header: 'Description', key: 'description' },
+        { header: 'Amount', key: 'amount', align: 'right' },
+        { header: 'Method', key: 'method' }
+      ], scopedByDate(expenses, range).map((expense) => ({
+        date: asText(expense.date), business: asText(expense.businessName || expense.businessId), category: asText(expense.category), description: asText(expense.description || expense.staffName), amount: formatCurrency(expense.amount || 0), method: asText(expense.method)
+      }))),
+      reportSection('Staff', [
+        { header: 'Name', key: 'name', bold: true },
+        { header: 'Role', key: 'role' },
+        { header: 'Phone', key: 'phone' },
+        { header: 'Monthly Salary', key: 'salary', align: 'right' },
+        { header: 'Advance Remaining', key: 'advance', align: 'right' },
+        { header: 'Status', key: 'status' }
+      ], staff.map((member) => ({
+        name: asText(member.name), role: asText(member.role), phone: asText(member.phone), salary: formatCurrency(member.monthlySalary || 0), advance: formatCurrency(member.advanceRemaining || 0), status: asText(member.status)
+      }))),
+      reportSection('Driving Hours', [
+        { header: 'Date', key: 'date' },
+        { header: 'Driver', key: 'driver' },
+        { header: 'JCB', key: 'vehicle' },
+        { header: 'Hours', key: 'hours', align: 'right' },
+        { header: 'Transaction', key: 'transaction' }
+      ], scopedByDate(drivingHours, range).map((record) => ({
+        date: asText(record.date), driver: asText(record.driverName), vehicle: asText(record.jcbVehicle), hours: asText(record.duration), transaction: asText(record.transactionId)
+      }))),
+      reportSection('JCB Jobs', [
+        { header: 'Date', key: 'date' },
+        { header: 'Driver', key: 'driver' },
+        { header: 'JCB', key: 'vehicle' },
+        { header: 'Customer', key: 'customer' },
+        { header: 'Hours', key: 'hours', align: 'right' },
+        { header: 'Amount', key: 'amount', align: 'right' },
+        { header: 'Status', key: 'status' }
+      ], scopedByDate(jcbJobs, range).map((job) => ({
+        date: asText(job.date), driver: asText(job.driverName), vehicle: asText(job.jcbVehicle), customer: asText(job.customerName), hours: asText(job.duration), amount: formatCurrency(job.amount || 0), status: asText(job.status)
+      }))),
+      reportSection('JCB Monthly Hours', [
+        { header: 'Machine', key: 'machine', bold: true },
+        { header: 'January', key: 'january', align: 'right' },
+        { header: 'February', key: 'february', align: 'right' },
+        { header: 'March', key: 'march', align: 'right' },
+        { header: 'April', key: 'april', align: 'right' },
+        { header: 'May', key: 'may', align: 'right' },
+        { header: 'June', key: 'june', align: 'right' },
+        { header: 'July', key: 'july', align: 'right' },
+        { header: 'August', key: 'august', align: 'right' },
+        { header: 'September', key: 'september', align: 'right' },
+        { header: 'October', key: 'october', align: 'right' },
+        { header: 'November', key: 'november', align: 'right' },
+        { header: 'December', key: 'december', align: 'right' }
+      ], jcbMonthlyHours.map((row) => ({
+        machine: asText(row.vehicle || row.shortName), january: asText(row.january), february: asText(row.february), march: asText(row.march), april: asText(row.april), may: asText(row.may), june: asText(row.june), july: asText(row.july), august: asText(row.august), september: asText(row.september), october: asText(row.october), november: asText(row.november), december: asText(row.december)
+      }))),
+      reportSection('Driver Monthly Reports', [
+        { header: 'Driver', key: 'driver', bold: true },
+        { header: 'Month', key: 'month' },
+        { header: 'Days', key: 'days', align: 'right' },
+        { header: 'Hours', key: 'hours', align: 'right' },
+        { header: 'Amount', key: 'amount', align: 'right' }
+      ], driverMonthlyReports.map((row) => ({
+        driver: asText(row.driverName), month: asText(row.month), days: asText(row.days || row.workingDays), hours: asText(row.hours || row.totalHours), amount: formatCurrency(row.amount || row.driverAmount || 0)
+      }))),
+      reportSection('Diesel Logs', [
+        { header: 'Date', key: 'date' },
+        { header: 'JCB', key: 'vehicle' },
+        { header: 'Quantity', key: 'quantity', align: 'right' },
+        { header: 'Price / Litre', key: 'price', align: 'right' },
+        { header: 'Total Cost', key: 'total', align: 'right' },
+        { header: 'Bunk', key: 'bunk' }
+      ], scopedByDate(dieselLogs, range).map((log) => ({
+        date: asText(log.date), vehicle: asText(log.jcbVehicle), quantity: asText(log.quantity), price: formatCurrency(log.pricePerLitre || 0), total: formatCurrency(log.totalCost || 0), bunk: asText(log.bunkName)
+      }))),
+      reportSection('Suppliers', [
+        { header: 'Name', key: 'name', bold: true },
+        { header: 'Phone', key: 'phone' },
+        { header: 'Contact', key: 'contact' },
+        { header: 'Location', key: 'location' },
+        { header: 'Default Cost', key: 'cost', align: 'right' }
+      ], suppliers.map((supplier) => ({
+        name: asText(supplier.name), phone: asText(supplier.phone), contact: asText(supplier.contactPerson), location: asText(supplier.location), cost: formatCurrency(supplier.defaultCostPerBrick || 0)
+      }))),
+      reportSection('JCB Fleet', [
+        { header: 'Machine', key: 'machine', bold: true },
+        { header: 'Registration', key: 'registration' },
+        { header: 'Model', key: 'model' },
+        { header: 'Serial No.', key: 'serial' },
+        { header: 'Total Hours', key: 'hours', align: 'right' }
+      ], operationalData.jcbFleet.map((machine) => ({
+        machine: asText(machine.code || machine.id), registration: asText(machine.regNo), model: asText(machine.model), serial: asText(machine.serialNo), hours: asText(machine.totalHours)
+      }))),
+      reportSection('Maintenance Records', [
+        { header: 'Date', key: 'date' },
+        { header: 'JCB', key: 'machine' },
+        { header: 'Service', key: 'service' },
+        { header: 'Meter', key: 'meter', align: 'right' },
+        { header: 'Cost', key: 'cost', align: 'right' },
+        { header: 'Status', key: 'status' }
+      ], scopedByDate(operationalData.maintenanceRecords, range).map((record) => ({
+        date: asText(record.date), machine: asText(record.jcbCode || record.jcbId), service: asText(record.serviceType), meter: asText(record.hourMeter), cost: formatCurrency(record.cost || 0), status: asText(record.status)
+      }))),
+      reportSection('JCB Documents', [
+        { header: 'Vehicle', key: 'vehicle' },
+        { header: 'Type', key: 'type' },
+        { header: 'Document No.', key: 'number' },
+        { header: 'Expiry', key: 'expiry' },
+        { header: 'File', key: 'file' }
+      ], documents.map((document) => ({
+        vehicle: asText(document.vehicle), type: asText(document.type), number: asText(document.docNo), expiry: asText(document.expiryDate), file: asText(document.fileName)
+      }))),
+      reportSection('Stock Entries', [
+        { header: 'Date', key: 'date' },
+        { header: 'Business', key: 'business' },
+        { header: 'Material', key: 'material' },
+        { header: 'Type', key: 'type' },
+        { header: 'Quantity', key: 'quantity', align: 'right' },
+        { header: 'Total Cost', key: 'cost', align: 'right' },
+        { header: 'Quality', key: 'quality' }
+      ], scopedByDate(operationalData.stockEntries, range).map((entry) => ({
+        date: asText(entry.date), business: asText(entry.businessId), material: asText(entry.material), type: asText(entry.type), quantity: asText(entry.quantity), cost: formatCurrency(entry.totalCost || 0), quality: asText(entry.quality)
+      }))),
+      reportSection('Finance Loans', [
+        { header: 'Borrower', key: 'borrower', bold: true },
+        { header: 'Start Date', key: 'date' },
+        { header: 'Principal', key: 'principal', align: 'right' },
+        { header: 'Total Amount', key: 'total', align: 'right' },
+        { header: 'Returned', key: 'returned', align: 'right' },
+        { header: 'Due', key: 'due', align: 'right' },
+        { header: 'Status', key: 'status' }
+      ], reportData.scopedFinanceLoans.map((loan) => ({
+        borrower: asText(loan.borrowerName), date: asText(loan.startDate), principal: formatCurrency(loan.principal || 0), total: formatCurrency(loan.totalAmount || 0), returned: formatCurrency(loan.returnedAmount || 0), due: formatCurrency(loan.dueAmount || 0), status: asText(loan.status)
+      })))
+    ].filter((section) => section.title !== 'Finance Loans' || reportData.scopedFinanceLoans.length > 0);
+  }, [customers, transactions, payments, expenses, staff, drivingHours, jcbJobs, jcbMonthlyHours, driverMonthlyReports, dieselLogs, suppliers, operationalData, dateRange, reportData.scopedFinanceLoans]);
+
+  const handleDownload = (action = 'save') => {
     exportToPdf({
       title: 'BUSINESS INCOME & EXPENSE FINANCIAL REPORT',
       subtitle: `Scope: ${dateRange.toUpperCase()} PERFORMANCE DASHBOARD`,
       filename: `Business_Income_Expense_Report_${dateRange}.pdf`,
+      orientation: 'landscape',
+      action,
       columns: [
         { header: 'Business Unit', key: 'name', bold: true },
         { header: 'Income / Revenue', key: 'formattedRevenue', align: 'right', bold: true, color: '#15803d' },
@@ -71,7 +307,8 @@ const Reports = () => {
         { label: 'Total Operating Expenses', value: formatCurrency(reportData.totalExpense), color: '#b91c1c' },
         { label: 'Net Operating Profit', value: formatCurrency(reportData.totalProfit), color: '#0284c7' },
         { label: 'Outstanding Receivables', value: formatCurrency(reportData.outstanding), color: '#d97706' }
-      ]
+      ],
+      sections: reportSections
     });
   };
 
@@ -116,6 +353,12 @@ const Reports = () => {
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
             >
               <Download className="w-4 h-4" /> Download PDF Report
+            </button>
+            <button
+              onClick={() => handleDownload('share')}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+            >
+              <Share2 className="w-4 h-4" /> Share PDF
             </button>
           </div>
         }
@@ -379,6 +622,12 @@ const Reports = () => {
             className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs flex items-center gap-1 cursor-pointer transition-all"
           >
             <Download className="w-3.5 h-3.5 text-indigo-600" /> Export Statement
+          </button>
+          <button
+            onClick={() => handleDownload('share')}
+            className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center gap-1 cursor-pointer transition-all"
+          >
+            <Share2 className="w-3.5 h-3.5" /> Share PDF
           </button>
         </div>
 

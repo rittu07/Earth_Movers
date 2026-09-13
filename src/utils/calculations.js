@@ -1,3 +1,5 @@
+import { getLoanCalculatedDetails } from './loanUtils.js';
+
 /**
  * Calculate total transaction amount
  */
@@ -124,11 +126,20 @@ export const calculateReportData = (
   const scopedTransactions = transactions.filter((item) => isDateInRange(item.date, range));
   const scopedPayments = payments.filter((item) => isDateInRange(item.date, range));
   const scopedExpenses = expenses.filter((item) => isDateInRange(item.date, range));
-  const totalIncome = scopedTransactions.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const scopedFinanceLoans = (financeLoans || [])
+    .filter((loan) => isDateInRange(loan.startDate || loan.date, range))
+    .map((loan) => getLoanCalculatedDetails(loan));
+  const transactionIncome = scopedTransactions.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const financeRevenue = scopedFinanceLoans.reduce((sum, loan) => sum + loan.totalInterest, 0);
+  const totalIncome = transactionIncome + financeRevenue;
   const totalExpense = scopedExpenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const totalPaid = scopedTransactions.reduce((sum, item) => sum + Number(item.paid || 0), 0) +
+  const transactionPaid = scopedTransactions.reduce((sum, item) => sum + Number(item.paid || 0), 0) +
     scopedPayments.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const outstanding = Math.max(0, totalIncome - totalPaid);
+  const financePaid = scopedFinanceLoans.reduce((sum, loan) => sum + loan.returnedAmount, 0);
+  const totalPaid = transactionPaid + financePaid;
+  const transactionOutstanding = Math.max(0, transactionIncome - transactionPaid);
+  const financeOutstanding = scopedFinanceLoans.reduce((sum, loan) => sum + loan.dueAmount, 0);
+  const outstanding = transactionOutstanding + financeOutstanding;
 
   const businessBreakdown = businesses.map((business) => {
     const bizTransactions = scopedTransactions.filter((item) => item.businessId === business.id);
@@ -152,15 +163,13 @@ export const calculateReportData = (
     };
   });
 
-  // Include Finance Loans in breakdown
-  const financeRevenue = (financeLoans || []).reduce((sum, l) => sum + Number(l.totalInterest || 0), 0);
-  const financePaid = (financeLoans || []).reduce((sum, l) => sum + Number(l.returnedAmount || 0), 0);
+  // Loan principal is capital deployed, not operating revenue or expense.
   const financeExpense = scopedExpenses
     .filter((item) => item.businessId === 'finance')
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const financeProfit = financeRevenue - financeExpense;
 
-  if (financeLoans && financeLoans.length > 0) {
+  if (scopedFinanceLoans.length > 0) {
     businessBreakdown.push({
       business: 'Finance Loans',
       businessId: 'finance',
@@ -169,7 +178,7 @@ export const calculateReportData = (
       expense: financeExpense,
       profit: financeProfit,
       marginPct: financeRevenue > 0 ? Math.round((financeProfit / financeRevenue) * 100) : 0,
-      transactions: financeLoans.length
+      transactions: scopedFinanceLoans.length
     });
   }
 
@@ -193,6 +202,7 @@ export const calculateReportData = (
     totalProfit: totalIncome - totalExpense,
     totalPaid,
     outstanding,
+    scopedFinanceLoans,
     businessBreakdown,
     weeklyPerformance: chartDays,
     businessPerformance: businessBreakdown.map((item) => ({
