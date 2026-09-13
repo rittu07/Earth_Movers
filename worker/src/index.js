@@ -6,7 +6,7 @@ const MAX_EVENTS = 100;
 const MAX_D1_BATCH_STATEMENTS = 100;
 const MAX_REQUEST_BYTES = 512 * 1024;
 const MAX_EVENT_BYTES = 128 * 1024;
-const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 const MAX_ID_LENGTH = 128;
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
@@ -306,7 +306,9 @@ const getGoogleAccessToken = async (env) => {
     body
   });
   const result = await response.json().catch(() => ({}));
-  if (!response.ok || !result.access_token) throw new Error('Google Drive authentication failed');
+  if (!response.ok || !result.access_token) {
+    throw new Error(`Google Drive authentication failed: ${result.error_description || result.error || `HTTP ${response.status}`}`);
+  }
   return result.access_token;
 };
 
@@ -320,7 +322,7 @@ app.post('/api/attachments', async (c) => {
   const form = await c.req.formData().catch(() => null);
   const file = form?.get('file');
   if (!(file instanceof File) || !attachmentType(file.type)) return c.json({ error: 'Unsupported attachment type' }, 400);
-  if (file.size > MAX_ATTACHMENT_BYTES) return c.json({ error: 'Attachment exceeds the 10 MB limit' }, 413);
+  if (file.size > MAX_ATTACHMENT_BYTES) return c.json({ error: 'Attachment exceeds the 5 MB limit' }, 413);
 
   try {
     const accessToken = await getGoogleAccessToken(c.env);
@@ -350,7 +352,10 @@ app.post('/api/attachments', async (c) => {
       body: multipart
     });
     const result = await response.json().catch(() => ({}));
-    if (!response.ok || !result.id) return c.json({ error: 'Google Drive upload failed' }, 502);
+    if (!response.ok || !result.id) {
+      console.error('Google Drive upload rejected', response.status, result.error?.message || result.error || result);
+      return c.json({ error: `Google Drive upload failed: ${result.error?.message || result.error || `HTTP ${response.status}`}` }, 502);
+    }
     return c.json({
       key: result.id,
       url: `${new URL(c.req.url).origin}/api/attachments/${result.id}`,
@@ -360,7 +365,7 @@ app.post('/api/attachments', async (c) => {
     }, 201);
   } catch (error) {
     console.error('Google Drive upload failed', error);
-    return c.json({ error: 'Google Drive upload failed' }, 502);
+    return c.json({ error: error.message || 'Google Drive upload failed' }, 502);
   }
 });
 
