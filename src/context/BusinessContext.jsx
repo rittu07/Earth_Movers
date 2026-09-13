@@ -169,7 +169,7 @@ export const BusinessProvider = ({ children }) => {
         normalizeName(supplier.name) === normalizeName(supplierName);
     });
     if (existing) {
-      if (normalizedPhone && !normalizePhone(existing.phone)) {
+      if (normalizedPhone && normalizePhone(existing.phone) !== normalizedPhone) {
         const updatedSupplier = { ...existing, phone: normalizedPhone };
         setSuppliers((prev) => prev.map((supplier) => supplier.id === existing.id ? updatedSupplier : supplier));
         persist('suppliers', updatedSupplier, 'update');
