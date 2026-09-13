@@ -4,7 +4,7 @@ import { useBusiness } from '../../context/BusinessContext';
 import { Plus, Trash2, Save, User, Calendar, CreditCard, Layers, MessageSquare } from 'lucide-react';
 import { formatTransactionWhatsApp, openWhatsAppChat } from '../../utils/whatsapp';
 import SearchableCustomerSelect from './SearchableCustomerSelect';
-import { decimalOnly, mobileError } from '../../utils/validation';
+import { decimalOnly, digitsOnly, mobileError } from '../../utils/validation';
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
@@ -636,7 +636,7 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                                   <input
                                     type="tel"
                                     value={row.supplierPhone}
-                                    onChange={(e) => handleTxChange(row.id, 'supplierPhone', e.target.value)}
+                                     onChange={(e) => handleTxChange(row.id, 'supplierPhone', digitsOnly(e.target.value))}
                                     placeholder="Supplier Phone"
                                     className="w-full p-3.5 bg-white border border-slate-300 rounded-2xl text-base font-semibold text-slate-900 focus:outline-hidden shadow-2xs"
                                   />
@@ -778,7 +778,7 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                                   <input
                                     type="tel"
                                     value={row.supplierPhone}
-                                    onChange={(e) => handleTxChange(row.id, 'supplierPhone', e.target.value)}
+                                     onChange={(e) => handleTxChange(row.id, 'supplierPhone', digitsOnly(e.target.value))}
                                     placeholder="Phone"
                                     className="w-full p-3.5 bg-white border border-slate-300 rounded-2xl text-base font-semibold text-slate-900 focus:outline-hidden shadow-2xs"
                                   />
@@ -867,7 +867,7 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                          ) : (
                            <div className="grid grid-cols-2 gap-2">
                              <input type="text" value={row.supplierName} onChange={(e) => handleTxChange(row.id, 'supplierName', e.target.value)} placeholder="Supplier Name *" className="w-full p-3.5 bg-white border-2 border-blue-400 rounded-2xl text-sm font-bold text-slate-900" />
-                             <input type="tel" value={row.supplierPhone} onChange={(e) => handleTxChange(row.id, 'supplierPhone', e.target.value)} placeholder="Supplier Phone" className="w-full p-3.5 bg-white border border-slate-300 rounded-2xl text-sm font-bold text-slate-900" />
+                              <input type="tel" value={row.supplierPhone} onChange={(e) => handleTxChange(row.id, 'supplierPhone', digitsOnly(e.target.value))} placeholder="Supplier Phone" className="w-full p-3.5 bg-white border border-slate-300 rounded-2xl text-sm font-bold text-slate-900" />
                            </div>
                          )}
                          <div className="grid grid-cols-2 gap-2 bg-blue-50/70 p-2 rounded-2xl border border-blue-200">

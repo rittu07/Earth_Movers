@@ -4,7 +4,7 @@ import { useBusiness } from '../../context/BusinessContext';
 import { openWhatsAppChat } from '../../utils/whatsapp';
 import { formatCurrency } from '../../utils/formatCurrency';
 import PaySupplierModal from './PaySupplierModal';
-import { mobileError } from '../../utils/validation';
+import { digitsOnly, mobileError } from '../../utils/validation';
 import {
   Truck,
   PlusCircle,
@@ -400,7 +400,7 @@ const SupplierSection = () => {
                   required
                   placeholder="9845012345"
                   value={phone}
-                   onChange={(e) => { setPhone(e.target.value); setPhoneError(''); }}
+                   onChange={(e) => { setPhone(digitsOnly(e.target.value)); setPhoneError(''); }}
                    className={`w-full p-2.5 bg-slate-50 border rounded-xl font-medium focus:outline-hidden focus:border-amber-500 ${phoneError ? 'border-rose-500' : 'border-slate-200'}`}
                   />
                 {phoneError && <p className="mt-1 text-xs font-bold text-rose-600">{phoneError}</p>}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { decimalOnly, mobileError } from '../../utils/validation';
+import { decimalOnly, digitsOnly, mobileError } from '../../utils/validation';
 import { Wallet, X, DollarSign, Calendar, CreditCard, FileText, Building2 } from 'lucide-react';
 
 const PaySupplierModal = ({ isOpen, onClose, preselectedSupplierId = '' }) => {
@@ -147,7 +147,7 @@ const PaySupplierModal = ({ isOpen, onClose, preselectedSupplierId = '' }) => {
                 <input
                   type="tel"
                   value={newSupplierPhone}
-                   onChange={(e) => { setNewSupplierPhone(e.target.value); setPhoneError(''); }}
+                   onChange={(e) => { setNewSupplierPhone(digitsOnly(e.target.value)); setPhoneError(''); }}
                    placeholder="10-digit Phone"
                    className={`w-full p-2.5 bg-white border rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-500 shadow-2xs ${phoneError ? 'border-rose-500' : 'border-slate-300'}`}
                   />
