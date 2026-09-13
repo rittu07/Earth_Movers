@@ -40,6 +40,7 @@ A full-stack offline-first business ledger application for rural transport opera
 - **Mobile Sync** — Sync triggers on `visibilitychange`, `focus`, `pageshow` events so mobile browsers sync when returning from background
 - **Immediate Sync** — Every save triggers an instant sync attempt
 - **Reconnect Sync** — Syncs automatically when browser comes back online
+- **Full Replay Recovery** — A versioned bootstrap replay can restore local IndexedDB records from the complete remote event history after a stale cursor or reinstall
 - **Conflict-Free** — Append-only event log with idempotent upserts (event_id dedup)
 
 ### Operational Records
@@ -175,6 +176,7 @@ not_found_handling = "single-page-application"  # SPA fallback
 3. **Pull** — `pullRemoteChanges()` fetches events from other clients via `GET /api/sync?since=<cursor>`
 4. **Dedup** — Each event has a unique `event_id`; D1 uses `ON CONFLICT DO NOTHING` on the `sync_events` table
 5. **Upsert** — Entity data uses `ON CONFLICT(id) DO UPDATE SET` to merge changes
+6. **Recovery Replay** — A one-time versioned replay includes historical events from the current client when rebuilding a local database
 
 ### Sync Events Table (D1)
 
@@ -506,3 +508,5 @@ npm run db:migrate:remote
 npm run worker:deploy
 curl -fsS https://earth-movers-api.loga.workers.dev/health
 ```
+
+The latest debug APK is generated at `apk output/Earth_Movers-debug.apk`. Android builds require JDK 21 and an Android SDK. The currently deployed Worker version is `a79e11e3-84da-4c17-ab3a-f38ce3c4ac23`.

@@ -4,6 +4,7 @@ import { API_URL } from '../utils/apiUrl';
 
 // The deployed Worker serves both the SPA and API, so production sync works without a build-time URL.
 const CLIENT_ID_KEY = 'earth-movers-client-id';
+const SYNC_STATE_VERSION = 'full-replay-v2';
 
 const getClientId = () => {
   let clientId = localStorage.getItem(CLIENT_ID_KEY);
@@ -81,9 +82,12 @@ const storeForEntity = {
 const pullRemoteChanges = async () => {
   if (!API_URL || !navigator.onLine) return { changed: false, pending: 0 };
   const clientId = getClientId();
-  const cursor = (await getMeta('sync-cursor'))?.value || '';
+  const syncStateVersion = (await getMeta('sync-state-version'))?.value || '';
+  const isFullReplay = syncStateVersion !== SYNC_STATE_VERSION;
+  const cursor = isFullReplay ? '' : (await getMeta('sync-cursor'))?.value || '';
   const headers = getAuthHeaders();
-  const response = await fetch(`${API_URL}/api/sync?clientId=${encodeURIComponent(clientId)}&since=${encodeURIComponent(cursor)}`, { headers, credentials: 'include' });
+  const replayQuery = isFullReplay ? '&includeOwn=1' : '';
+  const response = await fetch(`${API_URL}/api/sync?clientId=${encodeURIComponent(clientId)}&since=${encodeURIComponent(cursor)}${replayQuery}`, { headers, credentials: 'include' });
   if (!response.ok) throw new Error(`Pull failed: ${response.status}`);
   const result = await response.json();
   for (const event of result.events || []) {
@@ -94,6 +98,7 @@ const pullRemoteChanges = async () => {
     else await putLocal(store, payload);
   }
   await putLocal('meta', { id: 'sync-cursor', value: result.nextSince || new Date().toISOString() });
+  await putLocal('meta', { id: 'sync-state-version', value: SYNC_STATE_VERSION });
   return { changed: (result.events || []).length > 0, pending: (await getAllLocal('syncQueue')).length };
 };
 

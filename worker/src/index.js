@@ -426,11 +426,14 @@ app.post('/api/sync', async (c) => {
 app.get('/api/sync', async (c) => {
   const since = c.req.query('since') || '';
   const clientId = c.req.query('clientId');
+  const includeOwn = c.req.query('includeOwn') === '1';
   const financeFilter = c.get('user').role === 'manager' ? " AND entity_type != 'financeLoan'" : '';
-  const query = clientId
+  const query = clientId && !includeOwn
     ? `SELECT * FROM sync_events WHERE client_id != ? AND received_at > ?${financeFilter} ORDER BY received_at LIMIT 500`
     : `SELECT * FROM sync_events WHERE received_at > ?${financeFilter} ORDER BY received_at LIMIT 500`;
-  const result = clientId ? await c.env.DB.prepare(query).bind(clientId, since).all() : await c.env.DB.prepare(query).bind(since).all();
+  const result = clientId && !includeOwn
+    ? await c.env.DB.prepare(query).bind(clientId, since).all()
+    : await c.env.DB.prepare(query).bind(since).all();
   return c.json({ events: result.results || [], nextSince: now() });
 });
 
