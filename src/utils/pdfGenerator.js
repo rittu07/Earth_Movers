@@ -21,6 +21,7 @@ const nativeFileName = (filename) => String(filename || 'statement.pdf')
 const nativeCellValue = (row, column) => String(
   row[column.key] === undefined || row[column.key] === null ? '' : row[column.key]
 ).replace(/₹/g, 'Rs. ');
+const nativeTextValue = (value) => String(value ?? '').replace(/₹/g, 'Rs. ');
 
 const buildNativePdf = ({
   title,
@@ -142,7 +143,7 @@ const buildNativePdf = ({
     autoTable(doc, {
       startY: cursorY,
       margin: { left: pageWidth - 95, right: margin },
-      body: summary.map((item) => [String(item.label), String(item.value)]),
+       body: summary.map((item) => [nativeTextValue(item.label), nativeTextValue(item.value)]),
       theme: 'grid',
       styles: { font: 'helvetica', fontSize: 10, cellPadding: [1.8, 2.5], minCellHeight: 6.5, valign: 'middle', textColor: [30, 41, 59], overflow: 'ellipsize' },
       columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } }
