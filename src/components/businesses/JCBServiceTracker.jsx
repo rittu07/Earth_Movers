@@ -319,6 +319,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
   const [maintServiceProvider, setMaintServiceProvider] = useState('');
   const [maintInvoiceName, setMaintInvoiceName] = useState('');
   const [maintInvoiceData, setMaintInvoiceData] = useState('');
+  const [maintInvoiceError, setMaintInvoiceError] = useState('');
   const [maintGeneralRemarks, setMaintGeneralRemarks] = useState('');
 
   // Service items list state (supports multiple services simultaneously)
@@ -1251,11 +1252,12 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                              if (e.target.files && e.target.files[0]) {
                                 const file = e.target.files[0];
                                 const validationError = validateAttachmentFile(file);
-                                if (validationError) {
-                                  setMaintInvoiceData('');
-                                  window.alert(validationError);
-                                  return;
-                                }
+                                 if (validationError) {
+                                   setMaintInvoiceData('');
+                                   setMaintInvoiceError(validationError);
+                                   return;
+                                 }
+                                 setMaintInvoiceError('');
                                 setMaintInvoiceName(file.name);
                                const reader = new FileReader();
                                reader.onload = () => setMaintInvoiceData(String(reader.result || ''));
@@ -1264,6 +1266,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                           }}
                         />
                       </label>
+                      {maintInvoiceError && <p className="mt-2 text-xs font-bold text-rose-700">{maintInvoiceError}</p>}
                     </div>
 
                     {/* General Remarks */}

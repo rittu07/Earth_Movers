@@ -74,6 +74,7 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
   const [expRows, setExpRows] = useState([createEmptyExpRow(defaultBusinessId || 'jcb')]);
   const [customerSearch, setCustomerSearch] = useState({});
   const [txErrors, setTxErrors] = useState({});
+  const [expErrors, setExpErrors] = useState({});
 
   // Row edit handlers
   const handleTxChange = (id, field, value) => {
@@ -182,6 +183,7 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
   };
 
   const handleExpChange = (id, field, value) => {
+    setExpErrors((prev) => ({ ...prev, [id]: '' }));
     setExpRows((prev) =>
       prev.map((row) => (row.id === id ? { ...row, [field]: value } : row))
     );
@@ -204,7 +206,10 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
     );
 
     if (validRows.length === 0) {
-      alert('Please select a customer and enter Qty / Rate for at least one row.');
+      const invalidRow = txRows.find((row) => row.customerId === '' && row.customerName.trim() === '') || txRows[0];
+      const message = 'Please select a customer and enter Qty / Rate for at least one row.';
+      setTxErrors((prev) => ({ ...prev, [invalidRow.id]: message }));
+      showToast(message);
       return;
     }
 
@@ -378,7 +383,10 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
     );
 
     if (validRows.length === 0) {
-      alert('Please enter Description & Amount for at least one expense row.');
+      const invalidRow = expRows[0];
+      const message = 'Please enter Description & Amount for at least one expense row.';
+      setExpErrors((prev) => ({ ...prev, [invalidRow.id]: message }));
+      showToast(message);
       return;
     }
 
@@ -1127,6 +1135,11 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                   <Trash2 className="w-5 h-5" />
                 </button>
               </div>
+              {expErrors[row.id] && (
+                <p className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
+                  {expErrors[row.id]}
+                </p>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 pt-1">
                 <div className="sm:col-span-7">
@@ -1151,7 +1164,7 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                     value={row.amount}
                     onChange={(e) => handleExpChange(row.id, 'amount', e.target.value)}
                     placeholder="Amount Spent (₹) *"
-                    className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl text-base sm:text-xl font-black text-rose-700 focus:bg-white focus:border-rose-500 focus:outline-hidden shadow-2xs"
+                    className={`w-full p-3.5 bg-slate-50 border rounded-2xl text-base sm:text-xl font-black text-rose-700 focus:bg-white focus:border-rose-500 focus:outline-hidden shadow-2xs ${expErrors[row.id] ? 'border-rose-500 bg-rose-50' : 'border-slate-300'}`}
                   />
                 </div>
               </div>

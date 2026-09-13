@@ -59,9 +59,25 @@ const AppContent = () => {
       if (isPhone && event.key.length === 1 && !/\d/.test(event.key)) event.preventDefault();
     };
 
+    const handleBeforeInput = (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement) || target.type !== 'number') return;
+      if (event.data && /[^0-9.]/.test(event.data)) event.preventDefault();
+    };
+
+    const handlePaste = (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement) || target.type !== 'number') return;
+      if (/[^0-9.]/.test(event.clipboardData?.getData('text') || '')) event.preventDefault();
+    };
+
     document.addEventListener('keydown', handleKeyDown, true);
+    document.addEventListener('beforeinput', handleBeforeInput, true);
+    document.addEventListener('paste', handlePaste, true);
     return () => {
       document.removeEventListener('keydown', handleKeyDown, true);
+      document.removeEventListener('beforeinput', handleBeforeInput, true);
+      document.removeEventListener('paste', handlePaste, true);
     };
   }, []);
 

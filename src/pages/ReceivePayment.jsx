@@ -29,6 +29,7 @@ const ReceivePayment = () => {
   const [reference, setReference] = useState(`REF-${Math.floor(100000 + Math.random() * 900000)}`);
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
+  const [formError, setFormError] = useState('');
 
   // WhatsApp notification state
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
@@ -55,6 +56,7 @@ const ReceivePayment = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setFormError('');
 
     let targetCustId = customerId;
     let targetCustName = '';
@@ -62,7 +64,7 @@ const ReceivePayment = () => {
 
     if (isNewCustomer) {
       if (!newCustName.trim() || !newCustPhone.trim()) {
-        alert('Please provide both Customer Name and Phone Number');
+        setFormError('Please provide both Customer Name and Phone Number.');
         return;
       }
       const createdCust = addCustomer({
@@ -75,7 +77,7 @@ const ReceivePayment = () => {
       targetCustPhone = createdCust.phone;
     } else {
       if (!selectedCustObj) {
-        alert('Please select a valid customer');
+        setFormError('Please select a valid customer.');
         return;
       }
       targetCustName = selectedCustObj.name;
@@ -260,6 +262,11 @@ const ReceivePayment = () => {
                 </select>
               </div>
             </div>
+            {formError && (
+              <p className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
+                {formError}
+              </p>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>

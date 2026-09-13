@@ -266,6 +266,7 @@ const JCBDocumentTracker = () => {
   const [docExpiryDate, setDocExpiryDate] = useState('');
   const [docFileName, setDocFileName] = useState('');
   const [docFileData, setDocFileData] = useState('');
+  const [docFileError, setDocFileError] = useState('');
 
   // Edit Vehicle Info Form State
   const [editRegNo, setEditRegNo] = useState('');
@@ -643,11 +644,12 @@ const JCBDocumentTracker = () => {
                              if (e.target.files && e.target.files[0]) {
                                 const file = e.target.files[0];
                                 const validationError = validateAttachmentFile(file);
-                                if (validationError) {
-                                  setDocFileData('');
-                                  window.alert(validationError);
-                                  return;
-                                }
+                                 if (validationError) {
+                                   setDocFileData('');
+                                   setDocFileError(validationError);
+                                   return;
+                                 }
+                                 setDocFileError('');
                                 setDocFileName(file.name);
                                const reader = new FileReader();
                                reader.onload = () => setDocFileData(String(reader.result || ''));
@@ -656,6 +658,7 @@ const JCBDocumentTracker = () => {
                            }}
                   />
                 </label>
+                {docFileError && <p className="mt-2 text-xs font-bold text-rose-700">{docFileError}</p>}
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-5 border-t border-slate-200 font-mono">

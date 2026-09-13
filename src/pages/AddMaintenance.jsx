@@ -80,6 +80,7 @@ const AddMaintenance = () => {
   const [maintServiceProvider, setMaintServiceProvider] = useState('');
   const [maintInvoiceName, setMaintInvoiceName] = useState('');
   const [maintInvoiceData, setMaintInvoiceData] = useState('');
+  const [invoiceError, setInvoiceError] = useState('');
   const [maintGeneralRemarks, setMaintGeneralRemarks] = useState('');
 
   // Service Items List
@@ -396,12 +397,13 @@ const AddMaintenance = () => {
                   onChange={(e) => {
                        if (e.target.files && e.target.files[0]) {
                           const file = e.target.files[0];
-                          const validationError = validateAttachmentFile(file);
-                          if (validationError) {
-                            setMaintInvoiceData('');
-                            window.alert(validationError);
-                            return;
-                          }
+                                 const validationError = validateAttachmentFile(file);
+                                 if (validationError) {
+                                   setMaintInvoiceData('');
+                                   setInvoiceError(validationError);
+                                   return;
+                                 }
+                                 setInvoiceError('');
                           setMaintInvoiceName(file.name);
                          const reader = new FileReader();
                          reader.onload = () => setMaintInvoiceData(String(reader.result || ''));
@@ -409,8 +411,9 @@ const AddMaintenance = () => {
                     }
                   }}
                 />
-              </label>
-            </div>
+                        </label>
+                        {invoiceError && <p className="mt-2 text-xs font-bold text-rose-700">{invoiceError}</p>}
+                      </div>
 
             {/* General Remarks */}
             <div>
