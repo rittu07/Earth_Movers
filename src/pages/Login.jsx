@@ -132,14 +132,14 @@ const Login = () => {
              <ShieldCheck className="w-4 h-4 text-emerald-600" /> Passwords are securely hashed on the server
            </div>
            <p className="text-center text-xs text-slate-400 font-semibold pt-2">
-             Powered by{' '}
+              Powered by{' '}
              <a
                href="https://www.grwsureinfotech.in/"
                target="_blank"
                rel="noreferrer"
                className="text-indigo-600 hover:text-indigo-700 hover:underline"
              >
-               GRW Sure Infotech
+                GRWSure Infotech
              </a>
            </p>
          </form>

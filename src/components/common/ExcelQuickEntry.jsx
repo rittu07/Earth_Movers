@@ -223,10 +223,10 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
     const invalidRow = validRows.find((row) => {
       const supplierCost = Number(row.supplierCost) || 0;
       const supplierPaid = Number(row.supplierPaid) || 0;
-      return supplierCost > 0 && supplierPaid < supplierCost;
+      return supplierCost > 0 && supplierPaid >= supplierCost;
     });
     if (invalidRow) {
-      const message = 'Paid to Supplier must be equal to or greater than Supplier Cost.';
+      const message = 'Paid to Supplier must be lesser than Supplier Cost.';
       setTxErrors((prev) => ({ ...prev, [invalidRow.id]: message }));
       showToast(message);
       return;
