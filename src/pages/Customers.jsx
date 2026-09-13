@@ -119,7 +119,7 @@ const Customers = () => {
           />
         </div>
 
-        {/* Filter Pills & PDF Download Button */}
+        {/* Filter Pills */}
         <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
             <button
@@ -154,20 +154,6 @@ const Customers = () => {
             </button>
           </div>
 
-          <button
-            onClick={handleDownloadOutstandingPdf}
-            className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-extrabold rounded-xl text-xs flex items-center gap-1.5 border border-rose-200 shadow-2xs transition-all cursor-pointer whitespace-nowrap shrink-0"
-            title="Download PDF statement of customers with outstanding dues"
-          >
-            <Download className="w-3.5 h-3.5" /> PDF Dues Statement
-          </button>
-          <button
-            onClick={() => handleDownloadOutstandingPdf('share')}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer whitespace-nowrap shrink-0"
-            title="Share PDF statement of customers with outstanding dues"
-          >
-            <Share2 className="w-3.5 h-3.5" /> Share PDF
-          </button>
         </div>
       </div>
 
