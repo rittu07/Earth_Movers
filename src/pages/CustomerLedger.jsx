@@ -171,12 +171,19 @@ const CustomerLedger = () => {
         { header: 'Amount Paid', key: 'formattedPaid', align: 'right', color: '#15803d' },
         { header: 'Due Balance', key: 'formattedDue', align: 'right', color: '#b91c1c', bold: true }
       ],
-      data: filteredItems.map((item) => ({
-        ...item,
-        formattedAmount: item.amount > 0 ? formatCurrency(item.amount) : '-',
-        formattedPaid: item.paid > 0 ? `+${formatCurrency(item.paid)}` : '₹0',
-        formattedDue: item.due > 0 ? formatCurrency(item.due) : '₹0'
-      })),
+      data: filteredItems.map((item) => {
+        const supplier = getOutsourcedSupplierName(item) || item.outsourcedSupplier || item.supplierName;
+        const description = (item.isOutsourced && supplier)
+          ? `${item.description || ''}\n(Outsourced from: ${supplier})`
+          : (item.description || '');
+        return {
+          ...item,
+          description,
+          formattedAmount: item.amount > 0 ? formatCurrency(item.amount) : '-',
+          formattedPaid: item.paid > 0 ? `+${formatCurrency(item.paid)}` : '₹0',
+          formattedDue: item.due > 0 ? formatCurrency(item.due) : '₹0'
+        };
+      }),
       summary: [
         { label: 'Total Business / Sales', value: formatCurrency(filteredBusiness) },
         { label: 'Total Amount Received', value: formatCurrency(filteredPaid), color: '#15803d' },

@@ -313,7 +313,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
   // Add Maintenance Form State (Multi-Service Support)
   const selectedMachineBase = fleet.find((m) => m.id === selectedJcbId) || fleet[0];
   const selectedMachine = selectedMachineBase
-    ? { ...selectedMachineBase, totalHours: getRentalHours(transactions, selectedMachineBase) }
+    ? { ...selectedMachineBase, totalHours: Math.max(Number(selectedMachineBase.totalHours) || 0, getRentalHours(transactions, selectedMachineBase)) }
     : null;
   const [maintJcbId, setMaintJcbId] = useState('jcb-1');
   const [maintServiceDate, setMaintServiceDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -728,7 +728,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
             </thead>
             <tbody className="divide-y divide-slate-200 font-mono text-xs sm:text-base">
               {fleet.map((m) => {
-                const meterMachine = { ...m, totalHours: getRentalHours(transactions, m) };
+                const meterMachine = { ...m, totalHours: Math.max(Number(m.totalHours) || 0, getRentalHours(transactions, m)) };
                 const engStatus = evaluateServiceStatus(meterMachine, 'Engine Oil');
                  const hydStatus = evaluateServiceStatus(meterMachine, 'Hydraulic Oil');
                  const fltStatus = evaluateServiceStatus(meterMachine, 'Air Filter');

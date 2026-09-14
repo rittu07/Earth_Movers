@@ -1247,8 +1247,13 @@ export const BusinessProvider = ({ children }) => {
   const overviewMetrics = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
     const todayTransactions = transactions.filter((item) => item.date === todayStr);
+    const todayPayments = payments.filter((item) => item.date === todayStr);
     const todayExpenses = expenses.filter((item) => item.date === todayStr);
-    const todayIncome = todayTransactions.reduce((sum, item) => sum + Number(item.paid || 0), 0);
+
+    const transactionPaidIncome = todayTransactions.reduce((sum, item) => sum + Number(item.paid || 0), 0);
+    const directPaidIncome = todayPayments.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+    const todayIncome = transactionPaidIncome + directPaidIncome;
     const todayExpense = todayExpenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
     const summary = calculateSummaryMetrics(transactions, payments, expenses);
 
@@ -1259,7 +1264,7 @@ export const BusinessProvider = ({ children }) => {
       todayProfit: todayIncome - todayExpense,
       customerCount: customers.length
     };
-  }, [transactions, expenses, customers]);
+  }, [transactions, payments, expenses, customers]);
 
   return (
     <BusinessContext.Provider

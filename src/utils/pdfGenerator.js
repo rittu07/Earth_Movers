@@ -192,7 +192,8 @@ const renderTable = ({ columns = [], data = [] }) => {
       const cells = columns
         .map((col) => {
           const val = row[col.key] !== undefined && row[col.key] !== null ? row[col.key] : '';
-          return `<td style="padding: 9px 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; line-height: 1.35; text-align: ${safeAlign(col.align)}; white-space: ${col.align === 'right' ? 'nowrap' : 'normal'}; font-weight: ${col.bold ? '700' : '500'}; color: ${safeColor(col.color, '#1e293b')};">${escapeHtml(val)}</td>`;
+          const formattedVal = escapeHtml(val).replace(/\n/g, '<br/>');
+          return `<td style="padding: 9px 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; line-height: 1.35; text-align: ${safeAlign(col.align)}; white-space: ${col.align === 'right' ? 'nowrap' : 'normal'}; font-weight: ${col.bold ? '700' : '500'}; color: ${safeColor(col.color, '#1e293b')};">${formattedVal}</td>`;
         })
         .join('');
       return `<tr style="background-color: ${bg};">${cells}</tr>`;
@@ -439,15 +440,23 @@ export const exportBusinessStatementPdf = ({ title, businessName, transactions =
       { header: 'Amount Paid', key: 'formattedPaid', align: 'right', color: '#15803d', bold: true },
       { header: 'Remaining Due', key: 'formattedDue', align: 'right', color: '#b91c1c', bold: true }
     ],
-    data: transactions.map((t) => ({
-      displayDate: t.displayDate || t.date || 'N/A',
-      customerName: t.customerName || 'N/A',
-      phone: t.phone || 'N/A',
-      itemService: t.itemService || t.description || 'Delivery',
-      formattedAmount: formatCurrency(t.amount || 0),
-      formattedPaid: `+${formatCurrency(t.paid || 0)}`,
-      formattedDue: formatCurrency(t.due || 0)
-    })),
+    data: transactions.map((t) => {
+      const baseItem = t.itemService || t.description || 'Delivery';
+      const supplier = t.outsourcedSupplier || t.supplierName;
+      const itemService = (t.isOutsourced && supplier)
+        ? `${baseItem}\n(Outsourced from: ${supplier})`
+        : baseItem;
+
+      return {
+        displayDate: t.displayDate || t.date || 'N/A',
+        customerName: t.customerName || 'N/A',
+        phone: t.phone || 'N/A',
+        itemService,
+        formattedAmount: formatCurrency(t.amount || 0),
+        formattedPaid: `+${formatCurrency(t.paid || 0)}`,
+        formattedDue: formatCurrency(t.due || 0)
+      };
+    }),
     summary: [
       { label: 'Total Business Sales', value: formatCurrency(totalSales) },
       { label: 'Total Amount Received / Paid', value: formatCurrency(totalPaid), color: '#15803d' },

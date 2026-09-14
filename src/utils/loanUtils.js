@@ -49,13 +49,13 @@ export const getTotalReturnedAmount = (loan) => {
 
 /**
  * Recalculates dynamic loan values using monthly compound interest.
- * Each month's interest is calculated on the previous month's balance.
- * Total Payable = Principal + Simple Interest
- * Remaining Due = max(0, Total Payable - Total Returned Payments)
+ * Each month's interest is calculated on the previous month's remaining balance
+ * after subtracting any return payments credited during or prior to that month.
  *
  * Example: Principal ₹1,00,000 @ 2%/mo for 3 months
- * - Total Payable = ₹1,00,000 × 1.02³
- * - Payment of ₹2,000 reduces Remaining Due to ₹1,04,000
+ * - Month 1: Interest = ₹2,000. Balance before payment = ₹1,02,000.
+ *   Payment of ₹50,000 reduces ending balance to ₹52,000.
+ * - Month 2: Interest is calculated on ₹52,000 (₹1,040 instead of ₹2,040).
  */
 export const getLoanCalculatedDetails = (loan) => {
   if (!loan) return null;
@@ -78,26 +78,77 @@ export const getLoanCalculatedDetails = (loan) => {
   const normalizedLoan = { ...loan, paymentHistory };
   const returnedAmount = getTotalReturnedAmount(normalizedLoan);
 
-  // Compound the balance month by month so every later month's interest
-  // includes the interest accrued in prior months.
+  // Helper to determine payment cycle date ranges
+  const getCycleEndDate = (startStr, monthNum) => {
+    const start = new Date(startStr);
+    if (isNaN(start.getTime())) return null;
+    const cycleEnd = new Date(start);
+    cycleEnd.setMonth(cycleEnd.getMonth() + monthNum);
+    return cycleEnd;
+  };
+
+  // Track payments allocated to months so each payment is accounted for once
+  const allocatedPaymentIds = new Set();
   const monthBreakdown = [];
   let runningBalance = principal;
+
   for (let m = 1; m <= months; m++) {
     const startBalance = runningBalance;
-    const interestAccrued = Math.round((startBalance * rate) / 100);
-    runningBalance = startBalance + interestAccrued;
+    const interestAccrued = startBalance > 0 ? Math.round((startBalance * rate) / 100) : 0;
+    const balanceBeforePayment = startBalance + interestAccrued;
+    const cycleEnd = getCycleEndDate(startDateStr, m);
+
+    // Sum payments attributable to Month m
+    let monthPaid = 0;
+    paymentHistory.forEach((p) => {
+      if (!p || allocatedPaymentIds.has(p.id)) return;
+      const monthLabel = String(p.month || '').toLowerCase();
+      const pmtAmt = (Number(p.amount) || 0) + (Number(p.discount) || 0);
+
+      // Check if explicitly tagged for Month m
+      const isExplicitMonthMatch = new RegExp(`\\bmonth\\s*0*${m}\\b`, 'i').test(monthLabel);
+
+      // Check if payment date falls on or before this month's cycle end date
+      let isDateMatch = false;
+      if (p.date && cycleEnd) {
+        const pDate = new Date(p.date);
+        if (!isNaN(pDate.getTime()) && pDate <= cycleEnd) {
+          isDateMatch = true;
+        }
+      }
+
+      if (isExplicitMonthMatch || isDateMatch) {
+        monthPaid += pmtAmt;
+        allocatedPaymentIds.add(p.id);
+      }
+    });
+
+    // On the final month, include any remaining unallocated payments in payment history
+    if (m === months) {
+      paymentHistory.forEach((p) => {
+        if (p && !allocatedPaymentIds.has(p.id)) {
+          const pmtAmt = (Number(p.amount) || 0) + (Number(p.discount) || 0);
+          monthPaid += pmtAmt;
+          allocatedPaymentIds.add(p.id);
+        }
+      });
+    }
+
+    runningBalance = Math.max(0, balanceBeforePayment - monthPaid);
+
     monthBreakdown.push({
       monthNum: m,
       startBalance,
       interestAccrued,
-      paid: 0,
+      paid: monthPaid,
       endBalance: runningBalance
     });
   }
+
   const monthlyInterest = monthBreakdown[0]?.interestAccrued || 0;
-  const totalAmount = runningBalance;
-  const totalInterest = totalAmount - principal;
-  const dueAmount = Math.max(0, totalAmount - returnedAmount);
+  const totalInterest = monthBreakdown.reduce((sum, mb) => sum + mb.interestAccrued, 0);
+  const totalAmount = principal + totalInterest;
+  const dueAmount = Math.max(0, runningBalance);
 
   const isExtended = autoElapsed > 1;
   const isAutoUpdated = !isManual && autoElapsed > storedMonths;

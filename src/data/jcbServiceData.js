@@ -37,164 +37,89 @@ export const initialFleetData = [
     id: 'jcb-1',
     code: 'JCB 1',
     regNo: '',
-    totalHours: 4528,
-    engineOilLastMeter: 4528,
-    hydraulicOilLastMeter: 1700,
-    filterLastMeter: 4000,
-    greasingLastMeter: 4300,
-    serviceHistory: [
-      { date: '05/09/26', type: 'Engine Oil', oilGrade: '15W-40', meter: 4528, cost: 8500, notes: 'Castrol 15W40 Engine Oil Service' },
-      { date: '05/08/26', type: 'Engine Oil', oilGrade: '15W-40', meter: 4000, cost: 8500, notes: 'Routine oil & filter change' },
-      { date: '20/07/26', type: 'Hydraulic Oil', oilGrade: 'Tellus 68', meter: 3800, cost: 12000, notes: 'Shell Tellus 68 oil change' },
-      { date: '15/06/26', type: 'Air Filter', oilGrade: 'OEM Filter', meter: 3500, cost: 3200, notes: 'Primary & secondary filter' }
-    ]
-  },
-  {
-    id: 'jcb-2',
-    code: 'JCB 2',
-    regNo: '',
-    totalHours: 4400,
-    engineOilLastMeter: 4250,
-    hydraulicOilLastMeter: 1500,
-    filterLastMeter: 4100,
-    greasingLastMeter: 4200,
-    serviceHistory: [
-      { date: '10/08/26', type: 'Engine Oil', oilGrade: '15W-40', meter: 4250, cost: 8500, notes: 'Engine service' },
-      { date: '01/06/26', type: 'Greasing', oilGrade: 'AP-3 Grease', meter: 4200, cost: 1500, notes: 'Full chassis greasing' }
-    ]
-  },
-  {
-    id: 'jcb-3',
-    code: 'JCB 3',
-    regNo: '',
-    totalHours: 4200,
-    engineOilLastMeter: 4000,
-    hydraulicOilLastMeter: 1400,
-    filterLastMeter: 3600,
-    greasingLastMeter: 4050,
-    serviceHistory: [
-      { date: '25/07/26', type: 'Engine Oil', oilGrade: '15W-40', meter: 4000, cost: 8500, notes: 'Regular oil service' }
-    ]
-  },
-  {
-    id: 'jcb-4',
-    code: 'JCB 4',
-    regNo: '',
-    totalHours: 3900,
-    engineOilLastMeter: 3640,
-    hydraulicOilLastMeter: 1200,
-    filterLastMeter: 3500,
-    greasingLastMeter: 3750,
-    serviceHistory: [
-      { date: '12/06/26', type: 'Greasing', oilGrade: 'AP-3 Grease', meter: 3750, cost: 1500, notes: 'Joint pins greased' }
-    ]
-  },
-  {
-    id: 'jcb-5',
-    code: 'JCB 5',
-    regNo: '',
-    totalHours: 3200,
-    engineOilLastMeter: 3050,
-    hydraulicOilLastMeter: 1000,
-    filterLastMeter: 2900,
-    greasingLastMeter: 3000,
-    serviceHistory: []
-  },
-  {
-    id: 'jcb-6',
-    code: 'JCB 6',
-    regNo: '',
-    totalHours: 2800,
-    engineOilLastMeter: 2650,
-    hydraulicOilLastMeter: 800,
-    filterLastMeter: 2500,
-    greasingLastMeter: 2600,
-    serviceHistory: []
-  }
-];
-
-export const initialMaintenanceRecords = [
-  {
-    id: 'maint-0',
-    jcbId: 'jcb-1',
-    jcbCode: 'JCB 1',
-    serviceType: 'Engine Oil',
-    oilGrade: '15W-40',
-    date: '2026-09-05',
-    displayDate: '05/09/26',
-    hourMeter: 4528,
-    quantity: '20',
-    unit: 'L',
-    cost: 8500,
-    serviceProvider: 'JCB Authorized Service',
-    invoiceName: 'engine_oil_05sep.pdf',
-    nextDue: 4828,
-    status: 'OK'
-  },
-  {
-    id: 'maint-1',
-    jcbId: 'jcb-1',
-    jcbCode: 'JCB 1',
-    serviceType: 'Engine Oil',
-    oilGrade: '15W-40',
-    date: '2026-09-01',
-    displayDate: '01 Sep',
-    hourMeter: 4000,
-    quantity: '20',
-    unit: 'L',
-    cost: 8500,
-    serviceProvider: 'JCB Dealer',
-    invoiceName: 'engine_oil_invoice.pdf',
-    nextDue: 4500,
-    status: 'OK'
-  },
-  {
-    id: 'maint-2',
-    jcbId: 'jcb-1',
-    jcbCode: 'JCB 1',
-    serviceType: 'Hydraulic Oil',
-    oilGrade: 'Tellus 68',
-    date: '2026-07-20',
-    displayDate: '20/07/26',
-    hourMeter: 3800,
-    quantity: '40',
-    unit: 'L',
-    cost: 12000,
-    serviceProvider: 'HydroTech',
-    invoiceName: 'hydraulic_oil_invoice.pdf',
-    nextDue: 4700,
-    status: 'OK'
-  },
-  {
-    id: 'maint-3',
-    jcbId: 'jcb-1',
-    jcbCode: 'JCB 1',
-    serviceType: 'Air Filter',
-    oilGrade: 'OEM Filter',
-    date: '2026-06-15',
-    displayDate: '15/06/26',
-    hourMeter: 3500,
-    quantity: '2',
-    unit: 'Pcs',
-    cost: 3200,
-    serviceProvider: 'Local Workshop',
-    invoiceName: 'air_filter_invoice.pdf',
-    nextDue: 4500,
-    status: 'Overdue'
-  }
-];
-
-export const getStoredFleet = () => {
-  return initialFleetData.map((machine) => ({
-    ...machine,
     totalHours: 0,
     engineOilLastMeter: 0,
     hydraulicOilLastMeter: 0,
     filterLastMeter: 0,
     greasingLastMeter: 0,
     lubricationOilLastMeter: 0,
-    serviceIntervals: { ...DEFAULT_SERVICE_INTERVALS, ...(machine.serviceIntervals || {}) },
     serviceHistory: []
+  },
+  {
+    id: 'jcb-2',
+    code: 'JCB 2',
+    regNo: '',
+    totalHours: 0,
+    engineOilLastMeter: 0,
+    hydraulicOilLastMeter: 0,
+    filterLastMeter: 0,
+    greasingLastMeter: 0,
+    lubricationOilLastMeter: 0,
+    serviceHistory: []
+  },
+  {
+    id: 'jcb-3',
+    code: 'JCB 3',
+    regNo: '',
+    totalHours: 0,
+    engineOilLastMeter: 0,
+    hydraulicOilLastMeter: 0,
+    filterLastMeter: 0,
+    greasingLastMeter: 0,
+    lubricationOilLastMeter: 0,
+    serviceHistory: []
+  },
+  {
+    id: 'jcb-4',
+    code: 'JCB 4',
+    regNo: '',
+    totalHours: 0,
+    engineOilLastMeter: 0,
+    hydraulicOilLastMeter: 0,
+    filterLastMeter: 0,
+    greasingLastMeter: 0,
+    lubricationOilLastMeter: 0,
+    serviceHistory: []
+  },
+  {
+    id: 'jcb-5',
+    code: 'JCB 5',
+    regNo: '',
+    totalHours: 0,
+    engineOilLastMeter: 0,
+    hydraulicOilLastMeter: 0,
+    filterLastMeter: 0,
+    greasingLastMeter: 0,
+    lubricationOilLastMeter: 0,
+    serviceHistory: []
+  },
+  {
+    id: 'jcb-6',
+    code: 'JCB 6',
+    regNo: '',
+    totalHours: 0,
+    engineOilLastMeter: 0,
+    hydraulicOilLastMeter: 0,
+    filterLastMeter: 0,
+    greasingLastMeter: 0,
+    lubricationOilLastMeter: 0,
+    serviceHistory: []
+  }
+];
+
+export const initialMaintenanceRecords = [];
+
+export const getStoredFleet = () => {
+  return initialFleetData.map((machine) => ({
+    ...machine,
+    totalHours: machine.totalHours || 0,
+    engineOilLastMeter: machine.engineOilLastMeter || 0,
+    hydraulicOilLastMeter: machine.hydraulicOilLastMeter || 0,
+    filterLastMeter: machine.filterLastMeter || 0,
+    greasingLastMeter: machine.greasingLastMeter || 0,
+    lubricationOilLastMeter: machine.lubricationOilLastMeter || 0,
+    serviceIntervals: { ...DEFAULT_SERVICE_INTERVALS, ...(machine.serviceIntervals || {}) },
+    serviceHistory: machine.serviceHistory || []
   }));
 };
 
@@ -209,3 +134,4 @@ export const getStoredMaintenanceRecords = () => {
 export const saveStoredMaintenanceRecords = (records) => {
   return saveSyncedCollection('maintenanceRecords', 'maintenanceRecord', records);
 };
+

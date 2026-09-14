@@ -229,12 +229,19 @@ export const calculateBusinessMetrics = (transactions = [], payments = [], expen
   const todayTransactions = businessTransactions.filter((item) => item.date === today);
   const monthTransactions = businessTransactions.filter((item) => item.date?.startsWith(month));
   const todayIncome = todayTransactions.reduce((sum, item) => sum + Number(item.paid || 0), 0);
-  const todayOutstanding = todayTransactions.reduce((sum, item) => sum + Number(item.due || 0), 0);
+  const todayOutstanding = todayTransactions.reduce((sum, item) => {
+    const dueVal = item.due !== undefined && item.due !== null && !isNaN(Number(item.due))
+      ? Number(item.due)
+      : Math.max(0, (Number(item.amount) || 0) - (Number(item.paid) || 0));
+    return sum + dueVal;
+  }, 0);
   const monthlyRevenue = monthTransactions.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const totalOutstanding = Math.max(0, businessTransactions.reduce((sum, item) => sum + Number(item.amount || 0), 0) -
-    businessTransactions.reduce((sum, item) => sum + Number(item.paid || 0), 0) -
-    payments.filter((item) => businessTransactions.some((transaction) => transaction.customerId === item.customerId))
-      .reduce((sum, item) => sum + Number(item.amount || 0), 0));
+  const totalOutstanding = businessTransactions.reduce((sum, item) => {
+    const dueVal = item.due !== undefined && item.due !== null && !isNaN(Number(item.due))
+      ? Number(item.due)
+      : Math.max(0, (Number(item.amount) || 0) - (Number(item.paid) || 0));
+    return sum + dueVal;
+  }, 0);
 
   return {
     todayIncome,

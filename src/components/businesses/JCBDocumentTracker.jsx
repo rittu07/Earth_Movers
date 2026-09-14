@@ -25,181 +25,12 @@ import { isSafeDocumentUrl } from '../../utils/documentSecurity';
 import { uploadAttachment } from '../../utils/attachmentStorage';
 
 const initialJcbVehiclesData = [
-  {
-    id: 'jcb-1',
-    code: 'JCB 1',
-    regNo: '',
-    model: 'JCB 3DX',
-    serialNo: 'JCB3DX-2024-98421',
-    totalHours: 4528,
-    documents: [
-      {
-        id: 'doc-1-1',
-        type: 'Insurance',
-        docNo: 'INS-987654321',
-        expiryDate: '2026-10-15',
-        fileName: 'insurance_policy_jcb1.pdf'
-      },
-      {
-        id: 'doc-1-2',
-        type: 'Warranty',
-        docNo: 'WAR-3DX-551',
-        expiryDate: '2026-11-30',
-        fileName: 'jcb_warranty_certificate.pdf'
-      },
-      {
-        id: 'doc-1-3',
-        type: 'Fitness/Permit',
-        docNo: 'FIT-2026-99',
-        expiryDate: '2026-09-20',
-        fileName: 'fitness_permit_jcb1.pdf'
-      },
-      {
-        id: 'doc-1-4',
-        type: 'Registration Certificate',
-        docNo: 'RC-JCB1',
-        expiryDate: 'Lifetime',
-        fileName: 'rc_jcb1.pdf'
-      },
-      {
-        id: 'doc-1-5',
-        type: 'Pollution Certificate',
-        docNo: 'PUC-8821',
-        expiryDate: '2026-12-10',
-        fileName: 'puc_certificate_jcb1.pdf'
-      }
-    ]
-  },
-  {
-    id: 'jcb-2',
-    code: 'JCB 2',
-    regNo: '',
-    model: 'JCB 3DX Super',
-    serialNo: 'JCB3DX-2024-98422',
-    totalHours: 4400,
-    documents: [
-      {
-        id: 'doc-2-1',
-        type: 'Registration Certificate',
-        docNo: 'RC-JCB2',
-        expiryDate: 'Lifetime',
-        fileName: 'rc_jcb2.pdf'
-      },
-      {
-        id: 'doc-2-2',
-        type: 'Insurance',
-        docNo: 'INS-987654322',
-        expiryDate: '2026-09-18',
-        fileName: 'insurance_policy_jcb2.pdf'
-      },
-      {
-        id: 'doc-2-3',
-        type: 'Warranty',
-        docNo: 'WAR-3DX-552',
-        expiryDate: '2027-01-15',
-        fileName: 'warranty_jcb2.pdf'
-      },
-      {
-        id: 'doc-2-4',
-        type: 'Fitness/Permit',
-        docNo: 'FIT-2026-100',
-        expiryDate: '2026-10-30',
-        fileName: 'fitness_jcb2.pdf'
-      },
-      {
-        id: 'doc-2-5',
-        type: 'Pollution Certificate',
-        docNo: 'PUC-8822',
-        expiryDate: '2026-11-05',
-        fileName: 'puc_jcb2.pdf'
-      }
-    ]
-  },
-  {
-    id: 'jcb-3',
-    code: 'JCB 3',
-    regNo: '',
-    model: 'JCB 3DX Eco',
-    serialNo: 'JCB3DX-2023-77109',
-    totalHours: 4200,
-    documents: [
-      {
-        id: 'doc-3-1',
-        type: 'Registration Certificate',
-        docNo: 'RC-JCB3',
-        expiryDate: 'Lifetime',
-        fileName: 'rc_jcb3.pdf'
-      },
-      {
-        id: 'doc-3-2',
-        type: 'Insurance',
-        docNo: 'INS-987654323',
-        expiryDate: '2026-08-30',
-        fileName: 'insurance_jcb3.pdf'
-      },
-      {
-        id: 'doc-3-3',
-        type: 'Warranty',
-        docNo: 'WAR-3DX-553',
-        expiryDate: '2026-12-20',
-        fileName: 'warranty_jcb3.pdf'
-      },
-      {
-        id: 'doc-3-4',
-        type: 'Fitness/Permit',
-        docNo: 'FIT-2026-101',
-        expiryDate: '2026-09-12',
-        fileName: 'fitness_jcb3.pdf'
-      },
-      {
-        id: 'doc-3-5',
-        type: 'Pollution Certificate',
-        docNo: 'PUC-8823',
-        expiryDate: '2026-10-10',
-        fileName: 'puc_jcb3.pdf'
-      }
-    ]
-  },
-  {
-    id: 'jcb-4',
-    code: 'JCB 4',
-    regNo: '',
-    model: 'JCB 3DX Plus',
-    serialNo: 'JCB3DX-2024-11029',
-    totalHours: 3900,
-    documents: [
-      { id: 'doc-4-1', type: 'Insurance', docNo: 'INS-449102', expiryDate: '2026-11-12', fileName: 'ins_jcb4.pdf' },
-      { id: 'doc-4-2', type: 'Warranty', docNo: 'WAR-449102', expiryDate: '2027-03-20', fileName: 'war_jcb4.pdf' },
-      { id: 'doc-4-3', type: 'Fitness/Permit', docNo: 'FIT-449102', expiryDate: '2026-10-18', fileName: 'fit_jcb4.pdf' },
-      { id: 'doc-4-4', type: 'Registration Certificate', docNo: 'RC-JCB4', expiryDate: 'Lifetime', fileName: 'rc_jcb4.pdf' },
-      { id: 'doc-4-5', type: 'Pollution Certificate', docNo: 'PUC-449102', expiryDate: '2026-12-01', fileName: 'puc_jcb4.pdf' }
-    ]
-  },
-  {
-    id: 'jcb-5',
-    code: 'JCB 5',
-    regNo: '',
-    model: 'JCB 3DX',
-    serialNo: 'JCB3DX-2023-55912',
-    totalHours: 3200,
-    documents: [
-      { id: 'doc-5-1', type: 'Insurance', docNo: 'INS-559102', expiryDate: '2026-10-05', fileName: 'ins_jcb5.pdf' },
-      { id: 'doc-5-2', type: 'Warranty', docNo: 'WAR-559102', expiryDate: '2026-11-15', fileName: 'war_jcb5.pdf' },
-      { id: 'doc-5-3', type: 'Fitness/Permit', docNo: 'FIT-559102', expiryDate: '2026-09-25', fileName: 'fit_jcb5.pdf' }
-    ]
-  },
-  {
-    id: 'jcb-6',
-    code: 'JCB 6',
-    regNo: '',
-    model: 'JCB 3DX Xtra',
-    serialNo: 'JCB3DX-2024-88410',
-    totalHours: 2800,
-    documents: [
-      { id: 'doc-6-1', type: 'Insurance', docNo: 'INS-669102', expiryDate: '2026-12-15', fileName: 'ins_jcb6.pdf' },
-      { id: 'doc-6-2', type: 'Fitness/Permit', docNo: 'FIT-669102', expiryDate: '2026-11-20', fileName: 'fit_jcb6.pdf' }
-    ]
-  }
+  { id: 'jcb-1', code: 'JCB 1', regNo: '', model: 'JCB 3DX', serialNo: '', totalHours: 0, documents: [] },
+  { id: 'jcb-2', code: 'JCB 2', regNo: '', model: 'JCB 3DX Super', serialNo: '', totalHours: 0, documents: [] },
+  { id: 'jcb-3', code: 'JCB 3', regNo: '', model: 'JCB 3DX Eco', serialNo: '', totalHours: 0, documents: [] },
+  { id: 'jcb-4', code: 'JCB 4', regNo: '', model: 'JCB 3DX Plus', serialNo: '', totalHours: 0, documents: [] },
+  { id: 'jcb-5', code: 'JCB 5', regNo: '', model: 'JCB 3DX', serialNo: '', totalHours: 0, documents: [] },
+  { id: 'jcb-6', code: 'JCB 6', regNo: '', model: 'JCB 3DX Xtra', serialNo: '', totalHours: 0, documents: [] }
 ];
 
 // Helper to calculate days remaining from current date (2026-09-05)
@@ -237,15 +68,30 @@ const formatDisplayDate = (dateStr) => {
   return `${day}-${month}-${year}`;
 };
 
+const sanitizeVehicles = (list) => {
+  return (list || []).map((v) => ({
+    ...v,
+    serialNo: '',
+    documents: (v.documents || []).filter((d) => {
+      if (!d || !d.id || !d.docNo) return false;
+      if (typeof d.id === 'string' && /^doc-[1-6]-\d+$/.test(d.id)) return false;
+      if (typeof d.docNo === 'string' && /^(INS|WAR|FIT|RC|PUC)-(987|3DX|2026|JCB|882|449|559|669)/i.test(d.docNo)) return false;
+      return true;
+    })
+  }));
+};
+
 const JCBDocumentTracker = () => {
-  const [vehicles, setVehicles] = useState(initialJcbVehiclesData);
+  const [vehicles, setVehicles] = useState(() => sanitizeVehicles(initialJcbVehiclesData));
   const [storageReady, setStorageReady] = useState(false);
 
   const [selectedJcbId, setSelectedJcbId] = useState('jcb-1');
 
   useEffect(() => {
     loadSyncedCollection('jcbDocuments', 'jcb_vehicle_documents_data').then((saved) => {
-      if (saved.length) setVehicles(saved);
+      if (saved.length) {
+        setVehicles(sanitizeVehicles(saved));
+      }
       setStorageReady(true);
     }).catch(() => setStorageReady(true));
   }, []);
@@ -272,7 +118,7 @@ const JCBDocumentTracker = () => {
   // Edit Vehicle Info Form State
   const [editRegNo, setEditRegNo] = useState('');
   const [editModel, setEditModel] = useState('');
-  const [editSerialNo, setEditSerialNo] = useState('');
+  const [editTotalHours, setEditTotalHours] = useState('0');
 
   const openAddDocModal = () => {
     setDocType('Insurance');
@@ -284,9 +130,9 @@ const JCBDocumentTracker = () => {
   };
 
   const openEditVehicleModal = () => {
-    setEditRegNo(selectedVehicle.regNo);
+    setEditRegNo(selectedVehicle.regNo || '');
     setEditModel(selectedVehicle.model || 'JCB 3DX');
-    setEditSerialNo(selectedVehicle.serialNo || 'JCB3DX-2024-98421');
+    setEditTotalHours(String(selectedVehicle.totalHours || 0));
     setIsEditVehicleOpen(true);
   };
 
@@ -316,17 +162,36 @@ const JCBDocumentTracker = () => {
 
   const handleEditVehicleSubmit = (e) => {
     e.preventDefault();
-    setVehicles(
-      vehicles.map((v) => {
-        if (v.id !== selectedVehicle.id) return v;
-        return {
-          ...v,
-          regNo: editRegNo.toUpperCase().trim(),
-          model: editModel.trim(),
-          serialNo: editSerialNo.toUpperCase().trim()
-        };
-      })
-    );
+    const updatedTotalHours = Math.max(0, Number(editTotalHours) || 0);
+    const updatedVehicles = vehicles.map((v) => {
+      if (v.id !== selectedVehicle.id) return v;
+      return {
+        ...v,
+        regNo: editRegNo.toUpperCase().trim(),
+        model: editModel.trim(),
+        totalHours: updatedTotalHours
+      };
+    });
+
+    setVehicles(updatedVehicles);
+
+    // Also sync totalHours and vehicle details with jcbFleet collection in storage
+    loadSyncedCollection('jcbFleet', 'jcb_fleet_data').then((savedFleet) => {
+      const fleetToUpdate = savedFleet.length ? savedFleet : updatedVehicles;
+      const nextFleet = fleetToUpdate.map((m) => {
+        if (m.id === selectedVehicle.id || m.code === selectedVehicle.code) {
+          return {
+            ...m,
+            regNo: editRegNo.toUpperCase().trim(),
+            model: editModel.trim(),
+            totalHours: updatedTotalHours
+          };
+        }
+        return m;
+      });
+      saveSyncedCollection('jcbFleet', 'jcbFleet', nextFleet).catch(() => {});
+    }).catch(() => {});
+
     setIsEditVehicleOpen(false);
   };
 
@@ -419,7 +284,7 @@ const JCBDocumentTracker = () => {
       {/* DEDICATED JCB VEHICLE PAGE CARD */}
       <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-6">
         
-        {/* Machine Header Details (Registration No, Model, Serial No) */}
+        {/* Machine Header Details (Registration No, Model) */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 border-b border-slate-200 pb-5">
           <div className="space-y-2">
             <div className="flex items-center gap-3">
@@ -432,16 +297,6 @@ const JCBDocumentTracker = () => {
               <div className="bg-slate-100 px-3.5 py-1.5 rounded-xl border border-slate-200">
                 <span className="text-slate-500 font-semibold">Model: </span>
                 <span className="text-slate-900 font-black">{selectedVehicle.model || 'JCB 3DX'}</span>
-              </div>
-
-              <div className="bg-slate-100 px-3.5 py-1.5 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-semibold">Serial No: </span>
-                <span className="text-slate-900 font-black">{selectedVehicle.serialNo || 'JCB3DX-2024-98421'}</span>
-              </div>
-
-              <div className="bg-amber-50 px-3.5 py-1.5 rounded-xl border border-amber-200 text-amber-800">
-                <span className="text-amber-700 font-semibold">Hour Meter: </span>
-                <span className="font-black">{selectedVehicle.totalHours?.toLocaleString()} hrs</span>
               </div>
             </div>
           </div>
@@ -458,7 +313,7 @@ const JCBDocumentTracker = () => {
               onClick={() => {
                 const phone = prompt('Enter WhatsApp Number for Document Reminder:', '9876543210');
                 if (phone) {
-                  const alertMsg = `📄 *JCB DOCUMENT EXPIRY NOTICE*\n\nVehicle: ${selectedVehicle.code} (${selectedVehicle.regNo})\nModel: ${selectedVehicle.model}\nSerial No: ${selectedVehicle.serialNo}\n\n${dueDocuments.map(d => `• ${d.type}: Expiry ${d.expiryDate} (${d.daysInfo.text})`).join('\n')}`;
+                  const alertMsg = `📄 *JCB DOCUMENT EXPIRY NOTICE*\n\nVehicle: ${selectedVehicle.code} (${selectedVehicle.regNo})\nModel: ${selectedVehicle.model}\n\n${dueDocuments.map(d => `• ${d.type}: Expiry ${d.expiryDate} (${d.daysInfo.text})`).join('\n')}`;
                   openWhatsAppChat(phone, alertMsg);
                 }
               }}
@@ -716,18 +571,6 @@ const JCBDocumentTracker = () => {
                   placeholder="e.g. JCB 3DX"
                   value={editModel}
                   onChange={(e) => setEditModel(e.target.value)}
-                  className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl font-black text-slate-900 text-base font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-800 mb-1.5">Serial Number</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. JCB3DX-2024-98421"
-                  value={editSerialNo}
-                  onChange={(e) => setEditSerialNo(e.target.value)}
                   className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl font-black text-slate-900 text-base font-mono"
                 />
               </div>
