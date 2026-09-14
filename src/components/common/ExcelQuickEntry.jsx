@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBusiness } from '../../context/BusinessContext';
 import { Plus, Trash2, Save, User, Calendar, CreditCard, Layers, MessageSquare } from 'lucide-react';
-import { formatTransactionWhatsApp, openWhatsAppChat } from '../../utils/whatsapp';
+import { formatTransactionWhatsApp, formatBatchTransactionsWhatsApp, openWhatsAppChat } from '../../utils/whatsapp';
 import SearchableCustomerSelect from './SearchableCustomerSelect';
 import { decimalOnly, digitsOnly, mobileError } from '../../utils/validation';
 
@@ -341,35 +341,79 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
     showToast(`Saved ${count} transactions!`);
 
     if (sendWhatsApp) {
+      const customerGroups = new Map();
+
       validRows.forEach((r) => {
         const foundCust = customers.find((c) => c.id === r.customerId);
         const targetPhone = r.customerPhone || (foundCust ? foundCust.phone : '');
-        if (targetPhone && targetPhone !== '0000000000') {
-          const qty = Number(r.quantity) || 1;
-          const rate = Number(r.rate) || 0;
-          const totalAmount = qty * rate;
-          const paid = Number(r.paid) || 0;
-          const due = Math.max(0, totalAmount - paid);
-          const selBus = businesses.find((b) => b.id === r.businessId) || businesses[0];
+        if (!targetPhone || targetPhone === '0000000000') return;
 
-          const waMsg = formatTransactionWhatsApp({
-            customerName: r.customerName || (foundCust ? foundCust.name : 'Customer'),
-            serviceName: r.itemService || selBus.name,
-            businessName: selBus.name,
-            quantity: qty,
-            unit: r.unit || 'Units',
-            rate,
-            amount: totalAmount,
-            paid,
-            due,
-            date: r.date || getTodayString(),
-            jcbVehicle: r.businessId === 'jcb' ? (r.jcbVehicle || 'JCB 1') : '',
-            driverName: r.businessId === 'jcb' ? (r.driverName || '') : (r.driverName || ''),
-            driverPhone: r.businessId === 'jcb' ? (r.driverPhone || '') : '',
-            driverAmount: r.businessId === 'jcb' ? (Number(r.driverAmount) || 0) : (Number(r.driverAmount) || 0),
+        const custName = r.customerName || (foundCust ? foundCust.name : 'Customer');
+        const key = `${targetPhone}|${custName.toLowerCase()}`;
+
+        const qty = Number(r.quantity) || 1;
+        const rate = Number(r.rate) || 0;
+        const totalAmount = qty * rate;
+        const paid = Number(r.paid) || 0;
+        const due = Math.max(0, totalAmount - paid);
+        const selBus = businesses.find((b) => b.id === r.businessId) || businesses[0];
+
+        const itemObj = {
+          businessId: r.businessId,
+          businessName: selBus.name,
+          itemService: r.itemService === 'Custom Sand' ? (r.customSandType || 'Custom Sand') : (r.itemService || selBus.name),
+          quantity: qty,
+          unit: r.unit || 'Units',
+          rate,
+          amount: totalAmount,
+          paid,
+          due,
+          date: r.date || getTodayString(),
+          jcbVehicle: r.businessId === 'jcb' ? (r.jcbVehicle || 'JCB 1') : '',
+          driverName: r.businessId === 'jcb' ? (r.driverName || '') : (r.driverName || ''),
+          driverPhone: r.businessId === 'jcb' ? (r.driverPhone || '') : '',
+          driverAmount: r.businessId === 'jcb' ? (Number(r.driverAmount) || 0) : (Number(r.driverAmount) || 0),
+          deliveryPlace: r.businessId === 'water' ? (r.deliveryPlace || '') : ''
+        };
+
+        if (!customerGroups.has(key)) {
+          customerGroups.set(key, {
+            phone: targetPhone,
+            customerName: custName,
+            items: [],
+            totalAmount: 0,
+            totalPaid: 0,
+            totalDue: 0,
+            date: r.date || getTodayString()
           });
-          openWhatsAppChat(targetPhone, waMsg);
         }
+
+        const group = customerGroups.get(key);
+        group.items.push(itemObj);
+        group.totalAmount += totalAmount;
+        group.totalPaid += paid;
+        group.totalDue += due;
+      });
+
+      let index = 0;
+      customerGroups.forEach((group) => {
+        const waMsg = formatBatchTransactionsWhatsApp({
+          customerName: group.customerName,
+          items: group.items,
+          totalAmount: group.totalAmount,
+          totalPaid: group.totalPaid,
+          totalDue: Math.max(0, group.totalAmount - group.totalPaid),
+          date: group.date
+        });
+
+        if (index === 0) {
+          openWhatsAppChat(group.phone, waMsg);
+        } else {
+          setTimeout(() => {
+            openWhatsAppChat(group.phone, waMsg);
+          }, index * 800);
+        }
+        index++;
       });
     }
 

@@ -41,6 +41,55 @@ export const formatTransactionWhatsApp = ({
 };
 
 /**
+ * Format WhatsApp message for a batch of transactions/items recorded together
+ */
+export const formatBatchTransactionsWhatsApp = ({
+  customerName = 'Customer',
+  items = [],
+  totalAmount = 0,
+  totalPaid = 0,
+  totalDue = 0,
+  date = ''
+}) => {
+  if (!items || items.length === 0) return '';
+  if (items.length === 1) {
+    const single = items[0];
+    return formatTransactionWhatsApp({
+      customerName,
+      serviceName: single.itemService || single.businessName || 'Service',
+      businessName: single.businessName || '',
+      quantity: single.quantity || 1,
+      unit: single.unit || 'Units',
+      rate: single.rate || 0,
+      amount: single.amount || totalAmount,
+      paid: single.paid || totalPaid,
+      due: single.due !== undefined ? single.due : totalDue,
+      date: single.date || date,
+      jcbVehicle: single.jcbVehicle || '',
+      driverName: single.driverName || '',
+      driverPhone: single.driverPhone || '',
+      driverAmount: single.driverAmount || 0,
+      deliveryPlace: single.deliveryPlace || ''
+    });
+  }
+
+  const dateText = date ? `\n📅 Date: ${date}` : '';
+  const itemLines = items.map((item, idx) => {
+    const icon = item.businessId === 'jcb' ? '🚜' : item.businessId === 'sand' ? '🏖️' : item.businessId === 'water' ? '💧' : '📦';
+    const sName = item.itemService || item.businessName || 'Item';
+    const qty = Number(item.quantity) || 1;
+    const unit = item.unit || 'Units';
+    const rateText = Number(item.rate) > 0 ? ` (Rate: ₹${Number(item.rate).toLocaleString('en-IN')}/${unit})` : '';
+    const amtText = Number(item.amount) > 0 ? ` - ₹${Number(item.amount).toLocaleString('en-IN')}` : '';
+    const jcbExtra = item.jcbVehicle ? ` [${item.jcbVehicle}]` : '';
+    const driverExtra = item.driverName ? ` (Driver: ${item.driverName})` : '';
+    return `${idx + 1}. ${icon} ${sName}: ${qty} ${unit}${rateText}${jcbExtra}${driverExtra}${amtText}`;
+  }).join('\n');
+
+  return `Hello ${customerName} 👋\n\nYour transactions with ${COMPANY_NAME} have been recorded.${dateText}\n\n📦 Items / Services:\n${itemLines}\n\n💰 Total Bill: ₹${Number(totalAmount).toLocaleString('en-IN')}\n✅ Paid Amount: ₹${Number(totalPaid).toLocaleString('en-IN')}\n⏳ Remaining Due: ₹${Number(totalDue).toLocaleString('en-IN')}\n\nThank you for doing business with ${COMPANY_NAME}! 🙏`;
+};
+
+/**
  * Format WhatsApp message for JCB Oil Maintenance Overdue Alert
  */
 export const formatJCBOverdueWhatsApp = ({
