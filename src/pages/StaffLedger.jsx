@@ -337,7 +337,7 @@ const StaffLedger = () => {
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <h4 className="text-xs font-black text-slate-900 leading-tight truncate">
+                        <h4 className="text-[11px] sm:text-xs font-black text-slate-900 leading-tight whitespace-normal break-words line-clamp-2">
                           {staffMember.name}
                         </h4>
                       </div>

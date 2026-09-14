@@ -13,7 +13,6 @@ import {
   History,
   ShieldAlert,
   MessageSquare,
-  Upload,
   Eye,
   Calendar,
   DollarSign,
@@ -28,7 +27,6 @@ import {
 import { formatJCBOverdueWhatsApp, openWhatsAppChat } from '../../utils/whatsapp';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { isSafeDocumentUrl } from '../../utils/documentSecurity';
-import { uploadAttachment } from '../../utils/attachmentStorage';
 import {
   DEFAULT_SERVICE_INTERVALS,
   SERVICE_INTERVALS,
@@ -321,9 +319,6 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
   const [maintServiceDate, setMaintServiceDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [maintHourMeter, setMaintHourMeter] = useState('0');
   const [maintServiceProvider, setMaintServiceProvider] = useState('');
-  const [maintInvoiceName, setMaintInvoiceName] = useState('');
-  const [maintInvoiceData, setMaintInvoiceData] = useState('');
-  const [maintInvoiceError, setMaintInvoiceError] = useState('');
   const [maintGeneralRemarks, setMaintGeneralRemarks] = useState('');
 
   // Service items list state (supports multiple services simultaneously)
@@ -458,8 +453,6 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
         unit: type.includes('Oil') ? 'L' : 'Pcs',
         cost: costNum,
         serviceProvider: maintServiceProvider.trim() || 'JCB Authorized Service',
-        invoiceName: maintInvoiceName || 'service_invoice.pdf',
-        invoiceData: maintInvoiceData || '',
         nextDue: nextDueNum,
         remarks: combinedRemarks,
         notes: combinedRemarks || `${type} service record`,
@@ -1242,34 +1235,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-                    {/* Invoice Upload */}
-                    <div>
-                      <label className="block text-slate-700 font-mono mb-1">Invoice Attachment</label>
-                      <label className="w-full p-2.5 bg-white hover:bg-slate-50 border border-slate-300 rounded-xl font-black text-amber-700 text-xs flex items-center justify-center gap-2 cursor-pointer transition-all font-mono">
-                        <Upload className="w-3.5 h-3.5 text-amber-600" />
-                        <span>{maintInvoiceName ? `[ ${maintInvoiceName} ]` : '[ Upload Invoice ]'}</span>
-                        <input
-                          type="file"
-                          className="hidden"
-                          onChange={(e) => {
-                             if (e.target.files && e.target.files[0]) {
-                                const file = e.target.files[0];
-                                 setMaintInvoiceError('Uploading attachment...');
-                                 uploadAttachment(file, 'maintenance')
-                                   .then((attachment) => {
-                                     setMaintInvoiceName(attachment.name);
-                                     setMaintInvoiceData(attachment.url);
-                                     setMaintInvoiceError('');
-                                   })
-                                   .catch((error) => setMaintInvoiceError(error.message));
-                            }
-                          }}
-                        />
-                      </label>
-                      {maintInvoiceError && <p className="mt-2 text-xs font-bold text-rose-700">{maintInvoiceError}</p>}
-                    </div>
-
+                  <div className="pt-1">
                     {/* General Remarks */}
                     <div>
                       <label className="block text-slate-700 font-mono mb-1">General Notes / Work Order #</label>

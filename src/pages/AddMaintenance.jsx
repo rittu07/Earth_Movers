@@ -6,7 +6,6 @@ import { formatCurrency } from '../utils/formatCurrency';
 import {
   Wrench,
   Truck,
-  Upload,
   Droplet,
   Trash2,
   PlusCircle,
@@ -25,7 +24,6 @@ import {
   saveStoredMaintenanceRecords
 } from '../data/jcbServiceData';
 import { loadSyncedCollection } from '../db/syncedStorage';
-import { uploadAttachment } from '../utils/attachmentStorage';
 
 const formatDisplayDate = (dateStr) => {
   if (!dateStr) return '';
@@ -82,9 +80,6 @@ const AddMaintenance = () => {
   const [maintServiceDate, setMaintServiceDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [maintHourMeter, setMaintHourMeter] = useState(selectedMachine ? selectedMachine.totalHours.toString() : '0');
   const [maintServiceProvider, setMaintServiceProvider] = useState('');
-  const [maintInvoiceName, setMaintInvoiceName] = useState('');
-  const [maintInvoiceData, setMaintInvoiceData] = useState('');
-  const [invoiceError, setInvoiceError] = useState('');
   const [maintGeneralRemarks, setMaintGeneralRemarks] = useState('');
 
   // Service Items List
@@ -230,8 +225,6 @@ const AddMaintenance = () => {
         unit: type.includes('Oil') ? 'L' : 'Pcs',
         cost: costNum,
         serviceProvider: maintServiceProvider.trim() || 'JCB Authorized Service',
-        invoiceName: maintInvoiceName || 'service_invoice.pdf',
-        invoiceData: maintInvoiceData || '',
         nextDue: nextDueNum,
         remarks: combinedRemarks,
         notes: combinedRemarks || `${type} service record`,
@@ -388,34 +381,7 @@ const AddMaintenance = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1 text-xs font-black">
-            {/* Invoice Upload */}
-            <div>
-              <label className="block text-slate-700 font-mono mb-1.5">Invoice Attachment</label>
-              <label className="w-full p-3 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-xl font-black text-amber-700 text-xs flex items-center justify-center gap-2 cursor-pointer transition-all font-mono shadow-2xs">
-                <Upload className="w-4 h-4 text-amber-600" />
-                <span>{maintInvoiceName ? `[ ${maintInvoiceName} ]` : '[ Upload Invoice ]'}</span>
-                <input
-                  type="file"
-                  className="hidden"
-                  onChange={(e) => {
-                       if (e.target.files && e.target.files[0]) {
-                          const file = e.target.files[0];
-                                 setInvoiceError('Uploading attachment...');
-                                 uploadAttachment(file, 'maintenance')
-                                   .then((attachment) => {
-                                     setMaintInvoiceName(attachment.name);
-                                     setMaintInvoiceData(attachment.url);
-                                     setInvoiceError('');
-                                   })
-                                   .catch((error) => setInvoiceError(error.message));
-                    }
-                  }}
-                />
-                        </label>
-                        {invoiceError && <p className="mt-2 text-xs font-bold text-rose-700">{invoiceError}</p>}
-                      </div>
-
+          <div className="pt-1 text-xs font-black">
             {/* General Remarks */}
             <div>
               <label className="block text-slate-700 font-mono mb-1.5">General Notes / Work Order #</label>
