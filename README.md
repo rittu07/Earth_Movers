@@ -36,7 +36,7 @@ A full-stack offline-first business ledger application for rural transport opera
 
 ### Sync & Offline
 - **Offline-First** — All data stored in IndexedDB first; works without internet
-- **Background Sync** — Automatic push/pull every 5 minutes
+- **Background Sync** — Automatic push/pull every 30 seconds while the app is active
 - **Mobile Sync** — Sync triggers on `visibilitychange`, `focus`, `pageshow` events so mobile browsers sync when returning from background
 - **Immediate Sync** — Every save triggers an instant sync attempt
 - **Reconnect Sync** — Syncs automatically when browser comes back online
@@ -44,8 +44,9 @@ A full-stack offline-first business ledger application for rural transport opera
 - **Conflict-Free** — Append-only event log with idempotent upserts (event_id dedup)
 
 ### Operational Records
-- **Stock In** — Bricks, Sand, and Jalli stock-in records are saved to IndexedDB and synced to D1 `stock_entries` when the Stock In form is submitted
-- **JCB Operations** — Fleet, maintenance, document, diesel, and driving-hours records use the same local-first sync path
+- **Stock In** — Bricks, Sand, Jalli, and Water stock-in records are saved to IndexedDB and synced to D1 `stock_entries` when the Stock In form is submitted
+- **JCB Operations** — Fleet, maintenance, document, diesel, and driving-hours records use the same local-first sync path, with open screens refreshing after remote sync
+- **Maintenance Entry** — New JCB maintenance records no longer offer invoice upload; existing saved invoice records remain readable
 - **Driving Hours** — Driver hours are stored locally and remotely in `driving_hours` for monthly summaries and Bata calculations
 
 ### Authentication & Security
@@ -63,6 +64,7 @@ A full-stack offline-first business ledger application for rural transport opera
 - **Required Fields** — Forms prevent submission when required names, selections, dates, or positive amounts are missing.
 - **Supplier Cost Checks** — Quick transaction entry requires `Paid to Supplier (Rs.)` to be less than `Supplier Cost (Rs.)` and displays an inline warning otherwise.
 - **Supplier Payments** — Pay Supplier accepts positive payment amounts, including partial payments, and records the amount in the supplier ledger.
+- **Attachment Limit** — Supported JCB document attachments are limited to 5 MB per file.
 - **Duplicate Suppliers** — Re-entering a valid phone number for an existing same-name supplier fills a previously blank phone number instead of creating a duplicate.
 - **Shared Web and Android Rules** — The same React validation logic is used in the browser and synchronized Capacitor Android application.
 
@@ -152,7 +154,7 @@ A full-stack offline-first business ledger application for rural transport opera
 
 1. `npm run build` — Vite builds the React app into `dist/`
 2. `npm run db:migrate:remote` — Apply pending D1 migrations
-3. `npm run worker:deploy` — Wrangler uploads the Worker code from `worker/src/index.js` and the `dist/` folder as static assets
+3. `npx wrangler deploy --config worker/wrangler.toml` — Wrangler uploads the Worker code from `worker/src/index.js` and the `dist/` folder as static assets
 4. The Worker serves both the API (`/api/*`) and the React SPA (everything else) from the same URL
 5. The `ASSETS` binding in `wrangler.toml` tells Cloudflare to serve files from `dist/` as static assets
 
@@ -327,7 +329,7 @@ cp .env.example .env
 
 # Build and deploy
 npm run build
-npm run worker:deploy
+npx wrangler deploy --config worker/wrangler.toml
 ```
 
 ### Worker Secrets
@@ -518,4 +520,4 @@ npm run worker:deploy
 curl -fsS https://earth-movers-api.loga.workers.dev/health
 ```
 
-The latest debug APK is generated at `apk output/Earth_Movers-debug.apk`. Android builds require JDK 21 and an Android SDK. The currently deployed Worker version is `a79e11e3-84da-4c17-ab3a-f38ce3c4ac23`.
+The debug APK is generated at `apk output/Earth_Movers-debug.apk`. Android builds require JDK 21 and an Android SDK. The currently deployed Worker version is `67af4e9a-4c73-454a-86b7-8c8594d83c26`.
