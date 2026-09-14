@@ -117,18 +117,6 @@ const BricksSupply = () => {
         </button>
 
         <button
-          onClick={() => setActiveTab('stock_in')}
-          className={`pb-2.5 sm:pb-3 transition-all relative flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
-            activeTab === 'stock_in'
-              ? 'text-orange-600 border-b-2 border-orange-600 font-black'
-              : 'text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          <PackagePlus className="w-4 h-4 shrink-0" />
-          <span>Stock In & Production History</span>
-        </button>
-
-        <button
           onClick={() => setActiveTab('expenses')}
           className={`pb-2.5 sm:pb-3 transition-all relative flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
             activeTab === 'expenses'
@@ -138,6 +126,18 @@ const BricksSupply = () => {
         >
           <Receipt className="w-4 h-4 shrink-0" />
           <span>EXPENSES ({bricksExpenses.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('stock_in')}
+          className={`pb-2.5 sm:pb-3 transition-all relative flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
+            activeTab === 'stock_in'
+              ? 'text-orange-600 border-b-2 border-orange-600 font-black'
+              : 'text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <PackagePlus className="w-4 h-4 shrink-0" />
+          <span>Stock In & Production History</span>
         </button>
       </div>
 
