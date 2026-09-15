@@ -937,15 +937,39 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                            )}
                          </>
                        )}
-                       {row.businessId === 'water' && (
-                         <input
-                           type="text"
-                           value={row.deliveryPlace || ''}
-                           onChange={(e) => handleTxChange(row.id, 'deliveryPlace', e.target.value)}
-                           placeholder="Delivery Site / Location"
-                           className="w-full mt-2 p-3.5 bg-slate-50 border border-slate-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:outline-hidden shadow-2xs"
-                         />
-                       )}
+                        {row.businessId === 'water' && (
+                          <div className="mt-2 space-y-2">
+                            <input
+                              type="text"
+                              value={row.deliveryPlace || ''}
+                              onChange={(e) => handleTxChange(row.id, 'deliveryPlace', e.target.value)}
+                              placeholder="Delivery Site / Location"
+                              className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:outline-hidden shadow-2xs"
+                            />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <label className="text-xs font-black text-blue-950">
+                                Driver Name
+                                <input
+                                  type="text"
+                                  value={row.driverName || ''}
+                                  onChange={(e) => handleTxChange(row.id, 'driverName', e.target.value)}
+                                  placeholder="Enter driver name"
+                                  className="w-full mt-1 p-3.5 bg-blue-50 border border-blue-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-hidden shadow-2xs"
+                                />
+                              </label>
+                              <label className="text-xs font-black text-blue-950">
+                                Vehicle Number
+                                <input
+                                  type="text"
+                                  value={row.vehicleNumber || ''}
+                                  onChange={(e) => handleTxChange(row.id, 'vehicleNumber', e.target.value.toUpperCase())}
+                                  placeholder="e.g. TN 01 AB 1234"
+                                  className="w-full mt-1 p-3.5 bg-blue-50 border border-blue-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-hidden shadow-2xs"
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        )}
                      </div>
                    ) : row.businessId === 'water' ? (
                      <div className="sm:col-span-4">
@@ -992,35 +1016,6 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                            </div>
                          )}
                          <SupplierFieldsGroup row={row} handleTxChange={handleTxChange} theme="blue" />
-                         <input
-                          type="text"
-                          value={row.deliveryPlace || ''}
-                          onChange={(e) => handleTxChange(row.id, 'deliveryPlace', e.target.value)}
-                           placeholder="Delivery Site / Location"
-                           className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:outline-hidden shadow-2xs"
-                         />
-                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                             <label className="text-xs font-black text-blue-950">
-                               Driver Name
-                               <input
-                                 type="text"
-                                 value={row.driverName || ''}
-                                 onChange={(e) => handleTxChange(row.id, 'driverName', e.target.value)}
-                                 placeholder="Enter driver name"
-                                 className="w-full mt-1 p-3.5 bg-blue-50 border border-blue-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-hidden shadow-2xs"
-                               />
-                             </label>
-                             <label className="text-xs font-black text-blue-950">
-                               Vehicle Number
-                               <input
-                                 type="text"
-                                 value={row.vehicleNumber || ''}
-                                 onChange={(e) => handleTxChange(row.id, 'vehicleNumber', e.target.value.toUpperCase())}
-                                 placeholder="e.g. TN 01 AB 1234"
-                                 className="w-full mt-1 p-3.5 bg-blue-50 border border-blue-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-hidden shadow-2xs"
-                               />
-                             </label>
-                           </div>
                        </div>
                     </div>
                   ) : (
