@@ -530,7 +530,8 @@ app.get('/api/sync', async (c) => {
   const result = clientId && !includeOwn
     ? await c.env.DB.prepare(query).bind(clientId, since).all()
     : await c.env.DB.prepare(query).bind(since).all();
-  return c.json({ events: result.results || [], nextSince: now() });
+  const events = result.results || [];
+  return c.json({ events, nextSince: events.at(-1)?.received_at || since || now() });
 });
 
 app.get('/api/recent-transactions', async (c) => {

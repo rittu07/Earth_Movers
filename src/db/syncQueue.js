@@ -88,22 +88,32 @@ const pullRemoteChanges = async () => {
   const clientId = getClientId();
   const syncStateVersion = (await getMeta('sync-state-version'))?.value || '';
   const isFullReplay = syncStateVersion !== SYNC_STATE_VERSION;
-  const cursor = isFullReplay ? '' : (await getMeta('sync-cursor'))?.value || '';
+  let cursor = isFullReplay ? '' : (await getMeta('sync-cursor'))?.value || '';
   const headers = getAuthHeaders();
   const replayQuery = isFullReplay ? '&includeOwn=1' : '';
-  const response = await fetch(`${API_URL}/api/sync?clientId=${encodeURIComponent(clientId)}&since=${encodeURIComponent(cursor)}${replayQuery}`, { headers, credentials: 'include' });
-  if (!response.ok) throw new Error(`Pull failed: ${response.status}`);
-  const result = await response.json();
-  for (const event of result.events || []) {
-    const store = storeForEntity[event.entity_type];
-    if (!store) continue;
-    const payload = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload;
-    if (event.operation === 'delete') await deleteLocal(store, event.entity_id);
-    else await putLocal(store, payload);
+  let changed = false;
+  let hasMore = true;
+  while (hasMore) {
+    const response = await fetch(`${API_URL}/api/sync?clientId=${encodeURIComponent(clientId)}&since=${encodeURIComponent(cursor)}${replayQuery}`, { headers, credentials: 'include' });
+    if (!response.ok) throw new Error(`Pull failed: ${response.status}`);
+    const result = await response.json();
+    const events = result.events || [];
+    for (const event of events) {
+      const store = storeForEntity[event.entity_type];
+      if (!store) continue;
+      const payload = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload;
+      if (event.operation === 'delete') await deleteLocal(store, event.entity_id);
+      else await putLocal(store, payload);
+    }
+    changed = changed || events.length > 0;
+    const nextCursor = result.nextSince || events.at(-1)?.received_at || '';
+    hasMore = events.length >= 500 && nextCursor && nextCursor !== cursor;
+    if (hasMore) cursor = nextCursor;
+    else if (nextCursor) cursor = nextCursor;
   }
-  await putLocal('meta', { id: 'sync-cursor', value: result.nextSince || new Date().toISOString() });
+  await putLocal('meta', { id: 'sync-cursor', value: cursor || new Date().toISOString() });
   await putLocal('meta', { id: 'sync-state-version', value: SYNC_STATE_VERSION });
-  return { changed: (result.events || []).length > 0, pending: (await getAllLocal('syncQueue')).length };
+  return { changed, pending: (await getAllLocal('syncQueue')).length };
 };
 
 export const syncNow = async (onChange) => {
