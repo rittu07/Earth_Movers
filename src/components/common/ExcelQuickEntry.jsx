@@ -949,13 +949,22 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                               <label className="text-xs font-black text-blue-950">
                                 Driver Name
-                                <input
-                                  type="text"
-                                  value={row.driverName || ''}
-                                  onChange={(e) => handleTxChange(row.id, 'driverName', e.target.value)}
-                                  placeholder="Enter driver name"
-                                  className="w-full mt-1 p-3.5 bg-blue-50 border border-blue-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-hidden shadow-2xs"
-                                />
+                                <select
+                                  value={staff.find((member) => member.name === row.driverName)?.id || ''}
+                                  onChange={(e) => {
+                                    const selectedDriver = staff.find((member) => member.id === e.target.value);
+                                    handleTxChange(row.id, 'driverName', selectedDriver?.name || '');
+                                    handleTxChange(row.id, 'driverPhone', selectedDriver?.phone || '');
+                                  }}
+                                  className="w-full mt-1 p-3.5 bg-blue-50 border border-blue-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-hidden shadow-2xs cursor-pointer"
+                                >
+                                  <option value="">-- Choose Driver --</option>
+                                  {staff.map((member) => (
+                                    <option key={member.id} value={member.id}>
+                                      {member.name} {member.phone ? `(${member.phone})` : ''}
+                                    </option>
+                                  ))}
+                                </select>
                               </label>
                               <label className="text-xs font-black text-blue-950">
                                 Vehicle Number
