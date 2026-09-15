@@ -1,5 +1,5 @@
 const DB_NAME = 'earth-movers-local';
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 const DATA_STORE_NAMES = [
   'customers',
   'transactions',
