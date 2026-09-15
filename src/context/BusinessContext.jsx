@@ -296,6 +296,7 @@ export const BusinessProvider = ({ children }) => {
       driverName: trxData.driverName || '',
       driverPhone: trxData.driverPhone || '',
       driverAmount: Number(trxData.driverAmount) || 0,
+      vehicleNumber: trxData.vehicleNumber || '',
       isOutsourced: Boolean(trxData.isOutsourced),
       outsourcedSupplier: trxData.outsourcedSupplier || '',
       supplierId: trxData.supplierId || '',

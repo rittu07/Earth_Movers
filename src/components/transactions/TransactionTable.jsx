@@ -162,7 +162,8 @@ const TransactionTable = ({ transactions = [], quantityUnit = null }) => {
                         <div>
                           <span className="text-[10px] font-bold text-slate-400 uppercase block">Item / Service</span>
                            <span className="text-xs font-black text-slate-900">{trx.itemService}</span>
-                           {trx.businessId === 'jcb' && <span className="block text-[10px] font-bold text-slate-500">JCB No: {trx.jcbVehicle || '—'} • Driver: {trx.driverName || '—'}</span>}
+                            {trx.businessId === 'jcb' && <span className="block text-[10px] font-bold text-slate-500">JCB No: {trx.jcbVehicle || '—'} • Driver: {trx.driverName || '—'}</span>}
+                            {trx.businessId === 'water' && <span className="block text-[10px] font-bold text-slate-500">Driver: {trx.driverName || '—'} • Vehicle: {trx.vehicleNumber || '—'}</span>}
                         </div>
                         <div className="text-right">
                           <span className="text-[10px] font-bold text-slate-400 uppercase block">Quantity</span>
@@ -292,6 +293,11 @@ const TransactionTable = ({ transactions = [], quantityUnit = null }) => {
                         {trx.businessId === 'jcb' && (
                           <span className="block text-[10px] font-bold text-slate-500">
                             JCB No: {trx.jcbVehicle || '—'} • Driver: {trx.driverName || '—'}
+                          </span>
+                        )}
+                        {trx.businessId === 'water' && (
+                          <span className="block text-[10px] font-bold text-slate-500">
+                            Driver: {trx.driverName || '—'} • Vehicle: {trx.vehicleNumber || '—'}
                           </span>
                         )}
                       </div>

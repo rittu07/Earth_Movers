@@ -50,6 +50,7 @@ const createEmptyTxRow = (defaultBusId = 'bricks') => ({
   driverAmount: '',
   waterSource: 'Own Borewell (Plant 1)',
   deliveryPlace: '',
+  vehicleNumber: '',
   isCustomWaterSource: false
 });
 
@@ -268,6 +269,8 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
         if (lastRow.businessId === 'water') {
           newRow.waterSource = lastRow.waterSource || 'Own Borewell (Plant 1)';
           newRow.deliveryPlace = lastRow.deliveryPlace || '';
+          newRow.driverName = lastRow.driverName || '';
+          newRow.vehicleNumber = lastRow.vehicleNumber || '';
         } else if (lastRow.businessId === 'jcb') {
           newRow.jcbVehicle = lastRow.jcbVehicle || 'JCB 1';
           newRow.driverName = lastRow.driverName || '';
@@ -458,7 +461,8 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
         driverAmount: r.businessId === 'jcb' ? (Number(r.driverAmount) || 0) : (Number(r.driverAmount) || 0),
         duration: Number(r.quantity) || 0,
          waterSource: '',
-        deliveryPlace: r.businessId === 'water' ? (r.deliveryPlace || '') : ''
+         deliveryPlace: r.businessId === 'water' ? (r.deliveryPlace || '') : '',
+         vehicleNumber: r.businessId === 'water' ? (r.vehicleNumber || '') : ''
       });
       count++;
     });
@@ -503,7 +507,8 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
           driverName: r.businessId === 'jcb' ? (r.driverName || '') : (r.driverName || ''),
           driverPhone: r.businessId === 'jcb' ? (r.driverPhone || '') : '',
           driverAmount: r.businessId === 'jcb' ? (Number(r.driverAmount) || 0) : (Number(r.driverAmount) || 0),
-          deliveryPlace: r.businessId === 'water' ? (r.deliveryPlace || '') : ''
+           deliveryPlace: r.businessId === 'water' ? (r.deliveryPlace || '') : '',
+           vehicleNumber: r.businessId === 'water' ? (r.vehicleNumber || '') : ''
         };
 
         if (!customerGroups.has(key)) {
@@ -991,10 +996,26 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                           type="text"
                           value={row.deliveryPlace || ''}
                           onChange={(e) => handleTxChange(row.id, 'deliveryPlace', e.target.value)}
-                          placeholder="Delivery Site / Location"
-                          className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:outline-hidden shadow-2xs"
-                        />
-                      </div>
+                           placeholder="Delivery Site / Location"
+                           className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:outline-hidden shadow-2xs"
+                         />
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              value={row.driverName || ''}
+                              onChange={(e) => handleTxChange(row.id, 'driverName', e.target.value)}
+                              placeholder="Driver Name"
+                              className="w-full p-3.5 bg-blue-50 border border-blue-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-hidden shadow-2xs"
+                            />
+                            <input
+                              type="text"
+                              value={row.vehicleNumber || ''}
+                              onChange={(e) => handleTxChange(row.id, 'vehicleNumber', e.target.value.toUpperCase())}
+                              placeholder="Vehicle Number"
+                              className="w-full p-3.5 bg-blue-50 border border-blue-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-hidden shadow-2xs"
+                            />
+                          </div>
+                       </div>
                     </div>
                   ) : (
                     /* Item Description (4 cols) for non-bricks */
