@@ -38,6 +38,8 @@ const createEmptyTxRow = (defaultBusId = 'bricks') => ({
   supplierName: '',
   supplierPhone: '',
   isNewSupplier: false,
+  supplierQty: '',
+  supplierRate: '',
   supplierCost: '',
   supplierPaid: '',
   jcbVehicle: 'JCB 1',
@@ -49,6 +51,73 @@ const createEmptyTxRow = (defaultBusId = 'bricks') => ({
   deliveryPlace: '',
   isCustomWaterSource: false
 });
+
+const SupplierFieldsGroup = ({ row, handleTxChange, theme = 'amber' }) => {
+  const isBlue = theme === 'blue';
+  const bgClass = isBlue ? 'bg-blue-50/70 border-blue-200' : 'bg-amber-50/70 border-amber-200';
+  const labelClass = isBlue ? 'text-blue-900' : 'text-amber-900';
+  const borderClass = isBlue ? 'border-blue-300' : 'border-amber-300';
+  const focusBorder = isBlue ? 'focus:border-blue-500' : 'focus:border-amber-500';
+
+  return (
+    <div className={`grid grid-cols-2 gap-2 p-2.5 rounded-2xl border ${bgClass}`}>
+      <div>
+        <label className={`block text-[11px] font-black ${labelClass} uppercase mb-1`}>
+          📦 Supplier Qty
+        </label>
+        <input
+          type="number"
+          step="0.5"
+          value={row.supplierQty !== undefined ? row.supplierQty : ''}
+          onChange={(e) => handleTxChange(row.id, 'supplierQty', e.target.value)}
+          placeholder={row.quantity || '1'}
+          className={`w-full p-2.5 bg-white border ${borderClass} rounded-xl text-sm font-black text-slate-900 ${focusBorder} focus:outline-hidden shadow-2xs`}
+        />
+      </div>
+
+      <div>
+        <label className={`block text-[11px] font-black ${labelClass} uppercase mb-1`}>
+          🏷️ Each Product Rate (₹)
+        </label>
+        <input
+          type="text"
+          inputMode="decimal"
+          pattern="[0-9.]*"
+          value={row.supplierRate !== undefined ? row.supplierRate : ''}
+          onChange={(e) => handleTxChange(row.id, 'supplierRate', decimalOnly(e.target.value))}
+          placeholder="Rate / Product"
+          className={`w-full p-2.5 bg-white border ${borderClass} rounded-xl text-sm font-black text-slate-900 ${focusBorder} focus:outline-hidden shadow-2xs`}
+        />
+      </div>
+
+      <div>
+        <label className={`block text-[11px] font-black ${labelClass} uppercase mb-1`}>
+          💰 Supplier Cost (₹)
+        </label>
+        <input
+          type="number"
+          value={row.supplierCost !== undefined ? row.supplierCost : ''}
+          onChange={(e) => handleTxChange(row.id, 'supplierCost', e.target.value)}
+          placeholder="Total Cost"
+          className={`w-full p-2.5 bg-white border ${borderClass} rounded-xl text-sm font-black text-slate-900 ${focusBorder} focus:outline-hidden shadow-2xs`}
+        />
+      </div>
+
+      <div>
+        <label className={`block text-[11px] font-black ${labelClass} uppercase mb-1`}>
+          💳 Total Amount Paid (₹)
+        </label>
+        <input
+          type="number"
+          value={row.supplierPaid !== undefined ? row.supplierPaid : ''}
+          onChange={(e) => handleTxChange(row.id, 'supplierPaid', e.target.value)}
+          placeholder="0"
+          className={`w-full p-2.5 bg-white border ${borderClass} rounded-xl text-sm font-black text-emerald-700 ${focusBorder} focus:outline-hidden shadow-2xs`}
+        />
+      </div>
+    </div>
+  );
+};
 
 const createEmptyExpRow = (defaultBusId = 'jcb') => ({
   id: Date.now() + Math.random(),
@@ -135,6 +204,41 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                   updated.supplierPhone = foundSupplier.phone || '';
                 }
               }
+            }
+          }
+
+          if (field === 'supplierQty') {
+            updated.supplierQty = value;
+            const effQty = value !== '' ? Number(value) : (Number(updated.quantity) || 0);
+            if (updated.supplierRate !== undefined && updated.supplierRate !== '') {
+              const calcCost = effQty * Number(updated.supplierRate);
+              updated.supplierCost = calcCost > 0 ? String(calcCost) : '';
+            }
+          }
+
+          if (field === 'supplierRate') {
+            updated.supplierRate = value;
+            const effQty = updated.supplierQty !== undefined && updated.supplierQty !== '' ? Number(updated.supplierQty) : (Number(updated.quantity) || 0);
+            if (value !== '') {
+              const calcCost = effQty * Number(value);
+              updated.supplierCost = calcCost > 0 ? String(calcCost) : '';
+            }
+          }
+
+          if (field === 'supplierCost') {
+            updated.supplierCost = value;
+            const effQty = updated.supplierQty !== undefined && updated.supplierQty !== '' ? Number(updated.supplierQty) : (Number(updated.quantity) || 0);
+            if (effQty > 0 && value !== '') {
+              const calcRate = Number(value) / effQty;
+              updated.supplierRate = calcRate > 0 ? (calcRate % 1 === 0 ? String(calcRate) : calcRate.toFixed(2)) : '';
+            }
+          }
+
+          if (field === 'quantity') {
+            updated.quantity = value;
+            if ((updated.supplierQty === undefined || updated.supplierQty === '') && updated.supplierRate) {
+              const calcCost = (Number(value) || 0) * Number(updated.supplierRate);
+              updated.supplierCost = calcCost > 0 ? String(calcCost) : '';
             }
           }
 
@@ -228,10 +332,10 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
     const invalidRow = validRows.find((row) => {
       const supplierCost = Number(row.supplierCost) || 0;
       const supplierPaid = Number(row.supplierPaid) || 0;
-      return supplierCost > 0 && supplierPaid >= supplierCost;
+      return supplierCost > 0 && supplierPaid > supplierCost;
     });
     if (invalidRow) {
-      const message = 'Paid to Supplier must be lesser than Supplier Cost.';
+      const message = 'Paid to Supplier cannot exceed Total Supplier Cost.';
       setTxErrors((prev) => ({ ...prev, [invalidRow.id]: message }));
       showToast(message);
       return;
@@ -319,17 +423,19 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
         reference: r.reference || '',
         date: r.date || getTodayString(),
         notes: r.notes || '',
-         isOutsourced: r.sourcingType === 'outsourced' || r.businessId === 'water' && Boolean(supId),
-         supplierId: supId,
+        isOutsourced: r.sourcingType === 'outsourced' || (r.businessId === 'water' && Boolean(supId)),
+        supplierId: supId,
         outsourcedSupplier: supName,
         outsourcedPhone: supPhone,
+        outsourcedBrickQty: Number(r.supplierQty) || qty,
+        outsourcedCostPerBrick: Number(r.supplierRate) || 0,
         outsourcedCost: Number(r.supplierCost) || Number(r.supplierPaid) || 0,
         outsourcedPaid: Number(r.supplierPaid) || 0,
         outsourcedDue: Math.max(0, (Number(r.supplierCost) || Number(r.supplierPaid) || 0) - (Number(r.supplierPaid) || 0)),
         jcbVehicle: r.businessId === 'jcb' ? (r.jcbVehicle || 'JCB 1') : '',
         driverName: r.businessId === 'jcb' ? (r.driverName || '') : (r.driverName || ''),
         driverPhone: r.businessId === 'jcb' ? (r.driverPhone || '') : '',
-         staffId: staff.find((member) => member.name?.toLowerCase() === (r.driverName || '').toLowerCase())?.id || '',
+        staffId: staff.find((member) => member.name?.toLowerCase() === (r.driverName || '').toLowerCase())?.id || '',
         driverAmount: r.businessId === 'jcb' ? (Number(r.driverAmount) || 0) : (Number(r.driverAmount) || 0),
         duration: Number(r.quantity) || 0,
          waterSource: '',
@@ -695,33 +801,8 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                                 </div>
                               )}
 
-                              {/* Amount Paid to Supplier & Cost */}
-                              <div className="grid grid-cols-2 gap-2 bg-amber-50/70 p-2 rounded-2xl border border-amber-200">
-                                <div>
-                                  <label className="block text-[11px] font-black text-amber-900 uppercase mb-1">
-                                    💳 Paid to Supplier (₹)
-                                  </label>
-                                  <input
-                                    type="number"
-                                    value={row.supplierPaid}
-                                    onChange={(e) => handleTxChange(row.id, 'supplierPaid', e.target.value)}
-                                    placeholder="0"
-                                    className="w-full p-2.5 bg-white border border-amber-300 rounded-xl text-base font-black text-emerald-700 focus:outline-hidden shadow-2xs"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-[11px] font-black text-amber-900 uppercase mb-1">
-                                    💰 Supplier Cost (₹)
-                                  </label>
-                                  <input
-                                    type="number"
-                                    value={row.supplierCost}
-                                    onChange={(e) => handleTxChange(row.id, 'supplierCost', e.target.value)}
-                                    placeholder="Cost"
-                                    className="w-full p-2.5 bg-white border border-amber-300 rounded-xl text-base font-extrabold text-slate-900 focus:outline-hidden shadow-2xs"
-                                  />
-                                </div>
-                              </div>
+                              {/* Supplier Quantity, Each Product Rate, Cost & Paid */}
+                              <SupplierFieldsGroup row={row} handleTxChange={handleTxChange} theme="amber" />
                             </div>
                           )}
                         </div>
@@ -789,32 +870,7 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                                   <option value="local">Switch to Local</option>
                                 </select>
                               </div>
-                              <div className="grid grid-cols-2 gap-2 bg-amber-50/70 p-2 rounded-2xl border border-amber-200">
-                                <div>
-                                  <label className="block text-[11px] font-black text-amber-900 uppercase mb-1">
-                                    💳 Paid to Supplier (₹)
-                                  </label>
-                                  <input
-                                    type="number"
-                                    value={row.supplierPaid}
-                                    onChange={(e) => handleTxChange(row.id, 'supplierPaid', e.target.value)}
-                                    placeholder="0"
-                                    className="w-full p-2.5 bg-white border border-amber-300 rounded-xl text-base font-black text-emerald-700 focus:outline-hidden shadow-2xs"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-[11px] font-black text-amber-900 uppercase mb-1">
-                                    💰 Supplier Cost (₹)
-                                  </label>
-                                  <input
-                                    type="number"
-                                    value={row.supplierCost}
-                                    onChange={(e) => handleTxChange(row.id, 'supplierCost', e.target.value)}
-                                    placeholder="Cost"
-                                    className="w-full p-2.5 bg-white border border-amber-300 rounded-xl text-base font-extrabold text-slate-900 focus:outline-hidden shadow-2xs"
-                                  />
-                                </div>
-                              </div>
+                              <SupplierFieldsGroup row={row} handleTxChange={handleTxChange} theme="amber" />
                             </div>
                           ) : (
                             <div className="space-y-2">
@@ -847,32 +903,7 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                                   Local
                                 </button>
                               </div>
-                              <div className="grid grid-cols-2 gap-2 bg-amber-50/70 p-2 rounded-2xl border border-amber-200">
-                                <div>
-                                  <label className="block text-[11px] font-black text-amber-900 uppercase mb-1">
-                                    💳 Paid to Supplier (₹)
-                                  </label>
-                                  <input
-                                    type="number"
-                                    value={row.supplierPaid}
-                                    onChange={(e) => handleTxChange(row.id, 'supplierPaid', e.target.value)}
-                                    placeholder="0"
-                                    className="w-full p-2.5 bg-white border border-amber-300 rounded-xl text-base font-black text-emerald-700 focus:outline-hidden shadow-2xs"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-[11px] font-black text-amber-900 uppercase mb-1">
-                                    💰 Supplier Cost (₹)
-                                  </label>
-                                  <input
-                                    type="number"
-                                    value={row.supplierCost}
-                                    onChange={(e) => handleTxChange(row.id, 'supplierCost', e.target.value)}
-                                    placeholder="Cost"
-                                    className="w-full p-2.5 bg-white border border-amber-300 rounded-xl text-base font-extrabold text-slate-900 focus:outline-hidden shadow-2xs"
-                                  />
-                                </div>
-                              </div>
+                              <SupplierFieldsGroup row={row} handleTxChange={handleTxChange} theme="amber" />
                             </div>
                           )}
                         </>
@@ -922,16 +953,7 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                               <input type="tel" value={row.supplierPhone} onChange={(e) => handleTxChange(row.id, 'supplierPhone', digitsOnly(e.target.value))} placeholder="Supplier Phone" className="w-full p-3.5 bg-white border border-slate-300 rounded-2xl text-sm font-bold text-slate-900" />
                            </div>
                          )}
-                         <div className="grid grid-cols-2 gap-2 bg-blue-50/70 p-2 rounded-2xl border border-blue-200">
-                           <div>
-                             <label className="block text-[11px] font-black text-blue-900 uppercase mb-1">💳 Paid to Supplier (₹)</label>
-                             <input type="number" min="0" value={row.supplierPaid} onChange={(e) => handleTxChange(row.id, 'supplierPaid', e.target.value)} placeholder="0" className="w-full p-2.5 bg-white border border-blue-300 rounded-xl text-base font-black text-emerald-700" />
-                           </div>
-                           <div>
-                             <label className="block text-[11px] font-black text-blue-900 uppercase mb-1">💰 Supplier Cost (₹)</label>
-                             <input type="number" min="0" value={row.supplierCost} onChange={(e) => handleTxChange(row.id, 'supplierCost', e.target.value)} placeholder="Cost" className="w-full p-2.5 bg-white border border-blue-300 rounded-xl text-base font-black text-slate-900" />
-                           </div>
-                         </div>
+                         <SupplierFieldsGroup row={row} handleTxChange={handleTxChange} theme="blue" />
                          <input
                           type="text"
                           value={row.deliveryPlace || ''}
