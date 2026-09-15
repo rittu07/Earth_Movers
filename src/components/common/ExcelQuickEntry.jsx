@@ -726,7 +726,7 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                   </div>
 
                   {/* Material Source + Supplier (bricks/jalli/sand) */}
-                  {['bricks', 'jalli', 'sand'].includes(row.businessId) ? (
+                  {['bricks', 'jalli', 'sand', 'water'].includes(row.businessId) ? (
                     <div className="sm:col-span-4">
                       {row.businessId === 'sand' ? (
                         <div className="space-y-2">
@@ -828,8 +828,8 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                               {/* Supplier Quantity, Each Product Rate, Cost & Paid */}
                               <SupplierFieldsGroup row={row} handleTxChange={handleTxChange} theme="amber" />
                             </div>
-                          )}
-                        </div>
+                       )}
+                      </div>
                       ) : (
                         <>
                           <div className="flex items-center justify-between mb-1.5">
@@ -927,12 +927,21 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                                   Local
                                 </button>
                               </div>
-                              <SupplierFieldsGroup row={row} handleTxChange={handleTxChange} theme="amber" />
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
+                               <SupplierFieldsGroup row={row} handleTxChange={handleTxChange} theme="amber" />
+                             </div>
+                           )}
+                         </>
+                       )}
+                       {row.businessId === 'water' && (
+                         <input
+                           type="text"
+                           value={row.deliveryPlace || ''}
+                           onChange={(e) => handleTxChange(row.id, 'deliveryPlace', e.target.value)}
+                           placeholder="Delivery Site / Location"
+                           className="w-full mt-2 p-3.5 bg-slate-50 border border-slate-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:outline-hidden shadow-2xs"
+                         />
+                       )}
+                     </div>
                    ) : row.businessId === 'water' ? (
                      <div className="sm:col-span-4">
                        <div className="flex items-center justify-between mb-1.5">
