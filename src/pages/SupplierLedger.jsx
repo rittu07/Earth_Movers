@@ -269,9 +269,10 @@ const SupplierLedger = () => {
           </div>
         ) : (
           <table className="w-full text-left text-xs min-w-[850px]">
-            <thead className="bg-slate-50 text-slate-500 uppercase font-black tracking-wider"><tr><th className="p-3">Date</th><th className="p-3">Type</th><th className="p-3">Business</th><th className="p-3">Description</th><th className="p-3 text-right">Bill Amount</th><th className="p-3 text-right">Amount Paid</th><th className="p-3 text-right">Remaining Due</th><th className="p-3">Action</th></tr></thead>
+             <thead className="bg-slate-50 text-slate-500 uppercase font-black tracking-wider"><tr><th className="p-3">S.No.</th><th className="p-3">Date</th><th className="p-3">Type</th><th className="p-3">Business</th><th className="p-3">Description</th><th className="p-3 text-right">Bill Amount</th><th className="p-3 text-right">Amount Paid</th><th className="p-3 text-right">Remaining Due</th><th className="p-3">Action</th></tr></thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredItems.map((item) => <tr key={item.id}>
+               {filteredItems.map((item, index) => <tr key={item.id}>
+                 <td className="p-3 text-center font-black text-slate-500">{index + 1}</td>
                 <td className="p-3 whitespace-nowrap font-semibold text-slate-600">{item.displayDate}</td>
                 <td className="p-3 font-bold">{item.type}</td>
                 <td className="p-3 font-semibold">{item.business}</td>

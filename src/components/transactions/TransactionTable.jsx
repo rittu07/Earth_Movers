@@ -59,7 +59,7 @@ const TransactionTable = ({ transactions = [], quantityUnit = null }) => {
             No transactions match the selected filters.
           </div>
         ) : (
-          sortedTransactions.map((trx) => {
+           sortedTransactions.map((trx, index) => {
             const isExpanded = expandedId === trx.id;
             return (
               <div
@@ -72,7 +72,8 @@ const TransactionTable = ({ transactions = [], quantityUnit = null }) => {
                   className="p-3.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50/80 transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-800 font-black flex items-center justify-center text-sm shrink-0 shadow-2xs">
+                     <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-800 font-black flex items-center justify-center text-sm shrink-0 shadow-2xs">
+                       <span className="sr-only">S.No. {index + 1}</span>
                       {trx.customerName ? trx.customerName.charAt(0) : 'P'}
                     </div>
                     <div className="min-w-0">
@@ -258,8 +259,9 @@ const TransactionTable = ({ transactions = [], quantityUnit = null }) => {
                 </td>
               </tr>
             ) : (
-              sortedTransactions.map((trx) => (
+              sortedTransactions.map((trx, index) => (
                 <tr key={trx.id} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="py-4 px-4 text-center font-black text-slate-500">{index + 1}</td>
                   <td className="py-4 px-4 text-slate-500 font-medium text-xs whitespace-nowrap">
                     {trx.displayDate}
                   </td>

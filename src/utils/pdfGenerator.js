@@ -88,8 +88,10 @@ const buildNativePdf = ({
       cursorY += 8;
     }
 
+    const pdfColumns = [{ header: 'S.No.', key: '__serial', align: 'center' }, ...tableColumns];
+    const pdfData = tableData.map((row, index) => ({ ...row, __serial: index + 1 }));
     const tableFontSize = maxColumnCount >= 9 ? 8 : maxColumnCount >= 7 ? 8.5 : maxColumnCount >= 6 ? 9 : 10;
-    const tableColumnStyles = Object.fromEntries(tableColumns.map((column, index) => {
+    const tableColumnStyles = Object.fromEntries(pdfColumns.map((column, index) => {
       const key = String(column.key || '').toLowerCase();
       const header = String(column.header || '').toLowerCase();
       const style = { halign: safeAlign(column.align) };
@@ -110,8 +112,8 @@ const buildNativePdf = ({
     autoTable(doc, {
       startY: cursorY,
       margin: { left: margin, right: margin },
-      head: [tableColumns.map((column) => column.header)],
-      body: tableData.map((row) => tableColumns.map((column) => nativeCellValue(row, column))),
+       head: [pdfColumns.map((column) => column.header)],
+       body: pdfData.map((row) => pdfColumns.map((column) => nativeCellValue(row, column))),
       theme: 'grid',
       styles: { font: 'helvetica', fontSize: tableFontSize, cellPadding: [1.7, 2], minCellHeight: 6.5, valign: 'middle', textColor: [30, 41, 59], lineColor: [226, 232, 240], lineWidth: 0.15, overflow: 'ellipsize' },
       headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: 'bold', fontSize: tableFontSize },
@@ -179,7 +181,8 @@ const shareNativePdf = async (options) => {
 };
 
 const renderTable = ({ columns = [], data = [] }) => {
-  const columnsHtml = columns
+  const pdfColumns = [{ header: 'S.No.', key: '__serial', align: 'center' }, ...columns];
+  const columnsHtml = pdfColumns
     .map(
       (col) =>
         `<th style="padding: 9px 10px; border-bottom: 2px solid #cbd5e1; text-align: ${safeAlign(col.align)}; white-space: ${col.align === 'right' ? 'nowrap' : 'normal'}; font-size: 12px; font-weight: 800; color: #334155; text-transform: uppercase;">${escapeHtml(col.header)}</th>`
@@ -189,9 +192,9 @@ const renderTable = ({ columns = [], data = [] }) => {
   const rowsHtml = data
     .map((row, idx) => {
       const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
-      const cells = columns
-        .map((col) => {
-          const val = row[col.key] !== undefined && row[col.key] !== null ? row[col.key] : '';
+       const cells = pdfColumns
+         .map((col) => {
+           const val = col.key === '__serial' ? idx + 1 : row[col.key] !== undefined && row[col.key] !== null ? row[col.key] : '';
           const formattedVal = escapeHtml(val).replace(/\n/g, '<br/>');
           return `<td style="padding: 9px 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; line-height: 1.35; text-align: ${safeAlign(col.align)}; white-space: ${col.align === 'right' ? 'nowrap' : 'normal'}; font-weight: ${col.bold ? '700' : '500'}; color: ${safeColor(col.color, '#1e293b')};">${formattedVal}</td>`;
         })
@@ -203,7 +206,7 @@ const renderTable = ({ columns = [], data = [] }) => {
   return `
     <table class="report-table">
       <thead><tr>${columnsHtml}</tr></thead>
-      <tbody>${rowsHtml || `<tr><td colspan="${columns.length || 1}" class="empty-cell">No entries found</td></tr>`}</tbody>
+       <tbody>${rowsHtml || `<tr><td colspan="${pdfColumns.length || 1}" class="empty-cell">No entries found</td></tr>`}</tbody>
     </table>
   `;
 };

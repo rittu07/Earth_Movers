@@ -175,6 +175,7 @@ const PaymentTable = ({ payments }) => {
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-100/90 text-slate-700 font-black border-b border-slate-200">
             <tr>
+              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-center">S.No.</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Date</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Customer Name</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Mobile Phone</th>
@@ -192,8 +193,9 @@ const PaymentTable = ({ payments }) => {
                 </td>
               </tr>
             ) : (
-              payments.map((pay) => (
-                <tr key={pay.id} className="hover:bg-slate-50/80 transition-colors">
+               payments.map((pay, index) => (
+                 <tr key={pay.id} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="py-4 px-4 text-center font-black text-slate-500">{index + 1}</td>
                   <td className="py-4 px-4 text-slate-500 font-semibold text-xs whitespace-nowrap">
                     {pay.displayDate}
                   </td>

@@ -140,6 +140,7 @@ const ExpenseTable = ({ expenses }) => {
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-100/90 text-slate-700 font-black border-b border-slate-200">
             <tr>
+              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-center">S.No.</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Date</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Business</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Expense Category</th>
@@ -157,8 +158,9 @@ const ExpenseTable = ({ expenses }) => {
                 </td>
               </tr>
             ) : (
-              expenses.map((exp) => (
-                <tr key={exp.id} className="hover:bg-slate-50/80 transition-colors">
+               expenses.map((exp, index) => (
+                 <tr key={exp.id} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="py-4 px-4 text-center font-black text-slate-500">{index + 1}</td>
                   <td className="py-4 px-4 text-slate-500 font-semibold text-xs whitespace-nowrap flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-slate-400" />
                     {exp.displayDate}

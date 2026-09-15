@@ -278,6 +278,7 @@ const Ledger = () => {
         <table className="w-full text-left text-xs">
           <thead className="bg-slate-900 text-white font-semibold">
             <tr>
+              <th className="py-3.5 px-4">S.No.</th>
               <th className="py-3.5 px-4">Date</th>
               <th className="py-3.5 px-4">Customer</th>
               <th className="py-3.5 px-4">Type</th>
@@ -296,8 +297,9 @@ const Ledger = () => {
                 </td>
               </tr>
             ) : (
-              filteredEvents.map((ev) => (
-                <tr key={ev.id} className="hover:bg-slate-50/70 transition-colors">
+               filteredEvents.map((ev, index) => (
+                 <tr key={ev.id} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="py-3.5 px-4 text-center font-black text-slate-500">{index + 1}</td>
                   <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap">
                     {ev.displayDate}
                   </td>

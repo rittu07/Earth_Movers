@@ -307,7 +307,7 @@ const StaffLedger = () => {
             <div className="bg-white rounded-2xl border border-slate-200 p-4"><span className="text-xs font-black text-slate-500 uppercase">Total days worked</span><p className="text-2xl font-black text-slate-900 mt-1">{drivingSummary.days}</p></div>
             <div className="bg-white rounded-2xl border border-slate-200 p-4"><span className="text-xs font-black text-slate-500 uppercase">Total hours driven</span><p className="text-2xl font-black text-indigo-600 mt-1">{drivingSummary.hours.toFixed(1)}</p></div>
           </div>
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto"><table className="w-full text-left text-xs"><thead className="bg-slate-50 font-black uppercase text-slate-500"><tr><th className="p-3">Date</th><th className="p-3">JCB</th><th className="p-3">Start</th><th className="p-3">End</th><th className="p-3 text-right">Hours</th></tr></thead><tbody className="divide-y divide-slate-100">{filteredDrivingHours.sort((a, b) => String(b.date).localeCompare(String(a.date))).map((record) => <tr key={record.id}><td className="p-3">{record.date}</td><td className="p-3">{record.jcbVehicle}</td><td className="p-3">{record.startTime}</td><td className="p-3">{record.endTime}</td><td className="p-3 text-right font-black">{record.duration}</td></tr>)}</tbody></table></div>
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto"><table className="w-full text-left text-xs"><thead className="bg-slate-50 font-black uppercase text-slate-500"><tr><th className="p-3">S.No.</th><th className="p-3">Date</th><th className="p-3">JCB</th><th className="p-3">Start</th><th className="p-3">End</th><th className="p-3 text-right">Hours</th></tr></thead><tbody className="divide-y divide-slate-100">{filteredDrivingHours.sort((a, b) => String(b.date).localeCompare(String(a.date))).map((record, index) => <tr key={record.id}><td className="p-3 text-center font-black text-slate-500">{index + 1}</td><td className="p-3">{record.date}</td><td className="p-3">{record.jcbVehicle}</td><td className="p-3">{record.startTime}</td><td className="p-3">{record.endTime}</td><td className="p-3 text-right font-black">{record.duration}</td></tr>)}</tbody></table></div>
         </div>
       )}
 
@@ -407,6 +407,7 @@ const StaffLedger = () => {
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-100/90 text-slate-700 font-black border-b border-slate-200">
             <tr>
+              <th className="py-4 px-4 text-xs uppercase tracking-wider font-black text-center">S.No.</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Date</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Type</th>
               <th className="py-4 px-4 text-xs uppercase tracking-wider font-black">Description</th>
@@ -418,16 +419,17 @@ const StaffLedger = () => {
           <tbody className="divide-y divide-slate-100 font-medium">
             {filteredItems.length === 0 ? (
               <tr>
-                <td colSpan="6" className="py-10 text-center text-slate-400 font-bold text-sm">
+                 <td colSpan="7" className="py-10 text-center text-slate-400 font-bold text-sm">
                   No records match the tab selection.
                 </td>
               </tr>
             ) : (
-              filteredItems.map((item) => {
+               filteredItems.map((item, index) => {
                 const badge = getTypeBadge(item.category);
 
                 return (
                   <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-4 px-4 text-center font-black text-slate-500">{index + 1}</td>
                     <td className="py-4 px-4 text-slate-500 font-semibold text-xs whitespace-nowrap">
                       {formatDisplayDate(item.date)}
                     </td>

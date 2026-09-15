@@ -375,7 +375,7 @@ const FinanceLoanLedger = () => {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-extrabold uppercase tracking-wider text-[11px]">
-                <th className="py-3.5 px-4">DATE</th>
+                 <th className="py-3.5 px-4">S.NO.</th><th className="py-3.5 px-4">DATE</th>
                 <th className="py-3.5 px-4">TYPE</th>
                 <th className="py-3.5 px-4">PAYMENT METHOD / ID</th>
                 <th className="py-3.5 px-4">DESCRIPTION</th>
@@ -387,13 +387,14 @@ const FinanceLoanLedger = () => {
             <tbody className="divide-y divide-slate-100 font-medium text-slate-900">
               {filteredEvents.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="py-8 text-center text-slate-400 font-medium">
+                   <td colSpan="8" className="py-8 text-center text-slate-400 font-medium">
                     No loan ledger records found.
                   </td>
                 </tr>
               ) : (
-                filteredEvents.map((ev) => (
-                  <tr key={ev.id} className="hover:bg-slate-50/80 transition-colors">
+                 filteredEvents.map((ev, index) => (
+                   <tr key={ev.id} className="hover:bg-slate-50/80 transition-colors">
+                     <td className="py-3.5 px-4 text-center font-black text-slate-500">{index + 1}</td>
                     <td className="py-3.5 px-4 text-slate-600 font-bold whitespace-nowrap">
                       {ev.displayDate}
                     </td>
