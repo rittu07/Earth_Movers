@@ -4,7 +4,7 @@ import { API_URL } from '../utils/apiUrl';
 
 // The deployed Worker serves both the SPA and API, so production sync works without a build-time URL.
 const CLIENT_ID_KEY = 'earth-movers-client-id';
-const SYNC_STATE_VERSION = 'full-replay-v2';
+const SYNC_STATE_VERSION = 'full-replay-v3';
 
 const getClientId = () => {
   let clientId = localStorage.getItem(CLIENT_ID_KEY);
