@@ -51,7 +51,8 @@ const AddCustomer = () => {
 
     setSaving(true);
     const created = addCustomer(formData);
-    navigate(`/customers/${created.id}`);
+    if (created) navigate(`/customers/${created.id}`);
+    else setSaving(false);
   };
 
   return (

@@ -7,6 +7,7 @@ import SearchableCustomerSelect from './SearchableCustomerSelect';
 import { decimalOnly, digitsOnly, mobileError } from '../../utils/validation';
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
+const normalizePhone = (value) => String(value || '').replace(/\D/g, '');
 
 const businessList = [
   { id: 'bricks', name: 'Bricks Supply' },
@@ -341,8 +342,22 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
       return;
     }
 
+    const newCustomerPhones = new Map();
+    for (const row of validRows) {
+      if (!row.isNewCustomer || !row.customerPhone.trim()) continue;
+      const phone = normalizePhone(row.customerPhone);
+      const existing = customers.find((customer) => normalizePhone(customer.phone) === phone);
+      const previousName = newCustomerPhones.get(phone);
+      if (existing || (previousName && previousName !== row.customerName.trim().toLowerCase())) {
+        showToast(`Customer with phone number ${phone} already exists. Select the existing customer or use a different number.`, 'error');
+        return;
+      }
+      newCustomerPhones.set(phone, row.customerName.trim().toLowerCase());
+    }
+
     setIsSaving(true);
     let count = 0;
+    let customerCreationFailed = false;
     const createdCustomers = new Map();
     validRows.forEach((r) => {
       let custId = r.customerId;
@@ -351,11 +366,15 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
 
       if (r.isNewCustomer && r.customerName.trim()) {
         const customerKey = `${r.customerPhone.trim()}|${r.customerName.trim().toLowerCase()}`;
-        const newCust = createdCustomers.get(customerKey) || addCustomer({
-          name: r.customerName.trim(),
-          phone: r.customerPhone.trim() || '0000000000',
-          address: ''
-        });
+          const newCust = createdCustomers.get(customerKey) || addCustomer({
+            name: r.customerName.trim(),
+            phone: r.customerPhone.trim(),
+            address: ''
+          });
+          if (!newCust) {
+            customerCreationFailed = true;
+            return;
+          }
         createdCustomers.set(customerKey, newCust);
         custId = newCust.id;
         custName = newCust.name;
@@ -443,6 +462,11 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
       });
       count++;
     });
+
+    if (customerCreationFailed) {
+      setIsSaving(false);
+      return;
+    }
 
     showToast(`Saved ${count} transactions!`);
 

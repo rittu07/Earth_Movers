@@ -164,8 +164,8 @@ const AppContent = () => {
 
       {/* Toast Notification Banner */}
       {toastMessage && (
-        <div className={`fixed top-4 right-4 sm:top-6 sm:right-6 z-50 text-white px-4 py-3 rounded-2xl shadow-2xl text-xs font-semibold flex items-center gap-2 animate-in slide-in-from-top duration-300 ${toastType === 'delete' ? 'bg-rose-600 border border-rose-700' : 'bg-slate-900 border border-slate-800'}`}>
-          <span className={`w-2 h-2 rounded-full ${toastType === 'delete' ? 'bg-white' : 'bg-emerald-400'}`}></span>
+        <div className={`fixed top-4 right-4 sm:top-6 sm:right-6 z-50 text-white px-4 py-3 rounded-2xl shadow-2xl text-xs font-semibold flex items-center gap-2 animate-in slide-in-from-top duration-300 ${toastType === 'delete' || toastType === 'error' ? 'bg-rose-600 border border-rose-700' : 'bg-slate-900 border border-slate-800'}`}>
+          <span className={`w-2 h-2 rounded-full ${toastType === 'delete' || toastType === 'error' ? 'bg-white' : 'bg-emerald-400'}`}></span>
           <span>{toastMessage}</span>
         </div>
       )}

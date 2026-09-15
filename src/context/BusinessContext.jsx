@@ -134,9 +134,9 @@ export const BusinessProvider = ({ children }) => {
     });
   }, [canAccessFinance, user]);
 
-  const showToast = (message) => {
+  const showToast = (message, type = 'info') => {
     setToastMessage(message);
-    setToastType(/deleted|removed/i.test(message) ? 'delete' : 'info');
+    setToastType(type === 'error' || /deleted|removed/i.test(message) ? type === 'error' ? 'error' : 'delete' : 'info');
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     toastTimerRef.current = setTimeout(() => {
       setToastMessage(null);
@@ -203,6 +203,10 @@ export const BusinessProvider = ({ children }) => {
         (!incomingPhone && normalizeName(customer.name) === normalizeName(customerData.name));
     });
     if (existing) {
+      if (incomingPhone && normalizePhone(existing.phone) === incomingPhone) {
+        showToast(`Customer with phone number ${incomingPhone} already exists. Select the existing customer or use a different number.`, 'error');
+        return null;
+      }
       showToast(`Customer "${existing.name}" already exists; using the existing record.`);
       return existing;
     }

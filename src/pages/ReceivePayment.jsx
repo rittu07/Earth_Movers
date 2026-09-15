@@ -72,6 +72,7 @@ const ReceivePayment = () => {
         phone: newCustPhone.trim(),
         address: newCustAddress.trim()
       });
+      if (!createdCust) return;
       targetCustId = createdCust.id;
       targetCustName = createdCust.name;
       targetCustPhone = createdCust.phone;
