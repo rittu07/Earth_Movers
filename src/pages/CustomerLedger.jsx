@@ -43,7 +43,8 @@ const CustomerLedger = () => {
     payments = [],
     deleteTransaction,
     deletePayment,
-    showToast
+    showToast,
+    canDelete
   } = useBusiness();
 
   const [activeTab, setActiveTab] = useState('all');
@@ -466,20 +467,20 @@ const CustomerLedger = () => {
 
                     {/* Action Bar (Edit / Delete Entry) */}
                     <div className="flex items-center gap-2 pt-1">
-                      <button
+                      {canDelete && <button
                         type="button"
                         onClick={() => handleEdit(item)}
                         className="flex-1 py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs rounded-xl border border-amber-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Pencil className="w-3.5 h-3.5" /> Edit {item.type}
-                      </button>
-                      <button
+                      </button>}
+                       {canDelete && <button
                         type="button"
                         onClick={() => handleDelete(item)}
                         className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" /> Delete
-                      </button>
+                       </button>}
                     </div>
                   </div>
                 )}

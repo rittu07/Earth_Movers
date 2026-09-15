@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 
 const SupplierSection = () => {
-  const { suppliers = [], addSupplier, updateSupplier, deleteSupplier, getSupplierFinancials, showToast } = useBusiness();
+  const { suppliers = [], addSupplier, updateSupplier, deleteSupplier, getSupplierFinancials, showToast, canDelete } = useBusiness();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -210,7 +210,7 @@ const SupplierSection = () => {
                   </div>
 
                   <div className="flex items-center gap-2 pt-1">
-                    <button
+                    {canDelete && <button
                       type="button"
                       onClick={() => {
                         const nextName = window.prompt('Supplier name', sup.name);
@@ -219,7 +219,7 @@ const SupplierSection = () => {
                       className="py-2.5 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 font-extrabold text-xs rounded-xl border border-amber-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Pencil className="w-3.5 h-3.5" /> Edit Profile
-                    </button>
+                    </button>}
                     <button
                       type="button"
                       onClick={() => { setSelectedSupplierId(sup.id); setIsPayModalOpen(true); }}
@@ -322,7 +322,7 @@ const SupplierSection = () => {
 
                     <td className="py-4 px-4 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1.5">
-                        <button
+                        {canDelete && <button
                           type="button"
                           title="Edit Supplier Profile"
                           onClick={() => {
@@ -332,7 +332,7 @@ const SupplierSection = () => {
                           className="p-2 inline-flex items-center text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-xl transition-colors cursor-pointer"
                         >
                           <Pencil className="w-4 h-4" />
-                        </button>
+                        </button>}
 
                         <button
                           type="button"

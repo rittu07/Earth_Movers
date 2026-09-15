@@ -40,6 +40,7 @@ const removeDefaultStaffSeeds = async (values = []) => {
 export const BusinessProvider = ({ children }) => {
   const { role, user } = useAuth();
   const canAccessFinance = role === 'owner';
+  const canDelete = role === 'owner';
   const [customers, setCustomers] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -248,6 +249,7 @@ export const BusinessProvider = ({ children }) => {
 
   // Delete Customer
   const deleteCustomer = (id) => {
+    if (!canDelete) return showToast('Only the owner can delete records.', 'error');
     setCustomers((prev) => prev.filter((c) => c.id !== id));
     persist('customers', { id, deletedAt: new Date().toISOString() }, 'delete');
     showToast('Customer deleted successfully!');
@@ -497,6 +499,7 @@ export const BusinessProvider = ({ children }) => {
 
   // Delete Transaction
   const deleteTransaction = (id) => {
+    if (!canDelete) return showToast('Only the owner can delete records.', 'error');
     setTransactions((prevTrxs) => {
       const nextTrxs = prevTrxs.filter((t) => t.id !== id);
       persist('transactions', { id, deletedAt: new Date().toISOString() }, 'delete');
@@ -592,6 +595,7 @@ export const BusinessProvider = ({ children }) => {
 
   // Delete Payment
   const deletePayment = (id) => {
+    if (!canDelete) return showToast('Only the owner can delete records.', 'error');
     setPayments((prevPays) => {
       const nextPays = prevPays.filter((p) => p.id !== id);
       persist('payments', { id, deletedAt: new Date().toISOString() }, 'delete');
@@ -661,6 +665,7 @@ export const BusinessProvider = ({ children }) => {
 
   // Delete Expense
   const deleteExpense = (id) => {
+    if (!canDelete) return showToast('Only the owner can delete records.', 'error');
     setExpenses((prev) => prev.filter((e) => e.id !== id));
     persist('expenses', { id, deletedAt: new Date().toISOString() }, 'delete');
     showToast(`Expense record deleted successfully!`);
@@ -759,6 +764,7 @@ export const BusinessProvider = ({ children }) => {
   };
 
   const deleteSupplier = (id) => {
+    if (!canDelete) return showToast('Only the owner can delete records.', 'error');
     setSuppliers((prev) => prev.filter((supplier) => supplier.id !== id));
     persist('suppliers', { id, deletedAt: new Date().toISOString() }, 'delete');
     showToast('Supplier deleted successfully!');
@@ -901,6 +907,7 @@ export const BusinessProvider = ({ children }) => {
   };
 
   const deleteReturnPayment = (loanId, paymentId) => {
+    if (!canDelete) return showToast('Only the owner can delete records.', 'error');
     const currentLoan = financeLoans.find((loan) => loan.id === loanId);
     if (!currentLoan) return null;
     const updatedLoan = getLoanCalculatedDetails({
@@ -944,6 +951,7 @@ export const BusinessProvider = ({ children }) => {
   };
 
   const deleteFinanceLoan = (loanId) => {
+    if (!canDelete) return showToast('Only the owner can delete records.', 'error');
     const loan = financeLoans.find((l) => l.id === loanId);
     setFinanceLoans((prev) => prev.filter((l) => l.id !== loanId));
     if (loan) persist('financeLoans', loan, 'delete');
@@ -1117,6 +1125,7 @@ export const BusinessProvider = ({ children }) => {
   };
 
   const deleteStaff = (id) => {
+    if (!canDelete) return showToast('Only the owner can delete records.', 'error');
     setStaff((prev) => prev.filter((s) => s.id !== id));
     persist('staff', { id, deletedAt: new Date().toISOString() }, 'delete');
     showToast('Staff member removed.');
@@ -1339,8 +1348,9 @@ export const BusinessProvider = ({ children }) => {
         getSupplierLedger,
         getSupplierFinancials,
         toastMessage,
-        toastType,
-        showToast
+         toastType,
+         canDelete,
+         showToast
       }}
     >
       {children}

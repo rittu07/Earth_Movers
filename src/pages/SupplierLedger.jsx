@@ -25,7 +25,7 @@ import PaySupplierModal from '../components/suppliers/PaySupplierModal';
 
 const SupplierLedger = () => {
   const { id } = useParams();
-  const { getSupplierById, getSupplierLedger, getSupplierFinancials, updateTransaction, deleteTransaction, showToast } = useBusiness();
+  const { getSupplierById, getSupplierLedger, getSupplierFinancials, updateTransaction, deleteTransaction, showToast, canDelete } = useBusiness();
   const [activeTab, setActiveTab] = useState('all');
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
   const [monthFilter, setMonthFilter] = useState('');
@@ -280,7 +280,7 @@ const SupplierLedger = () => {
                 <td className="p-3 text-right font-black text-emerald-600">{formatCurrency(item.paid || 0)}</td>
                 <td className="p-3 text-right font-black text-rose-600">{formatCurrency(item.due || 0)}</td>
                 <td className="p-3 whitespace-nowrap">
-                  {item.type === 'Supply Entry' && <><button title="Edit" onClick={() => { const cost = window.prompt('Supplier cost', String(item.amount)); if (cost !== null) updateTransaction(item.id, { outsourcedCost: Number(cost), outsourcedDue: Math.max(0, Number(cost) - Number(item.paid || 0)) }); }} className="p-1 text-amber-600"><Pencil className="w-4 h-4" /></button><button title="Delete" onClick={() => window.confirm(`Delete this supplier transaction?\n\n${supplier.name} | ${item.business} | ${item.description} | ${formatCurrency(item.amount || 0)} | ${item.displayDate || item.date || 'No date'}`) && deleteTransaction(item.id)} className="p-1 text-rose-600"><Trash2 className="w-4 h-4" /></button></>}
+                  {item.type === 'Supply Entry' && <><button title="Edit" onClick={() => { const cost = window.prompt('Supplier cost', String(item.amount)); if (cost !== null) updateTransaction(item.id, { outsourcedCost: Number(cost), outsourcedDue: Math.max(0, Number(cost) - Number(item.paid || 0)) }); }} className="p-1 text-amber-600"><Pencil className="w-4 h-4" /></button>{canDelete && <button title="Delete" onClick={() => window.confirm(`Delete this supplier transaction?\n\n${supplier.name} | ${item.business} | ${item.description} | ${formatCurrency(item.amount || 0)} | ${item.displayDate || item.date || 'No date'}`) && deleteTransaction(item.id)} className="p-1 text-rose-600"><Trash2 className="w-4 h-4" /></button>}</>}
                 </td>
               </tr>)}
             </tbody>

@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 
 const StaffSection = () => {
-  const { staff = [], deleteStaff } = useBusiness();
+  const { staff = [], deleteStaff, canDelete } = useBusiness();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -160,7 +160,7 @@ const StaffSection = () => {
           setStaffToEdit(s);
           setIsAddEditModalOpen(true);
         }}
-        onDelete={handleDelete}
+        onDelete={canDelete ? handleDelete : null}
         onPaySalary={(s) => {
           setSelectedStaffForPay(s);
           setIsPayModalOpen(true);

@@ -28,7 +28,7 @@ const getShortDesc = (trx) => {
 };
 
 const TransactionTable = ({ transactions = [] }) => {
-  const { deleteTransaction } = useBusiness();
+  const { deleteTransaction, canDelete } = useBusiness();
   const [expandedId, setExpandedId] = useState(null);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const navigate = useNavigate();
@@ -193,7 +193,7 @@ const TransactionTable = ({ transactions = [] }) => {
 
                     {/* Action Bar (Edit / Delete / Ledger) */}
                     <div className="flex items-center gap-2 pt-1">
-                      <button
+                      {canDelete && <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -202,14 +202,14 @@ const TransactionTable = ({ transactions = [] }) => {
                         className="flex-1 py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs rounded-xl border border-amber-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Pencil className="w-3.5 h-3.5" /> Edit Entry
-                      </button>
-                      <button
+                      </button>}
+                      {canDelete && <button
                         type="button"
                         onClick={(e) => handleDelete(trx, e)}
                         className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" /> Delete
-                      </button>
+                      </button>}
                     </div>
 
                     {/* Full Customer Ledger Navigation Link */}

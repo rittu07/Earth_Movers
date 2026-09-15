@@ -10,7 +10,7 @@ import { exportToPdf } from '../utils/pdfGenerator';
 import { Search, PlusCircle, Download, Share2 } from 'lucide-react';
 
 const Customers = () => {
-  const { customers = [], getCustomerFinancials, deleteCustomer } = useBusiness();
+  const { customers = [], getCustomerFinancials, deleteCustomer, canDelete } = useBusiness();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTab, setFilterTab] = useState('all'); // all, active, outstanding
 
@@ -158,7 +158,7 @@ const Customers = () => {
       </div>
 
       {/* Customer Data Table */}
-      <CustomerTable customers={filteredCustomers} onDelete={(c) => deleteCustomer(c.id)} />
+      <CustomerTable customers={filteredCustomers} onDelete={canDelete ? (c) => deleteCustomer(c.id) : null} />
 
       {/* Suppliers Section (Rendered right after Customer Details) */}
       <SupplierSection />

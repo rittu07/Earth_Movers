@@ -189,7 +189,8 @@ const Finance = () => {
     deleteReturnPayment,
     settleFinanceLoan,
     deleteFinanceLoan,
-    showToast
+    showToast,
+    canDelete
   } = useBusiness();
 
   // Search & Filter state
@@ -453,18 +454,18 @@ const Finance = () => {
           subtitle="Loan ledger, dynamic compounding monthly interest tracking & variable tenure returns"
           action={
             <div className="flex items-center gap-2">
-              <button
+                         {canDelete && <button
                 onClick={handleDownloadFinanceStatement}
                 className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
               >
                 <Download className="w-4 h-4 text-emerald-600" /> Statement PDF
-              </button>
-              <button
+                         </button>}
+                         {canDelete && <button
                 onClick={() => handleDownloadFinanceStatement('share')}
                 className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
               >
                 <Share2 className="w-4 h-4" /> Share PDF
-              </button>
+                         </button>}
               <button
                 onClick={() => setIsAddModalOpen(true)}
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all cursor-pointer"
@@ -939,13 +940,13 @@ const Finance = () => {
                               </button>
                             </>
                           )}
-                          <button
+                          {canDelete && <button
                             onClick={() => setEditingLoan(loan)}
                             className="p-1 text-amber-600 hover:text-amber-800 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer inline-flex items-center"
                             title="Edit Loan Record"
                           >
                             <Pencil className="w-3.5 h-3.5" />
-                          </button>
+                          </button>}
                           <button
                             onClick={() => handleRequestDelete(loan)}
                             className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer inline-flex items-center"
@@ -1401,7 +1402,7 @@ const Finance = () => {
                                setReturnPayRef(p.reference || '');
                                setReturnPayDate(p.date || new Date().toISOString().split('T')[0]);
                              }} className="text-amber-600 cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>
-                             <button type="button" title="Delete return payment" onClick={() => window.confirm(`Delete return payment of ${formatCurrency((Number(p.amount) || 0) + (Number(p.discount) || 0))} for ${p.month || 'Loan'}?`) && deleteReturnPayment(selectedLoan.id, p.id)} className="text-rose-600 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                              {canDelete && <button type="button" title="Delete return payment" onClick={() => window.confirm(`Delete return payment of ${formatCurrency((Number(p.amount) || 0) + (Number(p.discount) || 0))} for ${p.month || 'Loan'}?`) && deleteReturnPayment(selectedLoan.id, p.id)} className="text-rose-600 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>}
                            </div>
                         </div>
                       ))}
@@ -1722,7 +1723,7 @@ const Finance = () => {
                                          setSelectedLedgerLoan(null);
                                          setIsReturnModalOpen(true);
                                        }} className="text-amber-600 cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>
-                                       <button type="button" title="Delete return payment" onClick={() => window.confirm(`Delete return payment of ${formatCurrency(ev.paidAmount || 0)}?`) && deleteReturnPayment(currentSelectedLedgerLoanCalculated.id, ev.paymentId)} className="text-rose-600 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                                        {canDelete && <button type="button" title="Delete return payment" onClick={() => window.confirm(`Delete return payment of ${formatCurrency(ev.paidAmount || 0)}?`) && deleteReturnPayment(currentSelectedLedgerLoanCalculated.id, ev.paymentId)} className="text-rose-600 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>}
                                      </span>
                                    )}
                                  </div>

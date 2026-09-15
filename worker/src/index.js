@@ -497,6 +497,10 @@ app.post('/api/sync', async (c) => {
       rejected.push({ eventId: event.eventId, reason: 'Event account does not match session' });
       continue;
     }
+    if (event.operation === 'delete' && c.get('user').role !== 'owner') {
+      rejected.push({ eventId: event.eventId, reason: 'Only owners can delete records' });
+      continue;
+    }
     if (!canWriteEntity(c.get('user'), event.entityType)) {
       rejected.push({ eventId: event.eventId, reason: 'Managers cannot access finance records' });
       continue;

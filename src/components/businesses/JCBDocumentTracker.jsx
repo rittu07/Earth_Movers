@@ -23,6 +23,7 @@ import { formatJCBOverdueWhatsApp, openWhatsAppChat } from '../../utils/whatsapp
 import { loadSyncedCollection, saveSyncedCollection } from '../../db/syncedStorage';
 import { isSafeDocumentUrl } from '../../utils/documentSecurity';
 import { uploadAttachment } from '../../utils/attachmentStorage';
+import { useBusiness } from '../../context/BusinessContext';
 
 const initialJcbVehiclesData = [
   { id: 'jcb-1', code: 'JCB 1', regNo: '', model: 'JCB 3DX', serialNo: '', totalHours: 0, documents: [] },
@@ -82,6 +83,7 @@ const sanitizeVehicles = (list) => {
 };
 
 const JCBDocumentTracker = () => {
+  const { canDelete } = useBusiness();
   const [vehicles, setVehicles] = useState(() => sanitizeVehicles(initialJcbVehiclesData));
   const [storageReady, setStorageReady] = useState(false);
 
@@ -394,12 +396,12 @@ const JCBDocumentTracker = () => {
                       </td>
                       <td className="py-4 px-6">{renderStatusBadge(doc.daysInfo)}</td>
                       <td className="py-4 px-6 text-right flex items-center justify-end gap-2">
-                        <button
+                        {canDelete && <button
                           onClick={() => setViewingDoc(doc)}
                           className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-amber-800 font-black rounded-xl text-xs sm:text-sm transition-all cursor-pointer border border-slate-300"
                         >
                           [View File]
-                        </button>
+                        </button>}
                         <button
                           onClick={() => handleDeleteDoc(doc.id)}
                           className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"

@@ -7,7 +7,7 @@ import { openWhatsAppChat } from '../../utils/whatsapp';
 import { Eye, CreditCard, Phone, ChevronDown, MessageSquare, Pencil, Trash2 } from 'lucide-react';
 
 const PaymentTable = ({ payments }) => {
-  const { deletePayment } = useBusiness();
+  const { deletePayment, canDelete } = useBusiness();
   const [expandedId, setExpandedId] = useState(null);
   const [editingPayment, setEditingPayment] = useState(null);
   const navigate = useNavigate();
@@ -132,7 +132,7 @@ const PaymentTable = ({ payments }) => {
 
                     {/* Action Bar (Edit / Delete) */}
                     <div className="flex items-center gap-2 pt-1">
-                      <button
+                      {canDelete && <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -141,14 +141,14 @@ const PaymentTable = ({ payments }) => {
                         className="flex-1 py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs rounded-xl border border-amber-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Pencil className="w-3.5 h-3.5" /> Edit Payment
-                      </button>
-                      <button
+                      </button>}
+                      {canDelete && <button
                         type="button"
                          onClick={(e) => handleDelete(pay, e)}
                         className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" /> Delete
-                      </button>
+                      </button>}
                     </div>
 
                     {/* Full Customer Ledger Link */}
