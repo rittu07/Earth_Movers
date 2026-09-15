@@ -98,8 +98,9 @@ const buildNativePdf = ({
 
       if (column.align === 'right' || /amount|balance|due|paid|total|principal|returned|credit|debit|income|expense|profit|revenue|cost|price|rate|tenure/.test(`${key} ${header}`)) {
         style.cellWidth = 25;
-      } else if (/date/.test(`${key} ${header}`)) {
-        style.cellWidth = 22;
+       } else if (/date/.test(`${key} ${header}`)) {
+         style.cellWidth = 30;
+         style.overflow = 'visible';
       } else if (/phone|mobile/.test(`${key} ${header}`)) {
         style.cellWidth = 28;
       } else if (/^id$|loan.?id|customer.?code|supplier.?code/.test(`${key} ${header}`)) {
@@ -185,7 +186,7 @@ const renderTable = ({ columns = [], data = [] }) => {
   const columnsHtml = pdfColumns
     .map(
       (col) =>
-        `<th style="padding: 9px 10px; border-bottom: 2px solid #cbd5e1; text-align: ${safeAlign(col.align)}; white-space: ${col.align === 'right' ? 'nowrap' : 'normal'}; font-size: 12px; font-weight: 800; color: #334155; text-transform: uppercase;">${escapeHtml(col.header)}</th>`
+        `<th style="padding: 9px 10px; border-bottom: 2px solid #cbd5e1; text-align: ${safeAlign(col.align)}; white-space: ${/date/i.test(`${col.key} ${col.header}`) || col.align === 'right' ? 'nowrap' : 'normal'}; min-width: ${/date/i.test(`${col.key} ${col.header}`) ? '78px' : 'auto'}; font-size: 12px; font-weight: 800; color: #334155; text-transform: uppercase;">${escapeHtml(col.header)}</th>`
     )
     .join('');
 
@@ -196,7 +197,7 @@ const renderTable = ({ columns = [], data = [] }) => {
          .map((col) => {
            const val = col.key === '__serial' ? idx + 1 : row[col.key] !== undefined && row[col.key] !== null ? row[col.key] : '';
           const formattedVal = escapeHtml(val).replace(/\n/g, '<br/>');
-          return `<td style="padding: 9px 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; line-height: 1.35; text-align: ${safeAlign(col.align)}; white-space: ${col.align === 'right' ? 'nowrap' : 'normal'}; font-weight: ${col.bold ? '700' : '500'}; color: ${safeColor(col.color, '#1e293b')};">${formattedVal}</td>`;
+           return `<td style="padding: 9px 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; line-height: 1.35; text-align: ${safeAlign(col.align)}; white-space: ${/date/i.test(`${col.key} ${col.header}`) || col.align === 'right' ? 'nowrap' : 'normal'}; min-width: ${/date/i.test(`${col.key} ${col.header}`) ? '78px' : 'auto'}; font-weight: ${col.bold ? '700' : '500'}; color: ${safeColor(col.color, '#1e293b')};">${formattedVal}</td>`;
         })
         .join('');
       return `<tr style="background-color: ${bg};">${cells}</tr>`;
