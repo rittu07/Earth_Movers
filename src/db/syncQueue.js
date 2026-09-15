@@ -60,6 +60,10 @@ export const flushSyncQueue = async () => {
     const event = userPending.find((item) => item.eventId === eventId);
     if (event) await deleteLocal('syncQueue', event.id);
   }
+  for (const rejected of result.rejected || []) {
+    const event = userPending.find((item) => item.eventId === rejected.eventId);
+    if (event) await deleteLocal('syncQueue', event.id);
+  }
   return { synced: (result.accepted || []).length, pending: (await getAllLocal('syncQueue')).length };
 };
 

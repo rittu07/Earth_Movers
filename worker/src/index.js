@@ -3,7 +3,6 @@ import { cors } from 'hono/cors';
 
 const app = new Hono();
 const MAX_EVENTS = 100;
-const MAX_D1_BATCH_STATEMENTS = 100;
 const MAX_REQUEST_BYTES = 512 * 1024;
 const MAX_EVENT_BYTES = 128 * 1024;
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
@@ -487,7 +486,6 @@ app.post('/api/sync', async (c) => {
   }
 
   const receivedAt = now();
-  const statements = [];
   const accepted = [];
   const rejected = [];
   for (const event of events) {
@@ -507,19 +505,18 @@ app.post('/api/sync', async (c) => {
     if (existing) { accepted.push(event.eventId); continue; }
     const entity = entityStatement(event, receivedAt);
     if (!entity) { rejected.push({ eventId: event.eventId, reason: 'Unsupported entity or operation' }); continue; }
-    statements.push(c.env.DB.prepare(entity.sql).bind(...entity.bindings));
-    statements.push(c.env.DB.prepare('INSERT INTO sync_events (event_id,entity_type,entity_id,operation,payload,client_id,client_created_at,received_at) VALUES (?,?,?,?,?,?,?,?)').bind(event.eventId, event.entityType, event.entityId, event.operation || 'create', JSON.stringify(event.payload), event.clientId || 'unknown', event.clientCreatedAt || receivedAt, receivedAt));
-    accepted.push(event.eventId);
-  }
-  try {
-    for (let index = 0; index < statements.length; index += MAX_D1_BATCH_STATEMENTS) {
-      await c.env.DB.batch(statements.slice(index, index + MAX_D1_BATCH_STATEMENTS));
+    try {
+      await c.env.DB.batch([
+        c.env.DB.prepare(entity.sql).bind(...entity.bindings),
+        c.env.DB.prepare('INSERT INTO sync_events (event_id,entity_type,entity_id,operation,payload,client_id,client_created_at,received_at) VALUES (?,?,?,?,?,?,?,?)').bind(event.eventId, event.entityType, event.entityId, event.operation || 'create', JSON.stringify(event.payload), event.clientId || 'unknown', event.clientCreatedAt || receivedAt, receivedAt)
+      ]);
+      accepted.push(event.eventId);
+    } catch (error) {
+      console.error('Sync event failed', { eventId: event.eventId, entityType: event.entityType, error: String(error) });
+      rejected.push({ eventId: event.eventId, reason: 'Event could not be saved' });
     }
-    return c.json({ accepted, rejected, receivedAt });
-  } catch (error) {
-    console.error('Sync batch failed', error);
-    return c.json({ error: 'Sync failed while saving data' }, 500);
   }
+  return c.json({ accepted, rejected, receivedAt });
 });
 
 app.get('/api/sync', async (c) => {

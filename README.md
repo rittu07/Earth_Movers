@@ -520,4 +520,4 @@ npm run worker:deploy
 curl -fsS https://earth-movers-api.loga.workers.dev/health
 ```
 
-The debug APK is generated at `apk output/Earth_Movers-debug.apk`. Android builds require JDK 21 and an Android SDK. The currently deployed Worker version is `81031ce9-82d3-4b05-8774-66d27ffd9a9e`.
+The debug APK is generated at `apk output/Earth_Movers-debug.apk`. Android builds require JDK 21 and an Android SDK. The currently deployed Worker version is `a6bb9dc7-8bf1-4d50-86c3-5292afe49fce`.
