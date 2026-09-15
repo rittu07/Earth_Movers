@@ -258,6 +258,8 @@ const Finance = () => {
   // New Loan Form State
   const [newBorrowerName, setNewBorrowerName] = useState('');
   const [newPhone, setNewPhone] = useState('');
+  const [newGuarantorName, setNewGuarantorName] = useState('');
+  const [newGuarantorPhone, setNewGuarantorPhone] = useState('');
   const [newPrincipal, setNewPrincipal] = useState('100000');
   const [newRate, setNewRate] = useState('2');
   const [newMonths, setNewMonths] = useState('1');
@@ -302,6 +304,11 @@ const Finance = () => {
       showToast(phoneValidationError);
       return;
     }
+    const guarantorPhoneValidationError = mobileError(newGuarantorPhone, true);
+    if (guarantorPhoneValidationError) {
+      showToast(`Guarantor: ${guarantorPhoneValidationError}`);
+      return;
+    }
 
     const p = Number(newPrincipal) || 0;
     const r = Number(newRate) || 0;
@@ -312,6 +319,8 @@ const Finance = () => {
     addFinanceLoan({
       borrowerName: newBorrowerName,
       phone: newPhone,
+      guarantorName: newGuarantorName,
+      guarantorPhone: newGuarantorPhone,
       principal: p,
       interestRate: r,
       months: m,
@@ -344,6 +353,8 @@ const Finance = () => {
     // Reset Form & Close Modal
     setNewBorrowerName('');
     setNewPhone('');
+    setNewGuarantorName('');
+    setNewGuarantorPhone('');
     setNewNotes('');
     setNewMethod('Cash');
     setNewReference('');
@@ -669,6 +680,11 @@ const Finance = () => {
                         >
                           📞 {loan.phone || 'No phone'}
                         </a>
+                        {loan.guarantorName && (
+                          <div className="text-xs text-slate-500 font-semibold mt-1">
+                            Guarantor: {loan.guarantorName} {loan.guarantorPhone ? `(${loan.guarantorPhone})` : ''}
+                          </div>
+                        )}
                       </div>
 
                       <div className="text-right shrink-0">
@@ -839,6 +855,9 @@ const Finance = () => {
                             <span>{loan.borrowerName}</span>
                           </Link>
                           <div className="text-xs text-slate-500 font-medium">{loan.phone || loan.id}</div>
+                          {loan.guarantorName && (
+                            <div className="text-xs text-slate-500 font-medium">Guarantor: {loan.guarantorName} {loan.guarantorPhone ? `(${loan.guarantorPhone})` : ''}</div>
+                          )}
                           <div className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
                             <span>Start: {loan.startDate}</span>
                             {loan.autoElapsed > 1 && (
@@ -1014,6 +1033,29 @@ const Finance = () => {
                     placeholder="9876543210"
                     value={newPhone}
                     onChange={(e) => setNewPhone(e.target.value)}
+                    className="w-full p-3 bg-white border border-slate-200 rounded-xl font-medium focus:outline-hidden focus:border-emerald-500 text-base"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Guarantor Name</label>
+                  <input
+                    type="text"
+                    placeholder="Guarantor full name"
+                    value={newGuarantorName}
+                    onChange={(e) => setNewGuarantorName(e.target.value)}
+                    className="w-full p-3 bg-white border border-slate-200 rounded-xl font-medium focus:outline-hidden focus:border-emerald-500 text-base"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Guarantor Mobile Number</label>
+                  <input
+                    type="tel"
+                    placeholder="9876543210"
+                    value={newGuarantorPhone}
+                    onChange={(e) => setNewGuarantorPhone(e.target.value)}
                     className="w-full p-3 bg-white border border-slate-200 rounded-xl font-medium focus:outline-hidden focus:border-emerald-500 text-base"
                   />
                 </div>

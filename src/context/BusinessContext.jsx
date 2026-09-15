@@ -783,6 +783,8 @@ export const BusinessProvider = ({ children }) => {
       id: loanId,
       borrowerName: loanData.borrowerName,
       phone: loanData.phone || '',
+      guarantorName: loanData.guarantorName || '',
+      guarantorPhone: loanData.guarantorPhone || '',
       principal,
       interestRate: rate,
       startDate,

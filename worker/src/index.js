@@ -457,10 +457,10 @@ function entityStatement(event, receivedAt) {
     expense: ['date','category','business_id','business_name','description','amount','method','notes'],
     dieselLog: ['jcb_vehicle','date','quantity','price_per_litre','total_cost','hour_meter_reading','bunk_name','payment_method','notes'],
     supplier: ['name','phone','contact_person','location','default_cost_per_brick','notes'],
-    financeLoan: ['borrower_name','phone','principal','interest_rate','start_date','months','monthly_interest','total_interest','total_amount','returned_amount','due_amount','status','notes','payment_history']
+     financeLoan: ['borrower_name','phone','guarantor_name','guarantor_phone','principal','interest_rate','start_date','months','monthly_interest','total_interest','total_amount','returned_amount','due_amount','status','notes','payment_history']
   }[event.entityType];
   const mappings = {
-    customer_name: 'customerName', related_transaction: 'relatedTransaction', business_id: 'businessId', business_name: 'businessName', jcb_vehicle: 'jcbVehicle', price_per_litre: 'pricePerLitre', total_cost: 'totalCost', hour_meter_reading: 'hourMeterReading', bunk_name: 'bunkName', payment_method: 'paymentMethod', contact_person: 'contactPerson', default_cost_per_brick: 'defaultCostPerBrick',     borrower_name: 'borrowerName', interest_rate: 'interestRate', start_date: 'startDate', monthly_interest: 'monthlyInterest', total_interest: 'totalInterest', total_amount: 'totalAmount', returned_amount: 'returnedAmount', due_amount: 'dueAmount', payment_history: 'paymentHistory'
+     customer_name: 'customerName', related_transaction: 'relatedTransaction', business_id: 'businessId', business_name: 'businessName', jcb_vehicle: 'jcbVehicle', price_per_litre: 'pricePerLitre', total_cost: 'totalCost', hour_meter_reading: 'hourMeterReading', bunk_name: 'bunkName', payment_method: 'paymentMethod', contact_person: 'contactPerson', default_cost_per_brick: 'defaultCostPerBrick', borrower_name: 'borrowerName', guarantor_name: 'guarantorName', guarantor_phone: 'guarantorPhone', interest_rate: 'interestRate', start_date: 'startDate', monthly_interest: 'monthlyInterest', total_interest: 'totalInterest', total_amount: 'totalAmount', returned_amount: 'returnedAmount', due_amount: 'dueAmount', payment_history: 'paymentHistory'
   };
   const bindings = columns.map((column) => {
     const key = mappings[column] || column;

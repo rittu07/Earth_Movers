@@ -290,6 +290,7 @@ CREATE TABLE sync_events (
 | `0004_add_auth.sql` | Owner/manager users and hashed session storage |
 | `0005_add_driving_hours.sql` | Persistent driver driving-hours records |
 | `0006_add_auth_rate_limits.sql` | Login-attempt rate limiting records |
+| `0007_add_finance_guarantor.sql` | Finance-loan guarantor name and phone fields |
 
 ---
 
@@ -520,4 +521,4 @@ npm run worker:deploy
 curl -fsS https://earth-movers-api.loga.workers.dev/health
 ```
 
-The debug APK is generated at `apk output/Earth_Movers-debug.apk`. Android builds require JDK 21 and an Android SDK. The currently deployed Worker version is `5024b178-22cb-4bcc-af31-6ed801d25ce9`.
+The debug APK is generated at `apk output/Earth_Movers-debug.apk`. Android builds require JDK 21 and an Android SDK. The currently deployed Worker version is `c0b937ba-a82c-4764-b083-a198cc66ba9e`.
