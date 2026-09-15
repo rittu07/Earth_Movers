@@ -999,22 +999,28 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                            placeholder="Delivery Site / Location"
                            className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:outline-hidden shadow-2xs"
                          />
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <input
-                              type="text"
-                              value={row.driverName || ''}
-                              onChange={(e) => handleTxChange(row.id, 'driverName', e.target.value)}
-                              placeholder="Driver Name"
-                              className="w-full p-3.5 bg-blue-50 border border-blue-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-hidden shadow-2xs"
-                            />
-                            <input
-                              type="text"
-                              value={row.vehicleNumber || ''}
-                              onChange={(e) => handleTxChange(row.id, 'vehicleNumber', e.target.value.toUpperCase())}
-                              placeholder="Vehicle Number"
-                              className="w-full p-3.5 bg-blue-50 border border-blue-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-hidden shadow-2xs"
-                            />
-                          </div>
+                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                             <label className="text-xs font-black text-blue-950">
+                               Driver Name
+                               <input
+                                 type="text"
+                                 value={row.driverName || ''}
+                                 onChange={(e) => handleTxChange(row.id, 'driverName', e.target.value)}
+                                 placeholder="Enter driver name"
+                                 className="w-full mt-1 p-3.5 bg-blue-50 border border-blue-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-hidden shadow-2xs"
+                               />
+                             </label>
+                             <label className="text-xs font-black text-blue-950">
+                               Vehicle Number
+                               <input
+                                 type="text"
+                                 value={row.vehicleNumber || ''}
+                                 onChange={(e) => handleTxChange(row.id, 'vehicleNumber', e.target.value.toUpperCase())}
+                                 placeholder="e.g. TN 01 AB 1234"
+                                 className="w-full mt-1 p-3.5 bg-blue-50 border border-blue-300 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-hidden shadow-2xs"
+                               />
+                             </label>
+                           </div>
                        </div>
                     </div>
                   ) : (
