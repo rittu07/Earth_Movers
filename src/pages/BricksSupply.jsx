@@ -147,7 +147,7 @@ const BricksSupply = () => {
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider font-mono">
             Bricks Dispatch Log
           </h3>
-          <TransactionTable transactions={bricksTrxs} />
+          <TransactionTable transactions={bricksTrxs} quantityUnit="bricks" />
         </div>
       )}
 

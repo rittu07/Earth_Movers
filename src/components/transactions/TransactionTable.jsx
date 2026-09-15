@@ -27,12 +27,13 @@ const getShortDesc = (trx) => {
   return trx.businessName ? trx.businessName.replace(' Supply', '').replace(' Rental', '').replace(' Service', '') : 'Sale';
 };
 
-const TransactionTable = ({ transactions = [] }) => {
+const TransactionTable = ({ transactions = [], quantityUnit = null }) => {
   const { deleteTransaction, canDelete } = useBusiness();
   const [expandedId, setExpandedId] = useState(null);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const navigate = useNavigate();
   const sortedTransactions = sortByDateTimeDesc(transactions);
+  const getQuantityUnit = (trx) => quantityUnit || trx.unit || 'units';
 
   const handleDelete = (trx, e) => {
     if (e) e.stopPropagation();
@@ -40,7 +41,7 @@ const TransactionTable = ({ transactions = [] }) => {
       trx.customerName || 'Unknown customer',
       trx.businessName || trx.businessId || 'Unknown business',
       trx.itemService || 'Transaction',
-      `${trx.quantity || 0} ${trx.unit || 'units'}`,
+      `${trx.quantity || 0} ${getQuantityUnit(trx)}`,
       formatCurrency(trx.amount || 0),
       trx.date || 'No date'
     ].join(' | ');
@@ -165,7 +166,7 @@ const TransactionTable = ({ transactions = [] }) => {
                         </div>
                         <div className="text-right">
                           <span className="text-[10px] font-bold text-slate-400 uppercase block">Quantity</span>
-                         <span className="text-xs font-black text-indigo-900">{trx.quantity} {trx.unit}</span>
+                          <span className="text-xs font-black text-indigo-900">{trx.quantity} {getQuantityUnit(trx)}</span>
                        </div>
                      </div>
                      {trx.isOutsourced && (
@@ -302,7 +303,7 @@ const TransactionTable = ({ transactions = [] }) => {
                    </td>
 
                   <td className="py-4 px-4 text-center font-bold text-sm text-slate-800 whitespace-nowrap">
-                    {trx.quantity} {trx.unit}
+                    {trx.quantity} {getQuantityUnit(trx)}
                   </td>
 
                   <td className="py-4 px-4 text-right font-black text-base text-slate-950 whitespace-nowrap">
