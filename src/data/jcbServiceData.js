@@ -95,7 +95,19 @@ export const initialFleetData = [
   },
   {
     id: 'jcb-6',
-    code: 'JCB 6',
+    code: 'H85',
+    regNo: '',
+    totalHours: 0,
+    engineOilLastMeter: 0,
+    hydraulicOilLastMeter: 0,
+    filterLastMeter: 0,
+    greasingLastMeter: 0,
+    lubricationOilLastMeter: 0,
+    serviceHistory: []
+  },
+  {
+    id: 'jcb-7',
+    code: 'Tata A33',
     regNo: '',
     totalHours: 0,
     engineOilLastMeter: 0,
@@ -134,4 +146,3 @@ export const getStoredMaintenanceRecords = () => {
 export const saveStoredMaintenanceRecords = (records) => {
   return saveSyncedCollection('maintenanceRecords', 'maintenanceRecord', records);
 };
-

@@ -1069,7 +1069,8 @@ const ExcelQuickEntry = ({ initialMode = 'transaction', defaultBusinessId = null
                           <option value="JCB 3">JCB 3</option>
                           <option value="JCB 4">JCB 4</option>
                           <option value="JCB 5">JCB 5</option>
-                          <option value="JCB 6">JCB 6</option>
+                           <option value="H85">H85</option>
+                           <option value="Tata A33">Tata A33</option>
                         </select>
                       </div>
 

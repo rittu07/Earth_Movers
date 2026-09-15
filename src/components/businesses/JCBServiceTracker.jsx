@@ -108,13 +108,24 @@ const initialFleetData = [
   },
   {
     id: 'jcb-6',
-    code: 'JCB 6',
+    code: 'H85',
     regNo: '',
     totalHours: 2800,
     engineOilLastMeter: 2650,
     hydraulicOilLastMeter: 800,
     filterLastMeter: 2500,
     greasingLastMeter: 2600,
+    serviceHistory: []
+  },
+  {
+    id: 'jcb-7',
+    code: 'Tata A33',
+    regNo: '',
+    totalHours: 0,
+    engineOilLastMeter: 0,
+    hydraulicOilLastMeter: 0,
+    filterLastMeter: 0,
+    greasingLastMeter: 0,
     serviceHistory: []
   }
 ];
@@ -235,6 +246,17 @@ const getRentalHours = (transactions, machine) => transactions
     (transaction.jcbVehicle === machine.code || transaction.jcbVehicle.startsWith(`${machine.code} `)))
   .reduce((total, transaction) => total + (Number(transaction.duration) || Number(transaction.quantity) || 0), 0);
 
+const migrateFleetNames = (savedFleet) => {
+  const fleet = savedFleet.map((machine) => ({
+    ...machine,
+    code: machine.code === 'JCB 6' ? 'H85' : machine.code
+  }));
+  if (!fleet.some((machine) => machine.id === 'jcb-7')) {
+    fleet.push(initialFleetData.find((machine) => machine.id === 'jcb-7'));
+  }
+  return fleet.filter(Boolean).map(normalizeMachine);
+};
+
 const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClosed }) => {
   const { transactions = [] } = useBusiness();
   const navigate = useNavigate();
@@ -250,7 +272,7 @@ const JCBServiceTracker = ({ autoOpenAddMaintenance = false, onAddMaintenanceClo
       loadSyncedCollection('jcbFleet', 'jcb_fleet_data'),
       loadSyncedCollection('maintenanceRecords', 'jcb_maintenance_records')
     ]).then(([savedFleet, savedRecords]) => {
-      if (savedFleet.length) setFleet(savedFleet.map(normalizeMachine));
+      if (savedFleet.length) setFleet(migrateFleetNames(savedFleet));
       if (savedRecords.length) setMaintenanceRecords(savedRecords);
     }).catch(() => {});
 

@@ -298,7 +298,8 @@ export const initialJcbVehicles = [
   'JCB 3',
   'JCB 4',
   'JCB 5',
-  'JCB 6'
+  'H85',
+  'Tata A33'
 ];
 
 export const initialJcbJobs = [
@@ -399,7 +400,7 @@ export const initialJcbJobs = [
   },
   {
     id: 'JCB-JOB-6',
-    jcbVehicle: 'JCB 6',
+    jcbVehicle: 'H85',
     customerId: 'cust-1',
     customerName: 'Person A',
     phone: '9876543210',
@@ -492,7 +493,8 @@ export const initialJcbMonthlyHours = [
   { vehicle: 'JCB 3', shortName: 'JCB 3', january: 138, february: 128, march: 160, april: 148, may: 150, june: 154, july: 149, august: 140 },
   { vehicle: 'JCB 4', shortName: 'JCB 4', january: 142, february: 135, march: 162, april: 155, may: 148, june: 158, july: 152, august: 145 },
   { vehicle: 'JCB 5', shortName: 'JCB 5', january: 130, february: 122, march: 150, april: 140, may: 138, june: 145, july: 140, august: 135 },
-  { vehicle: 'JCB 6', shortName: 'JCB 6', january: 125, february: 118, march: 145, april: 138, may: 132, june: 140, july: 136, august: 130 }
+  { vehicle: 'H85', shortName: 'H85', january: 125, february: 118, march: 145, april: 138, may: 132, june: 140, july: 136, august: 130 },
+  { vehicle: 'Tata A33', shortName: 'Tata A33', january: 0, february: 0, march: 0, april: 0, may: 0, june: 0, july: 0, august: 0 }
 ];
 
 export const initialDriverMonthlyReports = [
@@ -504,7 +506,7 @@ export const initialDriverMonthlyReports = [
   { driverName: 'Ramesh', jcbVehicle: 'JCB 3', monthlyHours: 160, workingDays: 27, month: 'August 2026' },
   { driverName: 'Velu', jcbVehicle: 'JCB 4', monthlyHours: 150, workingDays: 25, month: 'August 2026' },
   { driverName: 'Selvam', jcbVehicle: 'JCB 5', monthlyHours: 138, workingDays: 23, month: 'August 2026' },
-  { driverName: 'Saravanan', jcbVehicle: 'JCB 6', monthlyHours: 130, workingDays: 22, month: 'August 2026' }
+  { driverName: 'Saravanan', jcbVehicle: 'H85', monthlyHours: 130, workingDays: 22, month: 'August 2026' }
 ];
 
 export const weeklyPerformanceData = [

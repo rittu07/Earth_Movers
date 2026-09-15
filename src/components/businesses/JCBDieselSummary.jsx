@@ -76,7 +76,7 @@ const JCBDieselSummary = ({ onOpenAddDieselModal }) => {
     : dieselLogs.filter((log) => log.jcbVehicle && log.jcbVehicle.includes(filterJcb));
 
   // Machine-wise Real Diesel Refill Breakdown
-  const jcbList = jcbVehicles.length ? jcbVehicles : ['JCB 1', 'JCB 2', 'JCB 3', 'JCB 4', 'JCB 5', 'JCB 6'];
+  const jcbList = jcbVehicles.length ? jcbVehicles : ['JCB 1', 'JCB 2', 'JCB 3', 'JCB 4', 'JCB 5', 'H85', 'Tata A33'];
   const jcbEfficiencyList = jcbList.map((vehicleStr) => {
     const shortCode = vehicleStr.split(' ')[0] + (vehicleStr.split(' ')[1] ? ` ${vehicleStr.split(' ')[1]}` : '');
 
@@ -247,7 +247,8 @@ const JCBDieselSummary = ({ onOpenAddDieselModal }) => {
               <option value="JCB 3">JCB 3</option>
               <option value="JCB 4">JCB 4</option>
               <option value="JCB 5">JCB 5</option>
-              <option value="JCB 6">JCB 6</option>
+              <option value="H85">H85</option>
+              <option value="Tata A33">Tata A33</option>
             </select>
           </div>
         </div>
@@ -332,7 +333,8 @@ const JCBDieselSummary = ({ onOpenAddDieselModal }) => {
                   <option value="JCB 3">JCB 3</option>
                   <option value="JCB 4">JCB 4</option>
                   <option value="JCB 5">JCB 5</option>
-                  <option value="JCB 6">JCB 6</option>
+                  <option value="H85">H85</option>
+                  <option value="Tata A33">Tata A33</option>
                 </select>
               </div>
 

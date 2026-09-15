@@ -31,7 +31,8 @@ const initialJcbVehiclesData = [
   { id: 'jcb-3', code: 'JCB 3', regNo: '', model: 'JCB 3DX Eco', serialNo: '', totalHours: 0, documents: [] },
   { id: 'jcb-4', code: 'JCB 4', regNo: '', model: 'JCB 3DX Plus', serialNo: '', totalHours: 0, documents: [] },
   { id: 'jcb-5', code: 'JCB 5', regNo: '', model: 'JCB 3DX', serialNo: '', totalHours: 0, documents: [] },
-  { id: 'jcb-6', code: 'JCB 6', regNo: '', model: 'JCB 3DX Xtra', serialNo: '', totalHours: 0, documents: [] }
+  { id: 'jcb-6', code: 'H85', regNo: '', model: 'JCB 3DX Xtra', serialNo: '', totalHours: 0, documents: [] },
+  { id: 'jcb-7', code: 'Tata A33', regNo: '', model: 'Tata A33', serialNo: '', totalHours: 0, documents: [] }
 ];
 
 // Helper to calculate days remaining from current date (2026-09-05)
@@ -82,6 +83,17 @@ const sanitizeVehicles = (list) => {
   }));
 };
 
+const migrateVehicleNames = (savedVehicles) => {
+  const vehicles = sanitizeVehicles(savedVehicles).map((vehicle) => ({
+    ...vehicle,
+    code: vehicle.code === 'JCB 6' ? 'H85' : vehicle.code
+  }));
+  if (!vehicles.some((vehicle) => vehicle.id === 'jcb-7')) {
+    vehicles.push(initialJcbVehiclesData.find((vehicle) => vehicle.id === 'jcb-7'));
+  }
+  return vehicles.filter(Boolean);
+};
+
 const JCBDocumentTracker = () => {
   const { canDelete } = useBusiness();
   const [vehicles, setVehicles] = useState(() => sanitizeVehicles(initialJcbVehiclesData));
@@ -92,7 +104,7 @@ const JCBDocumentTracker = () => {
   useEffect(() => {
     loadSyncedCollection('jcbDocuments', 'jcb_vehicle_documents_data').then((saved) => {
       if (saved.length) {
-        setVehicles(sanitizeVehicles(saved));
+        setVehicles(migrateVehicleNames(saved));
       }
       setStorageReady(true);
     }).catch(() => setStorageReady(true));

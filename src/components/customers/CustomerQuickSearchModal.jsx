@@ -10,7 +10,8 @@ const defaultJcbFleet = [
   { id: 'jcb-3', code: 'JCB 3', regNo: '', totalHours: 1680, driver: 'Ramesh', status: 'Active' },
   { id: 'jcb-4', code: 'JCB 4', regNo: '', totalHours: 1120, driver: 'Velu', status: 'Active' },
   { id: 'jcb-5', code: 'JCB 5', regNo: '', totalHours: 980, driver: 'Selvam', status: 'Active' },
-  { id: 'jcb-6', code: 'JCB 6', regNo: '', totalHours: 850, driver: 'Saravanan', status: 'Active' }
+  { id: 'jcb-6', code: 'H85', regNo: '', totalHours: 850, driver: 'Saravanan', status: 'Active' },
+  { id: 'jcb-7', code: 'Tata A33', regNo: '', totalHours: 0, driver: '', status: 'Active' }
 ];
 
 const CustomerQuickSearchModal = () => {
