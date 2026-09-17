@@ -7,6 +7,11 @@ import { exportToPdf } from '../utils/pdfGenerator';
 import { BookOpen, Search, Download, Share2, ChevronDown, Eye } from 'lucide-react';
 import { getDateRange, getOutsourcedSupplierName, isDateInRange } from '../utils/calculations';
 
+const LEDGER_FONT_SIZE_KEY = 'earth-movers-ledger-font-size';
+const DEFAULT_LEDGER_FONT_SIZE = 16;
+const MIN_LEDGER_FONT_SIZE = 12;
+const MAX_LEDGER_FONT_SIZE = 22;
+
 const Ledger = () => {
   const { transactions, payments, customers, businesses, showToast } = useBusiness();
   const [selectedCust, setSelectedCust] = useState('all');
@@ -14,7 +19,19 @@ const Ledger = () => {
   const [dateFilter, setDateFilter] = useState('all'); // all, today, week, month, custom
   const [customDate, setCustomDate] = useState('');
   const [expandedId, setExpandedId] = useState(null);
+  const [ledgerFontSize, setLedgerFontSize] = useState(() => {
+    const savedSize = Number(localStorage.getItem(LEDGER_FONT_SIZE_KEY));
+    return Number.isFinite(savedSize) && savedSize >= MIN_LEDGER_FONT_SIZE && savedSize <= MAX_LEDGER_FONT_SIZE
+      ? savedSize
+      : DEFAULT_LEDGER_FONT_SIZE;
+  });
   const navigate = useNavigate();
+
+  const updateLedgerFontSize = (size) => {
+    const nextSize = Math.min(MAX_LEDGER_FONT_SIZE, Math.max(MIN_LEDGER_FONT_SIZE, size));
+    setLedgerFontSize(nextSize);
+    localStorage.setItem(LEDGER_FONT_SIZE_KEY, String(nextSize));
+  };
 
   // Build combined accounting ledger
   const allEvents = [
@@ -170,7 +187,40 @@ const Ledger = () => {
         </div>
 
         <div className="text-xs font-bold text-slate-600">
-          Showing {filteredEvents.length} Ledger Events
+          <div className="flex items-center gap-2">
+            <span>Showing {filteredEvents.length} Ledger Events</span>
+            <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
+              <button
+                type="button"
+                onClick={() => updateLedgerFontSize(ledgerFontSize - 1)}
+                disabled={ledgerFontSize <= MIN_LEDGER_FONT_SIZE}
+                className="px-2 py-1 rounded-lg bg-white border border-slate-200 text-sm font-black text-slate-700 hover:bg-slate-100 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                aria-label="Decrease ledger font size"
+                title="Decrease font size"
+              >
+                A−
+              </button>
+              <span className="px-1 text-[11px] font-black text-slate-500">{ledgerFontSize}px</span>
+              <button
+                type="button"
+                onClick={() => updateLedgerFontSize(ledgerFontSize + 1)}
+                disabled={ledgerFontSize >= MAX_LEDGER_FONT_SIZE}
+                className="px-2 py-1 rounded-lg bg-white border border-slate-200 text-sm font-black text-slate-700 hover:bg-slate-100 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                aria-label="Increase ledger font size"
+                title="Increase font size"
+              >
+                A+
+              </button>
+              <button
+                type="button"
+                onClick={() => updateLedgerFontSize(DEFAULT_LEDGER_FONT_SIZE)}
+                className="px-2 py-1 rounded-lg bg-slate-800 text-white text-[11px] font-black hover:bg-slate-700 cursor-pointer"
+                title="Reset to default font size"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -274,7 +324,7 @@ const Ledger = () => {
 
       {/* DESKTOP GENERAL ACCOUNTING TABLE (Visible on screens >= md) */}
       <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left" style={{ fontSize: `${ledgerFontSize}px` }}>
           <thead className="bg-slate-900 text-white font-semibold">
             <tr>
               <th className="py-3.5 px-4">S.No.</th>
