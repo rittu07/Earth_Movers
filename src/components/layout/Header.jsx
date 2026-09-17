@@ -2,10 +2,10 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useBusiness } from '../../context/BusinessContext';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Bell, Menu, LayoutDashboard } from 'lucide-react';
+import { Search, Bell, LayoutDashboard } from 'lucide-react';
 import { formatDate } from '../../utils/formatCurrency';
 
-const Header = ({ onMobileMenuOpen }) => {
+const Header = () => {
   const { openSearchModal } = useBusiness();
   const { user, logout } = useAuth();
 
@@ -21,16 +21,8 @@ const Header = ({ onMobileMenuOpen }) => {
 
   return (
     <header className="min-h-[72px] sm:h-16 bg-white border-b border-slate-200/80 px-2.5 sm:px-6 py-2.5 sm:py-0 flex items-center justify-between sticky top-0 z-30 shadow-xs">
-      {/* Mobile Drawer Trigger, Home Shortcut & Title */}
+      {/* Mobile Home Shortcut & Title */}
       <div className="flex items-center gap-1 sm:gap-3 shrink-0">
-        <button
-          onClick={onMobileMenuOpen}
-          className="p-2 text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100 lg:hidden cursor-pointer"
-          aria-label="Open Mobile Menu"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
         {/* Dashboard Direct Shortcut Button on Mobile */}
         <Link
           to="/"

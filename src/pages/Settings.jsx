@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import PageHeader from '../components/layout/PageHeader';
 import { Building2, User, Phone, MapPin, Check, Database, CreditCard, LockKeyhole, Eye, EyeOff, Download, Upload } from 'lucide-react';
 import { exportBusinessWorkbook, importBusinessWorkbook } from '../utils/excelBackup';
+import { DEFAULT_APP_FONT_SETTINGS, loadAppFontSettings, saveAppFontSettings } from '../utils/appSettings';
 
 const Settings = () => {
   const { showToast, syncNow } = useBusiness();
@@ -16,6 +17,7 @@ const Settings = () => {
   });
 
   const [darkMode, setDarkMode] = useState(false);
+  const [fontSettings, setFontSettings] = useState(loadAppFontSettings);
   const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' });
   const [visiblePasswords, setVisiblePasswords] = useState({ current: false, next: false, confirm: false });
   const [passwordError, setPasswordError] = useState('');
@@ -34,6 +36,18 @@ const Settings = () => {
   const [backupPasswordConfirm, setBackupPasswordConfirm] = useState('');
   const [pendingBackupFile, setPendingBackupFile] = useState(null);
   const importInputRef = useRef(null);
+
+  const updateFontSetting = (device, value) => {
+    const nextSettings = { ...fontSettings, [device]: Number(value) };
+    setFontSettings(nextSettings);
+    saveAppFontSettings(nextSettings);
+  };
+
+  const resetFontSettings = () => {
+    const defaultSettings = { ...DEFAULT_APP_FONT_SETTINGS };
+    setFontSettings(defaultSettings);
+    saveAppFontSettings(defaultSettings);
+  };
 
   const handleSave = (e) => {
     e.preventDefault();
@@ -210,9 +224,37 @@ const Settings = () => {
               />
             </div>
           </div>
-        </div>
+         </div>
 
-        {/* Business Units */}
+         {/* Appearance */}
+         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
+           <div>
+             <h3 className="text-base font-bold text-slate-900">Appearance</h3>
+             <p className="text-xs text-slate-500 mt-1">Adjust the overall text size independently for desktop and mobile screens.</p>
+           </div>
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+             {[
+               ['desktop', 'Desktop Font Size'],
+               ['mobile', 'Mobile Font Size']
+             ].map(([device, label]) => (
+               <label key={device} className="block">
+                 <span className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">{label}</span>
+                 <select
+                   value={fontSettings[device]}
+                   onChange={(event) => updateFontSetting(device, event.target.value)}
+                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:border-indigo-500"
+                 >
+                   {[14, 15, 16, 17, 18, 20].map((size) => <option key={size} value={size}>{size}px</option>)}
+                 </select>
+               </label>
+             ))}
+           </div>
+           <div className="flex justify-end">
+             <button type="button" onClick={resetFontSettings} className="text-xs font-bold text-indigo-600 hover:text-indigo-800">Reset font sizes</button>
+           </div>
+         </div>
+
+         {/* Business Units */}
         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-3">
           <h3 className="text-base font-bold text-slate-900">Configured Business Units</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { App as CapacitorApp } from '@capacitor/app';
 import { BusinessProvider, useBusiness } from './context/BusinessContext';
@@ -7,8 +7,9 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 // Layout Components
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
-import MobileNav, { MobileBottomBar } from './components/layout/MobileNav';
+import { MobileBottomBar } from './components/layout/MobileNav';
 import CustomerQuickSearchModal from './components/customers/CustomerQuickSearchModal';
+import { applyAppFontSize, loadAppFontSettings } from './utils/appSettings';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -43,10 +44,22 @@ const OwnerOnly = ({ children }) => {
 };
 
 const AppContent = () => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { toastMessage, toastType } = useBusiness();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const updateFontSize = (event) => applyAppFontSize(event.detail || loadAppFontSettings());
+    const handleResize = () => applyAppFontSize(loadAppFontSettings());
+
+    updateFontSize({ detail: loadAppFontSettings() });
+    window.addEventListener('app-font-settings-change', updateFontSize);
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('app-font-settings-change', updateFontSize);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -111,12 +124,9 @@ const AppContent = () => {
         <Sidebar />
       </div>
 
-      {/* Mobile Nav Drawer */}
-      <MobileNav isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
-
       {/* Main Content Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        <Header onMobileMenuOpen={() => setMobileMenuOpen(true)} />
+        <Header />
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 lg:pb-6">
           <Routes>
