@@ -24,6 +24,7 @@ A full-stack offline-first business ledger application for rural transport opera
 - **Customer Ledger** — Per-customer chronological view of all transactions and payments
 - **Business Ledger** — Unified event log across all business units
 - **PDF Statements** — Save and share customer, supplier, finance, business, audit, outstanding, and report statements
+- **Dashboard Ledger Downloads** — Download transaction and payment ledgers for today, a specific date, or a date range
 - **Readable PDF Layouts** — Wide reports automatically use landscape tables, currency values remain aligned, and text wraps by word
 
 ### Reports & Dashboard
@@ -452,6 +453,8 @@ Android native PDF integration is located under `android/app/src/main/java/com/l
 - Reports, dashboard charts, and all business pages now calculate metrics from synced data (no more hardcoded mock values)
 - All date filters (Transactions, Ledger, CustomerLedger) use dynamic date ranges instead of fixed dates
 - Header date is dynamic instead of hardcoded
+- Mobile bottom navigation includes a Ledger shortcut that routes to `/ledger`
+- Dashboard ledger date-download controls stack responsively on narrow screens without horizontal scrolling
 
 ### Data & Reports
 - `calculateReportData()` — centralized report calculations with date range filtering
@@ -521,4 +524,4 @@ npm run worker:deploy
 curl -fsS https://earth-movers-api.loga.workers.dev/health
 ```
 
-The debug APK is generated at `apk output/Earth_Movers-debug.apk`. Android builds require JDK 21 and an Android SDK. The currently deployed Worker version is `c0b937ba-a82c-4764-b083-a198cc66ba9e`.
+The debug APK is generated at `apk output/Earth_Movers-debug.apk`. Android builds require JDK 21 and an Android SDK. The latest successfully deployed Worker version is `0ad92cbb-93ff-4181-b313-d4ba69789240`.
