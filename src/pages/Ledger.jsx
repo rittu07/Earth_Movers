@@ -132,6 +132,8 @@ const Ledger = () => {
         }
       />
 
+      <style>{`.ledger-mobile-font, .ledger-mobile-font * { font-size: ${ledgerFontSize}px !important; }`}</style>
+
       {/* Filter and Date Selector Bar */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
@@ -225,7 +227,7 @@ const Ledger = () => {
       </div>
 
       {/* MOBILE VIEW INLINE EXPANDABLE CARDS (No horizontal scrolling) */}
-      <div className="md:hidden space-y-3">
+      <div className="md:hidden space-y-3 ledger-mobile-font">
         {filteredEvents.length === 0 ? (
           <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 text-xs font-medium">
             No ledger transactions match selected filters.
