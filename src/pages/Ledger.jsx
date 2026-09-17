@@ -46,7 +46,7 @@ const Ledger = () => {
       type: 'Transaction',
       isOutsourced: t.isOutsourced,
       outsourcedSupplier: t.outsourcedSupplier,
-      description: `${t.itemService} (${t.quantity} ${t.unit})${t.isOutsourced ? ` • Outsourced from: ${getOutsourcedSupplierName(t)}` : ''}`,
+       description: `${t.itemService} (${t.quantity} ${t.businessId === 'bricks' ? 'bricks' : t.unit})${t.isOutsourced ? ` • Outsourced from: ${getOutsourcedSupplierName(t)}` : ''}`,
       debit: t.amount,
       credit: t.paid,
       balance: t.due
