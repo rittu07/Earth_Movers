@@ -71,8 +71,7 @@ const Ledger = () => {
       filename: 'Master_General_Ledger.pdf',
       columns: [
         { header: 'Date', key: 'displayDate' },
-        { header: 'Type', key: 'type', bold: true },
-        { header: 'Customer / Party', key: 'customerName', bold: true },
+         { header: 'Customer / Party', key: 'customerName', bold: true },
         { header: 'Sector / Business', key: 'businessName' },
         { header: 'Description', key: 'description' },
         { header: 'Debit (Bill)', key: 'formattedDebit', align: 'right', bold: true },
@@ -281,8 +280,7 @@ const Ledger = () => {
               <th className="py-3.5 px-4">S.No.</th>
               <th className="py-3.5 px-4">Date</th>
               <th className="py-3.5 px-4">Customer</th>
-              <th className="py-3.5 px-4">Type</th>
-              <th className="py-3.5 px-4">Business</th>
+               <th className="py-3.5 px-4">Business</th>
               <th className="py-3.5 px-4">Particulars / Description</th>
               <th className="py-3.5 px-4 text-right">Debit (Billed)</th>
               <th className="py-3.5 px-4 text-right">Credit (Received)</th>
@@ -292,7 +290,7 @@ const Ledger = () => {
           <tbody className="divide-y divide-slate-100 font-medium">
             {filteredEvents.length === 0 ? (
               <tr>
-                <td colSpan="8" className="py-8 text-center text-slate-400">
+                 <td colSpan="7" className="py-8 text-center text-slate-400">
                   No ledger transactions match selected filters.
                 </td>
               </tr>
@@ -306,10 +304,7 @@ const Ledger = () => {
                   <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap">
                     {ev.customerName.split('(')[0]}
                   </td>
-                  <td className="py-3.5 px-4 whitespace-nowrap font-semibold text-slate-700">
-                    {ev.type}
-                  </td>
-                  <td className="py-3.5 px-4 font-semibold text-slate-700 whitespace-nowrap">
+                   <td className="py-3.5 px-4 font-semibold text-slate-700 whitespace-nowrap">
                     {ev.businessName}
                   </td>
                   <td className="py-3.5 px-4 text-slate-800 max-w-xs truncate">
