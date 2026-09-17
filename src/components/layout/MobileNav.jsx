@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useAuth } from '../../context/AuthContext';
-import { X, Home, Building2, Landmark, BarChart3, Activity } from 'lucide-react';
+import { X, Home, Building2, Landmark, BarChart3, Activity, BookOpen } from 'lucide-react';
 
 const MobileNav = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
@@ -99,6 +99,18 @@ export const MobileBottomBar = () => {
       >
         <BarChart3 className="w-5 h-5" />
         <span>Report</span>
+      </NavLink>
+
+      <NavLink
+        to="/ledger"
+        className={({ isActive }) =>
+          `flex flex-col items-center gap-0.5 text-[11px] font-black transition-colors ${
+            isActive ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
+          }`
+        }
+      >
+        <BookOpen className="w-5 h-5" />
+        <span>Ledger</span>
       </NavLink>
     </div>
   );
